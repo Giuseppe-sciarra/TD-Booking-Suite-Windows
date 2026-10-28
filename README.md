@@ -80,7 +80,9 @@ Le licenze le crei tu, sul tuo PC, con **TD Licenze.exe**. Lo costruisce GitHub 
 
 1. apri **Actions**, poi l'ultima esecuzione verde;
 2. in fondo, in *Artifacts*, scarica **TD-Licenze**;
-3. scompattalo in una cartella e apri `TD Licenze.exe`. Windows lo segnala come l'MSI e si apre allo stesso modo.
+3. scompattalo in una cartella, sul Desktop o su una chiavetta, e apri `TD Licenze.exe`. Windows lo segnala come l'MSI e si apre allo stesso modo.
+
+È **portatile**: chiave, registro e licenze emesse restano nella sua cartella, accanto all'exe, quindi per portarlo via o fare il backup basta copiare la cartella intera. Se una versione precedente aveva messo la chiave in `%APPDATA%\TD Licenze`, al primo avvio la sposta lì da sola. Per aggiornare TD Licenze sostituisci solo `TD Licenze.exe` e la cartella `_internal`: i file della chiave non si toccano.
 
 L'artefatto è privato come la repo e non va mai dato ai clienti.
 
@@ -90,7 +92,7 @@ L'artefatto è privato come la repo e non va mai dato ai clienti.
 | **Nuova licenza** | Intestatario, attività, postazioni, codice installazione e scadenza: **Crea la licenza**, e la licenza è già negli appunti |
 | **Licenze emesse** | Tutte quelle fatte: doppio clic per copiarne di nuovo una |
 
-Chi preferisce la riga di comando ha `licenze/td_licenze.py`, che fa le stesse cose e usa la stessa cartella. Servono Python 3 e `pip install cryptography`.
+Chi preferisce la riga di comando ha `licenze/td_licenze.py`, che fa le stesse cose; per lavorare sulla cartella di TD Licenze.exe passagli `--cartella "percorso\della\cartella"`. Servono Python 3 e `pip install cryptography`.
 
 **La prima volta**, una volta sola, crea la chiave dalla scheda **Chiave** di TD Licenze.exe, oppure con:
 
@@ -98,10 +100,10 @@ Chi preferisce la riga di comando ha `licenze/td_licenze.py`, che fa le stesse c
 python licenze/td_licenze.py chiave
 ```
 
-La **chiave privata**, protetta da una password, finisce in `%APPDATA%\TD Licenze` (su Mac e Linux in `~/.td-licenze`). La **chiave pubblica** la vedi a schermo. Poi:
+La **chiave privata**, protetta da una password, finisce nella cartella di TD Licenze.exe (da riga di comando, di serie, in `%APPDATA%\TD Licenze` o `~/.td-licenze`). La **chiave pubblica** la vedi a schermo. Poi:
 
 1. Metti la chiave pubblica in `tdwin/licenza-chiave-pubblica.txt`, fai commit e push. Da quella build in poi il programma accetta le tue licenze.
-2. Copia la cartella `TD Licenze` su una chiavetta: senza la chiave privata non puoi più emettere licenze per le installazioni che esistono già.
+2. Tieni una copia della cartella di TD Licenze su una chiavetta: senza la chiave privata non puoi più emettere licenze per le installazioni che esistono già.
 3. La chiave privata non va mai nella repo (`.gitignore` blocca i `.pem`).
 
 **Ogni licenza** si crea dalla scheda **Nuova licenza**, oppure da riga di comando:
@@ -141,13 +143,7 @@ Il codice resta in questa repo privata. Quello che vedono tutti sta in **[TD-Boo
 - istruzioni;
 - gli MSI da scaricare, con la prova di 7 giorni.
 
-A ogni tag, per esempio:
-
-```bash
-git tag v2.8.0 && git push origin v2.8.0
-```
-
-la build fa i test, l'MSI e la prova di installazione. Poi copia nella vetrina `vetrina/README.md` e `docs/screenshots/`, e pubblica lì una Release con l'MSI. Per scrivere nella vetrina usa il secret `VETRINA_TOKEN`: un token fine-grained con *Contents: Read and write* solo su quella repo. Il testo della vetrina si cambia in `vetrina/README.md`.
+Per pubblicare una versione apri **Actions → Windows → Run workflow**, spunta **Pubblica il rilascio** e premi **Run workflow**. Va bene anche un tag, per esempio `git tag v2.8.0 && git push origin v2.8.0`. La build fa i test, l'MSI e la prova di installazione. Poi copia nella vetrina `vetrina/README.md` e `docs/screenshots/`, e pubblica lì una Release con l'MSI. Per scrivere nella vetrina usa il secret `VETRINA_TOKEN`: un token fine-grained con *Contents: Read and write* solo su quella repo. Il testo della vetrina si cambia in `vetrina/README.md`.
 
 ## Backup e ripristino
 

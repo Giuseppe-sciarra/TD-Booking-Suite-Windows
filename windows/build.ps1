@@ -38,7 +38,7 @@ function Invoke-Native([string]$Exe, [string[]]$Arguments) {
 
 if (-not (Test-Path (Join-Path $root "tdwin\licenza-chiave-pubblica.txt"))) {
     # a release without the key would accept no licence at all: its customers would stop after the trial
-    if ($env:GITHUB_REF -like "refs/tags/*") { throw "Manca tdwin/licenza-chiave-pubblica.txt: un rilascio senza la chiave non accetterebbe nessuna licenza." }
+    if ($env:GITHUB_REF -like "refs/tags/*" -or $env:TDBS_RILASCIO -eq "true") { throw "Manca tdwin/licenza-chiave-pubblica.txt: un rilascio senza la chiave non accetterebbe nessuna licenza." }
     Write-Host "::warning::Manca tdwin/licenza-chiave-pubblica.txt: questa build accetta solo la prova di 7 giorni, nessuna licenza."
 }
 
