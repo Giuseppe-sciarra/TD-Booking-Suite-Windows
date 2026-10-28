@@ -34,3 +34,8 @@ EXTRA_NAV=[{"label":"Licenza","url":"/platform/licenza/"},{"label":"Postazioni",
 MORE_TENANTS_HINT="Per più attività serve una licenza Portale con più attività: la inserisci da Licenza."
 EDITION_LABEL="Windows"
 STATIC_ROOT=Path(__file__).resolve().parent.parent/"static-collected"  # made by windows/build.ps1
+# client import: the sealed file between the steps and the upload itself stay in a folder the web service may write
+IMPORT_DIR=str(DATA/"import")
+FILE_UPLOAD_TEMP_DIR=IMPORT_DIR
+try:os.makedirs(IMPORT_DIR,exist_ok=True)  # the installer makes it, with the web service's permission
+except OSError:pass

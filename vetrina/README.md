@@ -12,12 +12,15 @@ TD Booking Suite gestisce appuntamenti, tavoli, camere, lezioni ed eventi. Si in
 | **Dashboard**: prenotazioni, clienti e cosa chiede attenzione | **Tema chiaro o scuro**, con il colore che preferisci |
 | ![Postazioni](screenshots/postazioni.png) | ![Backup](screenshots/backup.png) |
 | **Postazioni**: ogni PC si registra una volta con un codice di 6 cifre | **Backup automatici**, cifrati, su disco esterno, NAS o server remoto |
+| ![Importa clienti](screenshots/import.png) | ![Anteprima dell'import](screenshots/import-anteprima.png) |
+| **Importa i clienti** dal programma di prima, da Excel o CSV | **Anteprima** prima di importare: cosa entra e cosa no |
 
 ## Cosa fa
 
 - **Agenda e prenotazioni** per parrucchieri, centri estetici, SPA, ristoranti, studi, autoscuole, officine, hotel, case vacanza, noleggi, tour ed eventi. Ci sono gli orari, le risorse e gli operatori, e le domande giuste per ogni tipo di attività.
 - **Prenotazioni online** dalla pagina dell'attività, quando il server è raggiungibile da Internet, con conferme e promemoria per email.
 - **Clienti**: scheda con lo storico, le note, i trattamenti, le intolleranze e i consensi marketing.
+- **Importa dal programma di prima**: anagrafica e storico dei trattamenti da Excel o CSV. Per ogni colonna scegli cosa contiene e guardi l'anteprima prima di importare. Chi c'è già non viene sovrascritto né raddoppiato. I consensi marketing restano da confermare dal cliente.
 - **Una o più attività**: la versione singola è per un'attività, la versione portale per chi ne gestisce diverse.
 - **Più postazioni**: i PC della rete usano il programma per la postazione; browser e telefono vanno bene lo stesso. Le sedi lontane si collegano allo stesso server.
 - **Sicurezza**:
@@ -65,7 +68,9 @@ Dopo i 7 giorni di prova il programma chiede la licenza. Prenotazioni e clienti 
 - quante **postazioni in rete** puoi usare, oltre al PC server;
 - se c'è una **scadenza**.
 
-Per averla mandaci il **codice installazione** che trovi nella pagina Licenza del programma: [tastieredigitali.tech](https://tastieredigitali.tech).
+### Come acquistare
+
+Prezzi e formule sono su richiesta. **Contattaci da [tastieredigitali.tech](https://tastieredigitali.tech)** e mandaci il **codice installazione** che trovi nella pagina Licenza del programma: ti spieghiamo le formule e ti mandiamo la licenza per il tuo PC. La incolli nella stessa pagina e il programma riparte subito, con tutti i dati.
 
 ## Requisiti
 

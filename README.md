@@ -17,6 +17,8 @@ Il nucleo web è [TD Booking Suite](https://github.com/Giuseppe-sciarra/TD-Booki
 | **Backup** cifrati, ogni notte, su disco esterno, NAS, FTP, FTPS o SFTP, con lo storico | **Prova di 7 giorni**: l'avviso in cima alle pagine dell'amministratore |
 | ![Tema scuro](docs/screenshots/dashboard-scuro.png) | ![Aspetto](docs/screenshots/aspetto.png) |
 | **Tema scuro e colore principale a scelta**: qui verde acqua al posto del viola di serie | **Impostazioni generali**: nome, loghi chiaro e scuro, icona, colore e tema di partenza |
+| ![Importa clienti](docs/screenshots/import.png) | ![Anteprima dell'import](docs/screenshots/import-anteprima.png) |
+| **Importa clienti** (Clienti › Importa): anagrafica e storico da Excel o CSV, colonna per colonna | **Anteprima**: le prime righe, cosa succede, le righe che non entrano e perché |
 
 ## Installare
 

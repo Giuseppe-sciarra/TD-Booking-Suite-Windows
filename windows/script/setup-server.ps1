@@ -77,13 +77,15 @@ try {
     }
 
     # 5. who reads what: the web service never sees the database owner's password
-    foreach ($folder in "licenza", "backup", "certs", "log", "tmp") { New-Item -ItemType Directory -Force (Join-Path $Data $folder) | Out-Null }
+    foreach ($folder in "licenza", "backup", "certs", "log", "tmp", "import") { New-Item -ItemType Directory -Force (Join-Path $Data $folder) | Out-Null }
     $icacls = "icacls.exe"
     Invoke-Checked $icacls @($Data, "/inheritance:r", "/grant:r", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F", "NT SERVICE\TDBookingWeb:(OI)(CI)RX", "NT SERVICE\TDBookingWorker:(OI)(CI)RX")
     Invoke-Checked $icacls @((Join-Path $Data "db-admin.json"), "/inheritance:r", "/grant:r", "*S-1-5-18:F", "*S-1-5-32-544:F", "NT SERVICE\TDBookingWorker:R")
     Invoke-Checked $icacls @($pgData, "/inheritance:r", "/grant:r", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F", "NT SERVICE\TDBookingDB:(OI)(CI)F")
     Invoke-Checked $icacls @((Join-Path $Data "licenza"), "/grant", "NT SERVICE\TDBookingWeb:(OI)(CI)M")
     Invoke-Checked $icacls @((Join-Path $Data "certs"), "/grant", "NT SERVICE\TDBookingWeb:(OI)(CI)M")
+    # the client files being imported (sealed) and the uploads Django writes to disk while reading them
+    Invoke-Checked $icacls @((Join-Path $Data "import"), "/grant", "NT SERVICE\TDBookingWeb:(OI)(CI)M")
     foreach ($folder in "backup", "tmp") { Invoke-Checked $icacls @((Join-Path $Data $folder), "/grant", "NT SERVICE\TDBookingWorker:(OI)(CI)M") }
     Invoke-Checked $icacls @((Join-Path $Data "log"), "/grant", "NT SERVICE\TDBookingWeb:(OI)(CI)M", "NT SERVICE\TDBookingWorker:(OI)(CI)M")
 
