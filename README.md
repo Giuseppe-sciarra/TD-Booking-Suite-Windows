@@ -134,7 +134,7 @@ Le licenze le crei tu con **TD Licenze.exe**. Lo costruisce GitHub a ogni push:
 2. in fondo, in *Artifacts*, scarica **TD-Licenze**;
 3. scompattalo in una cartella, di solito su una chiavetta, e apri `TD Licenze.exe`. Windows lo segnala come l'MSI e si apre allo stesso modo.
 
-È **portatile**: chiave, registro e licenze emesse si salvano solo nella sua cartella, accanto all'exe, e da nessun'altra parte. Dalla chiavetta lo apri sul PC del cliente, copi il codice installazione dalla sua pagina Licenza, crei la licenza e la incolli. Per il backup basta copiare la cartella intera. Se una versione precedente aveva messo la chiave in `%APPDATA%\TD Licenze`, al primo avvio la porta nella sua cartella. Per aggiornare TD Licenze sostituisci solo `TD Licenze.exe` e la cartella `_internal`: i file della chiave non si toccano.
+È **portatile**: registro, collegamento a GitHub e licenze emesse si salvano solo nella sua cartella, accanto all'exe, e da nessun'altra parte. Dalla chiavetta lo apri sul PC del cliente, copi il codice installazione dalla sua pagina Licenza, crei la licenza e la incolli. Per il backup basta copiare la cartella intera. Se una versione precedente aveva messo la chiave in `%APPDATA%\TD Licenze`, al primo avvio la porta nella sua cartella. Per aggiornare TD Licenze sostituisci solo `TD Licenze.exe` e la cartella `_internal`: i file della chiave non si toccano.
 
 L'artefatto è privato come la repo e non va mai dato ai clienti.
 
@@ -142,7 +142,8 @@ L'artefatto è privato come la repo e non va mai dato ai clienti.
 |---|---|
 | **Chiave** | La prima volta crea la chiave delle licenze, con una password, e mostra la chiave pubblica da copiare |
 | **Nuova licenza** | Tipo, intestatario, attività, postazioni, codice installazione e scadenza: **Crea la licenza**, e la licenza è già pronta da copiare |
-| **Licenze emesse** | Tutte quelle fatte, con lo stato (in uso o sostituita): doppio clic per copiarne di nuovo una, **Cambia postazioni o scadenza** per farne una che la sostituisce |
+| **Licenze emesse** | Tutte quelle fatte, con lo stato (in uso o sostituita): doppio clic per copiarne di nuovo una, **Cambia postazioni o scadenza** per farne una che la sostituisce, **Aggiorna da GitHub** per le licenze fatte sugli altri PC |
+| **Registro su GitHub** | Collega la repo privata dove tenere il registro: lo ritrovi con TD Licenze su qualunque PC |
 
 | Tipo | Attività | Postazioni in rete |
 |---|---|---|
@@ -150,11 +151,24 @@ L'artefatto è privato come la repo e non va mai dato ai clienti.
 | **Server con postazioni** | 1 | quante ne scegli, oltre al PC server |
 | **Portale, più attività** | 2 o più | quante ne scegli |
 
-**La prima volta**, una volta sola, crea la chiave dalla scheda **Chiave**. La **chiave privata**, protetta da una password, resta nella cartella di TD Licenze. La **chiave pubblica** la vedi a schermo:
+**La chiave, una volta sola.** La build mette la chiave privata **dentro TD Licenze.exe**, cifrata con la sua password: ogni TD Licenze scaricato da Actions, su qualunque PC, chiede solo la password e decifra la chiave in memoria.
 
-1. Mettila in `tdwin/licenza-chiave-pubblica.txt`, fai commit e push. La build la scrive **dentro il codice compilato**: da quella build in poi il programma accetta le tue licenze, e nell'MSI non c'è un file con la chiave da sostituire.
-2. Tieni una copia della cartella di TD Licenze su un secondo supporto: senza la chiave privata non puoi più emettere licenze per le installazioni che esistono già.
-3. La chiave privata non va mai nella repo (`.gitignore` blocca i `.pem`, il registro e le licenze emesse).
+1. Apri TD Licenze in una cartella vuota e crea la chiave dalla scheda **Chiave**, con una password lunga. Nella cartella compaiono `chiave-privata.pem` e `chiave-pubblica.txt`.
+2. Il contenuto di `chiave-pubblica.txt` va in `tdwin/licenza-chiave-pubblica.txt`. La build lo scrive **dentro il codice compilato** del programma: nell'MSI non c'è un file con la chiave da sostituire.
+3. **Settings → Secrets and variables → Actions → New repository secret**: `TD_LICENZE_CHIAVE`, con tutto il contenuto di `chiave-privata.pem` (righe `BEGIN` ed `END` comprese). È cifrata: senza password non firma.
+4. Commit e push. Le licenze fatte con un'altra chiave non valgono nelle build nuove.
+5. Tieni `chiave-privata.pem` e la password fuori dal PC: GitHub non fa rileggere un secret, e senza la chiave non puoi più fare licenze per le installazioni che esistono già.
+
+La chiave privata non va mai nella repo come file (`.gitignore` blocca i `.pem`, il registro, le licenze emesse e `licenze/chiave_incorporata.py`, che la build scrive dal secret). Senza il secret TD Licenze tiene la chiave nella sua cartella, come prima.
+
+**Il registro su GitHub.** Il registro può stare anche in una repo privata solo per i dati, per esempio `TD-Licenze-Dati`. TD Licenze lo aggiorna da lì all'apertura e dopo ogni licenza; senza Internet lavora sulla copia della cartella e manda le licenze nuove dopo. Se due PC scrivono insieme, rilegge e unisce.
+
+1. Crea la repo privata e vuota.
+2. Crea un token **fine-grained** solo su quella repo, con **Contents: Read and write**.
+3. Scheda **Registro su GitHub**: repo, token, **Collega e sincronizza**. Il token resta in `registro-github.json`, cifrato con la password della chiave.
+4. Facoltativo: il secret `TD_LICENZE_REGISTRO` con tutto il contenuto di `registro-github.json`. Così anche un TD Licenze appena scaricato trova la repo da solo.
+
+Su GitHub va solo `registro-licenze.csv`: la chiave privata e il token restano fuori.
 
 Ogni licenza esce come riga `TDBS1.…` e come file `licenze-emesse/licenza-TD-2026-0001-bar-roma.txt`, da mandare al cliente. Resta anche nel `registro-licenze.csv`.
 
@@ -167,6 +181,8 @@ python licenze/td_licenze.py crea --intestatario "Bar Roma" --tipo server --post
 python licenze/td_licenze.py crea --sostituisce TD-2026-0007 --postazioni 5   # il resto resta come nella 0007
 python licenze/td_licenze.py elenco       # quelle emesse, dal registro
 python licenze/td_licenze.py verifica     # incolli una licenza e vedi cosa contiene
+python licenze/td_licenze.py collega Giuseppe-sciarra/TD-Licenze-Dati   # la repo del registro, chiede il token
+python licenze/td_licenze.py sincronizza  # registro aggiornato con GitHub
 ```
 
 | Cosa succede se il cliente… | |

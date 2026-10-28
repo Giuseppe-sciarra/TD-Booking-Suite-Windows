@@ -41,9 +41,14 @@ class App(tk.Tk):
         style.configure("Title.TLabel",font=("Segoe UI",14,"bold"));style.configure("Hint.TLabel",foreground="#6b6079")
         self.tabs=ttk.Notebook(self);self.tabs.pack(fill="both",expand=True,padx=12,pady=12)
         self.new_tab=ttk.Frame(self.tabs,padding=16);self.list_tab=ttk.Frame(self.tabs,padding=16);self.key_tab=ttk.Frame(self.tabs,padding=16)
+        self.sync_tab=ttk.Frame(self.tabs,padding=16)
         self.tabs.add(self.new_tab,text="Nuova licenza");self.tabs.add(self.list_tab,text="Licenze emesse");self.tabs.add(self.key_tab,text="Chiave")
-        self.build_new();self.build_list();self.build_key()
+        self.tabs.add(self.sync_tab,text="Registro su GitHub")
+        self.sync_status=tk.StringVar(value="")
+        self.build_new();self.build_list();self.build_key();self.build_sync()
         if not tool.has_key(self.folder):self.tabs.select(self.key_tab)
+        # with a repo connected, the register of every PC is brought here at once (the password opens the token)
+        elif tool.sync_settings(self.folder):self.after(300,lambda:self.sync(ask=True))
 
     # new licence
     def build_new(self):
@@ -118,9 +123,9 @@ class App(tk.Tk):
         for k in ("intestatario","installazione","scadenza"):self.v[k].set("")
         self.v["tipo"].set(tool.TIPI["server"]);self.v["postazioni"].set("2");self.tipo_changed()
 
-    def ask_password(self):
+    def ask_password(self,why="Password della chiave"):
         if self.password is not None or not tool.key_encrypted(self.folder):return True
-        password=simpledialog.askstring("TD Licenze","Password della chiave",show="*",parent=self)
+        password=simpledialog.askstring("TD Licenze",why,show="*",parent=self)
         if password is None:return False
         try:tool.load_key(self.folder,password)
         except ValueError as ex:messagebox.showerror("TD Licenze",str(ex),parent=self);return False
@@ -131,6 +136,7 @@ class App(tk.Tk):
         if not tool.has_key(self.folder):
             messagebox.showinfo("TD Licenze","Prima crea la chiave delle licenze, nella scheda Chiave.",parent=self);self.tabs.select(self.key_tab);return
         if not self.ask_password():return
+        self.sync(quiet=True)  # the latest register first: the new number follows the licences made on other PCs
         try:
             licence,path,data=tool.create(self.folder,self.v["intestatario"].get(),self.v["attivita"].get() or 0,self.v["postazioni"].get() or 0,
                 self.v["installazione"].get(),self.v["scadenza"].get(),self.out,self.password,self.tipo(),self.replacing or "")
@@ -139,6 +145,9 @@ class App(tk.Tk):
         self.result.configure(state="normal");self.result.delete("1.0","end");self.result.insert("1.0",licence);self.result.configure(state="disabled")
         self.result_info.configure(text=f"{data['id']} per {data['intestatario']}"+(f", sostituisce {self.replacing}" if self.replacing else "")+f". {tool.describe(data)}. Salvata in {path.name}, e già copiata.")
         self.copy(licence,quiet=True)
+        if tool.sync_settings(self.folder):
+            sent=self.sync(quiet=True)
+            self.result_info.configure(text=self.result_info.cget("text")+(" Registro su GitHub aggiornato." if sent else " Non mandata a GitHub: la mando alla prossima sincronizzazione."))
         if self.replacing:self.replacing=None;self.replace_info.configure(text="");self.replace_reset.grid_remove();self.fields["installazione"].configure(state="normal")
         self.refresh()
 
@@ -156,6 +165,9 @@ class App(tk.Tk):
         ttk.Button(buttons,text="Copia la licenza selezionata",command=self.copy_selected).pack(side="left")
         ttk.Button(buttons,text="Cambia postazioni o scadenza",command=self.change_selected).pack(side="left",padx=8)
         ttk.Button(buttons,text="Apri la cartella delle licenze",command=self.open_folder).pack(side="left")
+        self.sync_button=ttk.Button(buttons,text="Aggiorna da GitHub",command=lambda:self.sync())
+        if tool.sync_settings(self.folder):self.sync_button.pack(side="left",padx=8)
+        ttk.Label(f,textvariable=self.sync_status,style="Hint.TLabel").grid(row=3,column=0,sticky="w",pady=(8,0))
         self.tree.bind("<Double-1>",lambda e:self.copy_selected())
         self.refresh()
 
@@ -195,13 +207,73 @@ class App(tk.Tk):
             ttk.Button(f,text="Crea la chiave",command=self.make_key).grid(row=4,column=1,sticky="w",pady=14)
             return
         public=tool.public_key_text(self.folder)
-        ttk.Label(f,wraplength=680,justify="left",text="La chiave privata è in "+str(tool.key_path(self.folder))+" e non va mai condivisa. "
-            "La chiave pubblica qui sotto va nel programma, nel file tdwin/licenza-chiave-pubblica.txt della repo: da quella build in poi accetta le tue licenze.").grid(row=1,column=0,columnspan=2,sticky="w")
+        if tool.key_built_in():
+            text=("La chiave privata è dentro questo TD Licenze, cifrata: serve solo la sua password. Ogni TD Licenze scaricato da GitHub "
+                  "Actions ha la stessa chiave, su qualunque PC. Qui sotto la chiave pubblica che il programma usa per riconoscere le tue licenze.")
+            if tool.key_path(self.folder).exists():text+=" Nella cartella c'è anche una chiave vecchia, che non uso."
+        else:
+            text=("La chiave privata è in "+str(tool.key_path(self.folder))+" e non va mai condivisa. "
+                  "La chiave pubblica qui sotto va nel programma, nel file tdwin/licenza-chiave-pubblica.txt della repo: da quella build in poi accetta le tue licenze.")
+        ttk.Label(f,wraplength=680,justify="left",text=text).grid(row=1,column=0,columnspan=2,sticky="w")
         field=ttk.Entry(f,font=("Consolas",10));field.insert(0,public);field.configure(state="readonly")
         field.grid(row=2,column=0,columnspan=2,sticky="we",pady=12)
         buttons=ttk.Frame(f);buttons.grid(row=3,column=0,columnspan=2,sticky="w")
         ttk.Button(buttons,text="Copia la chiave pubblica",command=lambda:self.copy(public)).pack(side="left")
         ttk.Button(buttons,text="Apri la cartella della chiave",command=lambda:self.open_folder(self.folder)).pack(side="left",padx=8)
+
+    # the register in the private repo
+    def build_sync(self):
+        for child in self.sync_tab.winfo_children():child.destroy()
+        f=self.sync_tab;f.columnconfigure(1,weight=1)
+        ttk.Label(f,text="Registro su GitHub",style="Title.TLabel").grid(row=0,column=0,columnspan=2,sticky="w",pady=(0,12))
+        cfg=tool.sync_settings(self.folder)
+        if cfg:
+            ttk.Label(f,wraplength=680,justify="left",text=f"Il registro delle licenze va anche nella repo privata {cfg['repo']}: all'apertura e dopo ogni licenza "
+                "TD Licenze lo aggiorna da lì e ci manda le licenze nuove. Senza Internet lavora sulla copia della cartella.").grid(row=1,column=0,columnspan=2,sticky="w")
+            buttons=ttk.Frame(f);buttons.grid(row=2,column=0,columnspan=2,sticky="w",pady=12)
+            ttk.Button(buttons,text="Sincronizza ora",command=lambda:self.sync()).pack(side="left")
+            ttk.Button(buttons,text="Scollega",command=self.disconnect).pack(side="left",padx=8)
+            ttk.Label(f,textvariable=self.sync_status,style="Hint.TLabel").grid(row=3,column=0,columnspan=2,sticky="w")
+            return
+        ttk.Label(f,wraplength=680,justify="left",text="Collega una repo privata di GitHub, solo per i dati delle licenze: il registro va lì e lo ritrovi "
+            "con TD Licenze su qualunque PC. Serve un token fine-grained con accesso solo a quella repo e il permesso Contents, Read and write. "
+            "Il token resta nella cartella, cifrato con la password della chiave.").grid(row=1,column=0,columnspan=2,sticky="w")
+        self.repo_var=tk.StringVar(value="Giuseppe-sciarra/TD-Licenze-Dati");self.token_var=tk.StringVar()
+        ttk.Label(f,text="Repo").grid(row=2,column=0,sticky="w",pady=(14,0),padx=(0,12))
+        ttk.Entry(f,textvariable=self.repo_var).grid(row=2,column=1,sticky="we",pady=(14,0))
+        ttk.Label(f,text="Token").grid(row=3,column=0,sticky="w",pady=(6,0),padx=(0,12))
+        ttk.Entry(f,textvariable=self.token_var,show="*").grid(row=3,column=1,sticky="we",pady=(6,0))
+        ttk.Button(f,text="Collega e sincronizza",command=self.connect).grid(row=4,column=1,sticky="w",pady=14)
+        ttk.Label(f,textvariable=self.sync_status,style="Hint.TLabel").grid(row=5,column=0,columnspan=2,sticky="w")
+
+    def connect(self):
+        if not tool.has_key(self.folder):messagebox.showinfo("TD Licenze","Prima serve la chiave delle licenze, nella scheda Chiave.",parent=self);return
+        if not self.ask_password("Password della chiave: chiude anche il token"):return
+        try:repo=tool.save_sync(self.folder,self.repo_var.get(),self.token_var.get(),self.password)
+        except ValueError as ex:messagebox.showerror("TD Licenze",str(ex),parent=self);return
+        self.token_var.set("")
+        if self.sync() is None:
+            # the token does not work: nothing stays connected, the person sees why
+            (self.folder/tool.SYNC_FILE).unlink(missing_ok=True)
+        else:self.sync_button.pack(side="left",padx=8)
+        self.build_sync()
+
+    def disconnect(self):
+        if not messagebox.askyesno("TD Licenze","Scollego la repo? Il registro resta nella cartella e su GitHub, solo non si aggiorna più da qui.",parent=self):return
+        (self.folder/tool.SYNC_FILE).write_text("{}",encoding="utf-8")  # {} also wins over the repo built into the exe
+        self.sync_status.set("");self.sync_button.pack_forget();self.build_sync()
+
+    def sync(self,quiet=False,ask=False):
+        """The register brought up to date with GitHub: (licences, arrived, sent), or None if it did not work."""
+        if not tool.sync_settings(self.folder):return None
+        if not self.ask_password("Password della chiave, per aggiornare il registro da GitHub" if ask else "Password della chiave"):return None
+        try:result=tool.sync(self.folder,self.password)
+        except tool.SyncError as ex:
+            self.sync_status.set(str(ex))
+            if not quiet:messagebox.showwarning("TD Licenze",str(ex),parent=self)
+            return None
+        self.sync_status.set("GitHub: "+tool.sync_message(result));self.refresh()
+        return result
 
     def make_key(self):
         if len(self.p1.get())<8:messagebox.showerror("TD Licenze","Usa una password di almeno 8 caratteri.",parent=self);return

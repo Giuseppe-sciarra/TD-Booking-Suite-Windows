@@ -20,13 +20,14 @@
   <ol>
     <li><span>1</span><a href="#cose">Cos'è e dove si prende</a></li>
     <li><span>2</span><a href="#chiavetta">Sulla chiavetta</a><small>cosa salva e dove</small></li>
-    <li><span>3</span><a href="#chiave">La prima volta: la chiave</a></li>
-    <li><span>4</span><a href="#nuova">Una licenza nuova</a></li>
-    <li><span>5</span><a href="#emesse">Licenze emesse</a></li>
-    <li><span>6</span><a href="#cambia">Cambiare postazioni o scadenza</a></li>
-    <li><span>7</span><a href="#casi">Cosa succede se il cliente…</a></li>
-    <li><span>8</span><a href="#protezione">Come il programma protegge la licenza</a></li>
-    <li><span>9</span><a href="#riga">Da riga di comando</a></li>
+    <li><span>3</span><a href="#chiave">La chiave, una volta sola</a><small>dentro TD Licenze, su ogni PC</small></li>
+    <li><span>4</span><a href="#github">Il registro su GitHub</a><small>le licenze emesse sempre dietro</small></li>
+    <li><span>5</span><a href="#nuova">Una licenza nuova</a></li>
+    <li><span>6</span><a href="#emesse">Licenze emesse</a></li>
+    <li><span>7</span><a href="#cambia">Cambiare postazioni o scadenza</a></li>
+    <li><span>8</span><a href="#casi">Cosa succede se il cliente…</a></li>
+    <li><span>9</span><a href="#protezione">Come il programma protegge la licenza</a></li>
+    <li><span>10</span><a href="#riga">Da riga di comando</a></li>
   </ol>
 </section>
 
@@ -42,9 +43,9 @@
 <h2 id="chiavetta"><span class="num">2</span>Sulla chiavetta</h2>
 <p>TD Licenze è <strong>portatile</strong>: salva tutto nella sua cartella, accanto a <code>TD Licenze.exe</code>, e da nessun'altra parte. Se la cartella sta su una chiavetta, sul PC del cliente non resta nessun file del programma.</p>
 <table class="plain">
-  <tr><td><code>chiave-privata.pem</code></td><td>la chiave che firma, protetta dalla sua password</td></tr>
-  <tr><td><code>chiave-pubblica.txt</code></td><td>la chiave pubblica, quella che va nel programma</td></tr>
-  <tr><td><code>registro-licenze.csv</code></td><td>tutte le licenze emesse, con numero, cliente, tipo, postazioni, installazione, scadenza e quella che sostituiscono</td></tr>
+  <tr><td><code>registro-licenze.csv</code></td><td>tutte le licenze emesse, con numero, cliente, tipo, postazioni, installazione, scadenza e quella che sostituiscono. Con il registro su GitHub è la copia completa anche senza Internet</td></tr>
+  <tr><td><code>registro-github.json</code></td><td>la repo del registro e il suo token, cifrato con la password della chiave</td></tr>
+  <tr><td><code>chiave-privata.pem</code>, <code>chiave-pubblica.txt</code></td><td>solo in un TD Licenze senza la chiave dentro (scheda <strong>Chiave</strong>): la chiave che firma, protetta dalla password, e quella che va nel programma</td></tr>
   <tr><td><code>licenze-emesse\</code></td><td>un file per licenza, da mandare al cliente</td></tr>
   <tr><td><code>TD Licenze.exe</code>, <code>_internal\</code></td><td>il programma. Per aggiornarlo sostituisci solo questi due: i file della chiave non si toccano</td></tr>
 </table>
@@ -54,16 +55,42 @@
   <li><strong>Copia la licenza</strong> la mette negli appunti di Windows, come un copia e incolla normale.</li>
 </ul>
 
-<h2 id="chiave"><span class="num">3</span>La prima volta: la chiave</h2>
+<h2 id="chiave"><span class="num">3</span>La chiave, una volta sola</h2>
+<p class="lead">La chiave privata firma le licenze. Si crea una volta, poi la build la mette dentro TD Licenze, cifrata con la sua password: ogni TD Licenze scaricato da Actions, su qualunque PC, chiede solo la password. All'apertura la chiave si decifra in memoria; su disco non restano né la chiave in chiaro né la password.</p>
 <figure class="narrow"><img src="img-licenze/tdl-chiave.png" alt=""><figcaption><strong>Chiave</strong>: si crea una volta sola, con una password.</figcaption></figure>
 <ol class="steps">
-  <li>Scheda <strong>Chiave</strong>: scegli una password (consigliata) e crea la chiave.</li>
-  <li>TD Licenze mostra la <strong>chiave pubblica</strong>. Va nella repo, nel file <code>tdwin/licenza-chiave-pubblica.txt</code>, con commit e push.</li>
-  <li>Da quella build in poi il programma accetta le tue licenze. La build la scrive dentro il codice compilato: nell'MSI non c'è un file con la chiave da sostituire.</li>
+  <li>Apri TD Licenze in una <strong>cartella vuota</strong>. Nella scheda <strong>Chiave</strong> crea la chiave con una password lunga: nella cartella compaiono <code>chiave-privata.pem</code> e <code>chiave-pubblica.txt</code>.</li>
+  <li>Il contenuto di <code>chiave-pubblica.txt</code> va nella repo, nel file <code>tdwin/licenza-chiave-pubblica.txt</code>. La build lo scrive dentro il codice compilato del programma: nell'MSI non c'è un file con la chiave da sostituire.</li>
+  <li>Su GitHub, nella repo privata del programma: <strong>Settings → Secrets and variables → Actions → New repository secret</strong>. Nome <code>TD_LICENZE_CHIAVE</code>, valore tutto il contenuto di <code>chiave-privata.pem</code> (aprilo con il Blocco note), righe <code>BEGIN</code> ed <code>END</code> comprese.</li>
+  <li>Commit e push. Dalla build che parte il programma accetta le licenze di questa chiave, e il TD Licenze dell'artefatto ha la chiave dentro.</li>
+  <li>Metti <code>chiave-privata.pem</code> e la password al sicuro, fuori dal PC: GitHub non fa più rileggere un secret, e senza password nessuno può firmare, neanche tu.</li>
 </ol>
-<div class="warn"><strong>La chiave privata non va mai nella repo</strong>Il <code>.gitignore</code> blocca i file <code>.pem</code>, il registro e le licenze emesse. Una release senza chiave pubblica si ferma: non accetterebbe nessuna licenza.</div>
+<figure class="narrow"><img src="img-licenze/tdl-chiave-dentro.png" alt=""><figcaption>Un TD Licenze con la chiave dentro: serve solo la password.</figcaption></figure>
+<div class="warn"><strong>Chiave nuova, licenze nuove</strong>Le licenze fatte con un'altra chiave non valgono nelle build nuove: rifalle con il TD Licenze nuovo. Il secret e il file della chiave pubblica devono venire dalla stessa cartella; se non sono una coppia TD Licenze lo dice e non firma.</div>
+<div class="warn"><strong>La chiave privata non va mai nella repo</strong>Solo nel secret, che è cifrato da GitHub. Il <code>.gitignore</code> blocca i file <code>.pem</code>, il registro e le licenze emesse. Una release senza chiave pubblica si ferma: non accetterebbe nessuna licenza.</div>
+<p>Senza il secret <code>TD_LICENZE_CHIAVE</code> TD Licenze funziona come prima: la chiave sta nella sua cartella, in <code>chiave-privata.pem</code>.</p>
 
-<h2 id="nuova"><span class="num">4</span>Una licenza nuova</h2>
+<h2 id="github"><span class="num">4</span>Il registro su GitHub</h2>
+<p class="lead">Il registro delle licenze può stare anche in una repo privata di GitHub, solo per i dati. TD Licenze lo aggiorna da lì all'apertura e dopo ogni licenza: su qualunque PC hai tutte le licenze emesse, e il numero di una licenza nuova segue quelle fatte altrove.</p>
+<ol class="steps">
+  <li>Su GitHub crea una repo <strong>privata</strong> e vuota, per esempio <code>TD-Licenze-Dati</code>.</li>
+  <li>Crea un token: foto profilo → <strong>Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token</strong>. In <em>Repository access</em> scegli <em>Only select repositories</em> e solo <code>TD-Licenze-Dati</code>; in <em>Permissions</em> dai <strong>Contents: Read and write</strong>. Scegli una scadenza.</li>
+  <li>In TD Licenze, scheda <strong>Registro su GitHub</strong>: scrivi repo e token e premi <strong>Collega e sincronizza</strong>. Chiede la password della chiave: il token resta nella cartella, in <code>registro-github.json</code>, cifrato con quella password.</li>
+  <li>Per averlo anche in ogni TD Licenze scaricato: nella repo del programma crea il secret <code>TD_LICENZE_REGISTRO</code> con tutto il contenuto di <code>registro-github.json</code>. Dalla build dopo, un TD Licenze nuovo trova la repo da solo e chiede solo la password.</li>
+</ol>
+<figure><img src="img-licenze/tdl-github.png" alt=""><figcaption><strong>Registro su GitHub</strong>: la repo dei dati e il suo token.</figcaption></figure>
+<figure><img src="img-licenze/tdl-github-collegato.png" alt=""><figcaption>Collegata: il registro della cartella è andato nella repo.</figcaption></figure>
+<table>
+  <tr><th>Se…</th><th>Cosa succede</th></tr>
+  <tr><td>non c'è Internet</td><td>TD Licenze lavora sulla copia della cartella e manda le licenze nuove alla prossima sincronizzazione</td></tr>
+  <tr><td>due PC scrivono insieme</td><td>se il registro su GitHub cambia mentre scrive, lo rilegge e unisce: nessuna licenza si perde</td></tr>
+  <tr><td>fai licenze su due PC senza Internet</td><td>possono avere lo stesso numero: restano tutte e due nel registro. Quando puoi, fai le licenze collegato</td></tr>
+  <tr><td>il token scade</td><td>TD Licenze lo dice. Fanne uno nuovo, collega di nuovo la repo e, se lo usi, aggiorna il secret <code>TD_LICENZE_REGISTRO</code></td></tr>
+  <tr><td>premi <strong>Scollega</strong></td><td>il registro resta nella cartella e su GitHub; quel TD Licenze non lo aggiorna più</td></tr>
+</table>
+<div class="note"><strong>Cosa va su GitHub</strong>Solo <code>registro-licenze.csv</code>: numeri, clienti, tipo, postazioni, scadenze e il testo delle licenze. La chiave privata e il token restano fuori.</div>
+
+<h2 id="nuova"><span class="num">5</span>Una licenza nuova</h2>
 <figure><img src="img-licenze/tdl-nuova.png" alt=""><figcaption><strong>Nuova licenza</strong> per un server con 2 postazioni.</figcaption></figure>
 <table>
   <tr><th>Campo</th><th>Cosa scrivere</th></tr>
@@ -78,10 +105,11 @@
 <figure><img src="img-licenze/tdl-nuova-pc.png" alt=""><figcaption>Con <strong>Un PC solo</strong> attività e postazioni sono fisse.</figcaption></figure>
 <div class="tip"><strong>Dal cliente</strong>Sul PC del cliente, nella pagina <strong>Licenza</strong> del programma, copi il codice installazione, crei la licenza con TD Licenze dalla chiavetta e la incolli nella stessa pagina. Il programma riparte subito.</div>
 
-<h2 id="emesse"><span class="num">5</span>Licenze emesse</h2>
+<h2 id="emesse"><span class="num">6</span>Licenze emesse</h2>
 <figure><img src="img-licenze/tdl-emesse.png" alt=""><figcaption><strong>Licenze emesse</strong>: doppio clic su una riga per copiarla di nuovo.</figcaption></figure>
+<p>Con il registro su GitHub collegato, <strong>Aggiorna da GitHub</strong> porta qui le licenze fatte sugli altri PC.</p>
 
-<h2 id="cambia"><span class="num">6</span>Cambiare postazioni o scadenza</h2>
+<h2 id="cambia"><span class="num">7</span>Cambiare postazioni o scadenza</h2>
 <ol class="steps">
   <li>In <strong>Licenze emesse</strong> seleziona la licenza e premi <strong>Cambia postazioni o scadenza</strong>.</li>
   <li>Si apre <strong>Nuova licenza</strong> con intestatario e installazione della vecchia. Cambia postazioni, scadenza o tipo e premi <strong>Crea la licenza</strong>.</li>
@@ -91,7 +119,7 @@
 <figure><img src="img-licenze/tdl-emesse-dopo.png" alt=""><figcaption>Nel registro: <strong>in uso</strong> e <strong>sostituita da</strong>.</figcaption></figure>
 <p><strong>Nuova da zero</strong> torna a una licenza nuova, senza legami con quella di prima.</p>
 
-<h2 id="casi"><span class="num">7</span>Cosa succede se il cliente…</h2>
+<h2 id="casi"><span class="num">8</span>Cosa succede se il cliente…</h2>
 <table>
   <tr><th>Il cliente…</th><th>Cosa succede</th></tr>
   <tr><td>reinstalla il programma sullo stesso PC e ripristina un backup</td><td>il codice installazione torna quello di prima e la licenza vale ancora</td></tr>
@@ -104,7 +132,7 @@
   <tr><td>cancella la prova dal database</td><td>la prova resta usata: il segno sta anche nella cartella dei dati</td></tr>
 </table>
 
-<h2 id="protezione"><span class="num">8</span>Come il programma protegge la licenza</h2>
+<h2 id="protezione"><span class="num">9</span>Come il programma protegge la licenza</h2>
 <ul>
   <li>Le licenze sono firmate con <strong>Ed25519</strong>: chi non ha la chiave privata non può crearne, né cambiarne una (attività, postazioni, scadenza).</li>
   <li>La <strong>chiave pubblica è scritta nel codice compilato</strong>: nell'MSI non c'è un file da sostituire con una chiave propria.</li>
@@ -116,15 +144,17 @@
 </ul>
 <div class="note"><strong>Il limite</strong>Su un PC dove il cliente è amministratore nessuna protezione è assoluta. Questa serve a rendere necessario un lavoro di reverse engineering vero, non una modifica a un file.</div>
 
-<h2 id="riga"><span class="num">9</span>Da riga di comando</h2>
+<h2 id="riga"><span class="num">10</span>Da riga di comando</h2>
 <p>Per chi preferisce: <code>licenze/td_licenze.py</code> fa le stesse cose. Servono Python 3 e <code>pip install cryptography</code>. Di serie lavora nella sua cartella; con <code>--cartella</code> sceglie un'altra cartella, per esempio quella di TD Licenze sulla chiavetta.</p>
 <pre>python td_licenze.py chiave                       la prima volta
 python td_licenze.py                              fa le domande
 python td_licenze.py crea --intestatario "Bar Roma" --tipo server --postazioni 3 --installazione ABCD-EFGH-IJKL-MNOP --scadenza 2027-12-31
 python td_licenze.py crea --sostituisce TD-2026-0007 --postazioni 5
 python td_licenze.py elenco                       le licenze emesse
-python td_licenze.py verifica                     incolli una licenza e vedi cosa contiene</pre>
-<p>Con <code>--sostituisce</code> quello che non scrivi resta come nella licenza sostituita: cambiando le postazioni la scadenza resta, cambiando la scadenza restano le postazioni. <code>--scadenza ""</code> la toglie.</p>
+python td_licenze.py verifica                     incolli una licenza e vedi cosa contiene
+python td_licenze.py collega Giuseppe-sciarra/TD-Licenze-Dati   la repo del registro, chiede il token
+python td_licenze.py sincronizza                  registro aggiornato con GitHub</pre>
+<p>Con una repo collegata, <code>crea</code> aggiorna il registro prima e dopo la licenza. Con <code>--sostituisce</code> quello che non scrivi resta come nella licenza sostituita: cambiando le postazioni la scadenza resta, cambiando la scadenza restano le postazioni. <code>--scadenza ""</code> la toglie.</p>
 
 </body>
 </html>

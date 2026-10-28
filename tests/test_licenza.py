@@ -219,3 +219,94 @@ def test_the_generator_keeps_everything_in_its_own_folder(tmp_path,monkeypatch):
     tool.main(["--cartella",str(folder),"chiave"])
     tool.main(["--cartella",str(folder),"crea","--intestatario","Bar"])
     assert list((folder/"licenze-emesse").glob("licenza-TD-*.txt")) and not (tmp_path/"licenze-emesse").exists()
+
+def test_the_key_built_into_td_licenze(tmp_path,monkeypatch):
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    tool=load_tool();folder=tmp_path/"pc-nuovo";folder.mkdir()
+    key=Ed25519PrivateKey.generate()
+    pem=key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.BestAvailableEncryption(b"password-lunga-1"))
+    monkeypatch.setattr(tool,"builtin",lambda:(pem,tool.public_text(key)))
+    # a TD Licenze just downloaded on a new PC: the key is there, only its password is needed
+    assert tool.has_key(folder) and tool.key_encrypted(folder) and tool.public_key_text(folder)==tool.public_text(key)
+    with pytest.raises(ValueError,match="errata"):tool.load_key(folder,"sbagliata")
+    licence,path,data=tool.create(folder,"Bar",1,2,"","",folder/"licenze-emesse","password-lunga-1",tipo="server")
+    assert tool.read(licence,tool.public_text(key))["intestatario"]=="Bar"
+    with pytest.raises(ValueError,match="già dentro"):tool.make_key(folder,"altra-password-1")
+    # the secret and the public key of the program must be a pair
+    monkeypatch.setattr(tool,"builtin",lambda:(pem,tool.public_text(Ed25519PrivateKey.generate())))
+    with pytest.raises(ValueError,match="non è la coppia"):tool.load_key(folder,"password-lunga-1")
+
+def test_the_register_follows_the_private_repo(tmp_path,monkeypatch):
+    import base64,json
+    tool=load_tool();folder=tmp_path/"chiavetta";other=tmp_path/"altro-pc"
+    tool.make_key(folder,"password-lunga-1");other.mkdir()
+    for name in ("chiave-privata.pem","chiave-pubblica.txt"):(other/name).write_bytes((folder/name).read_bytes())
+    class GitHub:
+        """The Contents API of one private repo, in memory."""
+        def __init__(self):self.text=None;self.sha=0;self.puts=0;self.token="github_pat_prova";self.down=False;self.conflicts=0
+        def __call__(self,method,path,token,body=None):
+            if self.down:raise tool.SyncError("GitHub non raggiungibile")
+            if token!=self.token:return 401,{"message":"Bad credentials"}
+            if path=="/repos/Giuseppe-sciarra/TD-Licenze-Dati":return 200,{}
+            if method=="GET":
+                if self.text is None:return 404,{"message":"Not Found"}
+                return 200,{"content":base64.b64encode(self.text.encode()).decode(),"sha":str(self.sha)}
+            if self.conflicts:self.conflicts-=1;self.sha+=1;return 409,{"message":"conflict"}
+            if self.text is not None and body.get("sha")!=str(self.sha):return 409,{"message":"sha"}
+            self.text=base64.b64decode(body["content"]).decode();self.sha+=1;self.puts+=1
+            return 200,{}
+    hub=GitHub();monkeypatch.setattr(tool,"github",hub)
+    out=folder/"licenze-emesse"
+    tool.create(folder,"Bar Roma",1,2,"","",out,"password-lunga-1",tipo="server")
+    # connected: the token stays sealed with the password, the register goes to the empty repo
+    assert tool.save_sync(folder,"https://github.com/Giuseppe-sciarra/TD-Licenze-Dati/",hub.token,"password-lunga-1")=="Giuseppe-sciarra/TD-Licenze-Dati"
+    assert hub.token not in (folder/tool.SYNC_FILE).read_text()
+    with pytest.raises(tool.SyncError,match="password"):tool.sync_token(folder,"sbagliata")
+    assert tool.sync(folder,"password-lunga-1")==(1,0,1) and "Bar Roma" in hub.text
+    assert tool.sync(folder,"password-lunga-1")==(1,0,0) and hub.puts==1  # nothing new, nothing written
+    # another PC: it gets the register, its new licence numbers after the one made here, and sends it
+    tool.save_sync(other,"Giuseppe-sciarra/TD-Licenze-Dati",hub.token,"password-lunga-1")
+    assert tool.sync(other,"password-lunga-1")==(1,1,0)
+    _,_,data=tool.create(other,"Pizzeria",1,0,"","",other/"licenze-emesse","password-lunga-1",tipo="pc")
+    assert data["id"].endswith("-0002")
+    hub.conflicts=1  # written in between from a third PC: read again, merge, write
+    assert tool.sync(other,"password-lunga-1")==(2,0,1)
+    assert tool.sync(folder,"password-lunga-1")==(2,1,0) and [r["intestatario"] for r in tool.registry(folder)]==["Bar Roma","Pizzeria"]
+    # without Internet: the folder keeps its full copy and says why
+    hub.down=True
+    with pytest.raises(tool.SyncError,match="non raggiungibile"):tool.sync(folder,"password-lunga-1")
+    assert len(tool.registry(folder))==2
+    hub.down=False;hub.token="github_pat_nuovo"
+    with pytest.raises(tool.SyncError,match="scaduto"):tool.sync(folder,"password-lunga-1")
+
+def test_the_build_puts_key_and_register_into_td_licenze(tmp_path,monkeypatch):
+    import importlib.util,sys,types
+    from pathlib import Path
+    repo=Path(__file__).resolve().parents[1]
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    spec=importlib.util.spec_from_file_location("incorpora_chiave",repo/"licenze"/"incorpora_chiave.py")
+    build=importlib.util.module_from_spec(spec);spec.loader.exec_module(build)
+    monkeypatch.setattr(build,"TARGET",tmp_path/"chiave_incorporata.py")
+    tool=load_tool();stick=tmp_path/"chiavetta";stick.mkdir()
+    pem=Ed25519PrivateKey.generate().private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.BestAvailableEncryption(b"password-lunga-1")).decode()
+    tool.save_sync(stick,"Giuseppe-sciarra/TD-Licenze-Dati","github_pat_prova","password-lunga-1")
+    monkeypatch.setenv("TD_LICENZE_CHIAVE",pem);monkeypatch.setenv("TD_LICENZE_REGISTRO",(stick/tool.SYNC_FILE).read_text())
+    build.main()
+    built={};exec(build.TARGET.read_text(),built)
+    assert built["CHIAVE"].strip()==pem.strip() and built["PUBBLICA"]==(repo/"tdwin"/"licenza-chiave-pubblica.txt").read_text().strip()
+    # a TD Licenze just downloaded: the repo of the register is there, its token opens with the key's password
+    monkeypatch.setitem(sys.modules,"chiave_incorporata",types.SimpleNamespace(**{k:built[k] for k in ("CHIAVE","PUBBLICA","REGISTRO")}))
+    new_pc=tmp_path/"pc-nuovo";new_pc.mkdir()
+    assert tool.key_built_in() and tool.sync_settings(new_pc)["repo"]=="Giuseppe-sciarra/TD-Licenze-Dati"
+    assert tool.sync_token(new_pc,"password-lunga-1")=="github_pat_prova"
+    (new_pc/tool.SYNC_FILE).write_text("{}")  # disconnected on this PC: the folder wins over the exe
+    assert not tool.sync_settings(new_pc)
+    # wrong secrets stop the build instead of making a TD Licenze that does not work
+    monkeypatch.setenv("TD_LICENZE_REGISTRO","il token in chiaro")
+    with pytest.raises(SystemExit,match="registro-github.json"):build.main()
+    monkeypatch.setenv("TD_LICENZE_CHIAVE","-----BEGIN PRIVATE KEY-----")
+    with pytest.raises(SystemExit,match="cifrata"):build.main()
+    monkeypatch.setenv("TD_LICENZE_CHIAVE","");build.main()
+    assert not build.TARGET.exists()

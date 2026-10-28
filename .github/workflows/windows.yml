@@ -88,9 +88,14 @@ jobs:
           python-version: "3.13"
 
       - name: TD Licenze.exe
+        env:
+          TD_LICENZE_CHIAVE: ${{ secrets.TD_LICENZE_CHIAVE }}
+          TD_LICENZE_REGISTRO: ${{ secrets.TD_LICENZE_REGISTRO }}
         run: |
           python -m pip install --disable-pip-version-check "pyinstaller>=6.11,<7" cryptography
-          python -m PyInstaller --noconfirm --windowed --name "TD Licenze" --icon windows/client/app.ico --add-data "windows/client/app.ico;." --paths licenze --distpath dist-licenze --workpath build/pyinstaller licenze/td_licenze_gui.py
+          # the seller's key, encrypted with its password, inside the exe: TD Licenze works on any PC with the password
+          python licenze/incorpora_chiave.py
+          python -m PyInstaller --noconfirm --windowed --name "TD Licenze" --icon windows/client/app.ico --add-data "windows/client/app.ico;." --paths licenze --hidden-import chiave_incorporata --distpath dist-licenze --workpath build/pyinstaller licenze/td_licenze_gui.py
           $p = Start-Process "dist-licenze/TD Licenze/TD Licenze.exe" -ArgumentList "--prova" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "TD Licenze.exe non parte, codice $($p.ExitCode)" }
 

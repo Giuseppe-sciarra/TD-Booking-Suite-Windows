@@ -11,3 +11,4 @@ windows/client/bin/
 windows/client/obj/
 dist-licenze/
 licenze/chiave-pubblica.txt
+licenze/chiave_incorporata.py
