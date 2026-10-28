@@ -5,6 +5,9 @@ on:
     branches: [main]
     tags: ["v*"]
   pull_request:
+  schedule:
+    # every month a fresh TD Licenze: the artifact lasts 90 days, so one is always there to download
+    - cron: "37 2 1 * *"
   workflow_dispatch:
     inputs:
       rilascio:
@@ -21,6 +24,7 @@ concurrency:
 
 jobs:
   msi:
+    if: github.event_name != 'schedule'  # the monthly run makes only TD Licenze
     runs-on: windows-latest
     timeout-minutes: 60
     outputs:

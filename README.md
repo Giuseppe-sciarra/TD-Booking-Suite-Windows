@@ -128,7 +128,7 @@ Le **passkey** valgono per l'indirizzo con cui sono state create: chi entra sia 
 
 ## Licenze
 
-Le licenze le crei tu con **TD Licenze.exe**. Lo costruisce GitHub a ogni push:
+Le licenze le crei tu con **TD Licenze.exe**. Lo costruisce GitHub a ogni push e, da solo, il 1° di ogni mese: l'artefatto resta 90 giorni, quindi ce n'è sempre uno da scaricare.
 
 1. apri **Actions**, poi l'ultima esecuzione verde;
 2. in fondo, in *Artifacts*, scarica **TD-Licenze**;
