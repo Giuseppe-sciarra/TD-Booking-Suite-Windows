@@ -67,4 +67,7 @@ jobs:
       - name: Rilascio con l'MSI allegato
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" *.msi --repo "${GITHUB_REPOSITORY}" --title "TD Booking Suite per Windows ${GITHUB_REF_NAME}" --notes "MSI per server e postazioni. Windows lo segnala come app non riconosciuta perché non è firmato: Ulteriori informazioni, Esegui comunque."
+        run: |
+          gh release create "${GITHUB_REF_NAME}" *.msi --repo "${GITHUB_REPOSITORY}" \
+            --title "TD Booking Suite per Windows ${GITHUB_REF_NAME}" \
+            --notes "MSI per server e postazioni. Windows lo segnala come app non riconosciuta perché non è firmato: Ulteriori informazioni, poi Esegui comunque."
