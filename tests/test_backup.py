@@ -195,3 +195,8 @@ def test_backup_page_is_for_the_administrator(trial):
     t=Tenant.objects.create(slug="bar",name="Bar");owner=User.objects.create_user("o@example.invalid","A-test-password-12345")
     Membership.objects.create(tenant=t,user=owner,role="owner")
     assert login(owner).get("/platform/backup/").status_code==403
+
+def test_worker_start_empties_the_work_folder_but_keeps_it():
+    root=backup.work_root();(root/"vecchio").mkdir();(root/"vecchio"/"database.dump").write_text("in chiaro");(root/"x.tar").write_text("x")
+    backup.clean_work()
+    assert root.is_dir() and not list(root.iterdir())

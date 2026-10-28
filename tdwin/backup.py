@@ -25,8 +25,12 @@ def work_root():
     root=settings.TDWIN_DATA/"tmp";root.mkdir(parents=True,exist_ok=True)
     return root
 def clean_work():
-    """Unencrypted leftovers of a backup or restore cut short: the worker removes them when it starts."""
-    shutil.rmtree(settings.TDWIN_DATA/"tmp",ignore_errors=True)
+    """Unencrypted leftovers of a backup or restore cut short: the worker removes them when it starts.
+    The folder itself stays: on Windows the worker may write inside it but not create it again."""
+    root=settings.TDWIN_DATA/"tmp"
+    for item in root.iterdir() if root.is_dir() else ():
+        if item.is_dir():shutil.rmtree(item,ignore_errors=True)
+        else:item.unlink(missing_ok=True)
 
 # encryption: header, nonce, AES-256-GCM stream, tag; the key comes from the backup password and the header's salt
 def derive(password,salt):return Scrypt(salt=salt,length=32,n=2**15,r=8,p=1).derive(password.encode())
