@@ -140,6 +140,8 @@ jobs:
           mkdir -p vetrina-repo/screenshots
           cp vetrina/README.md vetrina-repo/README.md
           cp docs/screenshots/*.png vetrina-repo/screenshots/
+          # the customers' instructions; the TD Licenze one is internal and never leaves this repo
+          cp docs/Istruzioni-TD-Booking-Suite-Windows.pdf vetrina-repo/
           cd vetrina-repo
           git checkout -q -B main
           git config user.name "TD Booking Suite"
@@ -148,9 +150,9 @@ jobs:
           git diff --cached --quiet || git commit -q -m "TD Booking Suite per Windows $TAG"
           git push -q origin main
           if gh release view "$TAG" --repo "$VETRINA" >/dev/null 2>&1; then
-            gh release upload "$TAG" ../dist/*.msi --repo "$VETRINA" --clobber
+            gh release upload "$TAG" ../dist/*.msi Istruzioni-TD-Booking-Suite-Windows.pdf --repo "$VETRINA" --clobber
           else
-            gh release create "$TAG" ../dist/*.msi --repo "$VETRINA" --target main \
+            gh release create "$TAG" ../dist/*.msi Istruzioni-TD-Booking-Suite-Windows.pdf --repo "$VETRINA" --target main \
               --title "TD Booking Suite per Windows $TAG" \
-              --notes "Un solo MSI per il server e per le postazioni, con 7 giorni di prova. Windows lo segnala perché non è ancora firmato: Ulteriori informazioni, poi Esegui comunque. Le istruzioni sono nella pagina principale."
+              --notes "Un solo MSI per Un PC solo, per il server e per le postazioni: la scelta si fa durante l'installazione. 7 giorni di prova. Windows lo segnala perché non è ancora firmato: Ulteriori informazioni, poi Esegui comunque. Le istruzioni sono nel PDF allegato."
           fi

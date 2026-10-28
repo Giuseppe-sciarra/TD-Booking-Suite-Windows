@@ -1,24 +1,34 @@
 # TD Booking Suite per Windows
 
-TD Booking Suite diventa un programma per Windows, che si installa con un file MSI:
+TD Booking Suite diventa un programma per Windows, che si installa con un file MSI. All'installazione si sceglie come usarlo:
 
-- **Server.** Va su un solo PC, quello che resta acceso. Contiene il database PostgreSQL, il programma in HTTPS e i backup, e gira come servizio di Windows anche quando nessuno è collegato.
-- **Postazione.** È la finestra di TD Booking Suite e va su ogni PC che lo usa, anche sul server. Si può usare anche da browser o telefono.
+- **Un PC solo.** Programma e dati sullo stesso PC, che si usa da solo. Risponde solo a quel PC (127.0.0.1): niente altri computer, telefoni o prenotazioni dal sito, niente porta aperta nel firewall. Si entra con username e password.
+- **Server con postazioni.** Il PC che resta acceso tiene il database PostgreSQL, il programma in HTTPS e i backup, come servizi di Windows. Gli altri PC con la postazione, i telefoni dell'ufficio e, se lo metti online, il sito si collegano a lui. Sul server si usa anche il programma.
+- **Solo postazione.** Solo la finestra di TD Booking Suite, per un PC che si collega a un server già installato o alla versione web su Docker.
 
-La **licenza** decide quante attività (1 = versione singola, di più = portale) e quante postazioni in rete si possono usare. Senza licenza si attiva una **prova di 7 giorni**: finita la prova, il programma chiede la licenza.
+La **licenza** dice il tipo (Un PC solo, Server con postazioni, Portale con più attività), quante postazioni in rete si usano e se scade. Senza licenza si attiva una **prova di 7 giorni**: finita la prova, il programma chiede la licenza.
 
 Il nucleo web è [TD Booking Suite](https://github.com/Giuseppe-sciarra/TD-Booking-Suite), incluso qui come sottomodulo in `suite/`.
 
+**Istruzioni in PDF**, con gli screenshot:
+
+- [`docs/Istruzioni-TD-Booking-Suite-Windows.pdf`](docs/Istruzioni-TD-Booking-Suite-Windows.pdf): installare, configurare, lavorare, postazioni, backup, licenza, problemi. Si può dare ai clienti.
+- [`docs/Istruzioni-TD-Licenze.pdf`](docs/Istruzioni-TD-Licenze.pdf): TD Licenze, riservato a chi vende.
+
 | | |
 |---|---|
+| ![Configurazione guidata](docs/screenshots/guida.png) | ![Chi lavora nell'attività](docs/screenshots/guida-io.png) |
+| **Configurazione guidata**: licenza, attività, backup e postazioni, passo per passo | **Chi lavora nell'attività**: lo stesso account dell'amministratore, oppure un titolare con il suo |
+| ![Accesso](docs/screenshots/accesso.png) | ![Al lavoro](docs/screenshots/al-lavoro.png) |
+| **Accesso** con username o email, e il promemoria dei due account | **Al lavoro**: agenda e clienti dell'attività, e sopra la configurazione del programma |
 | ![Licenza](docs/screenshots/licenza.png) | ![Postazioni](docs/screenshots/postazioni.png) |
-| **Licenza**: cosa consente, il codice installazione da mandare a chi vende, il campo per incollarla | **Postazioni**: il codice di 6 cifre per registrare un PC, l'elenco con ultimo accesso e revoca |
-| ![Backup](docs/screenshots/backup.png) | ![Prova](docs/screenshots/prova.png) |
-| **Backup** cifrati, ogni notte, su disco esterno, NAS, FTP, FTPS o SFTP, con lo storico | **Prova di 7 giorni**: l'avviso in cima alle pagine dell'amministratore |
-| ![Tema scuro](docs/screenshots/dashboard-scuro.png) | ![Aspetto](docs/screenshots/aspetto.png) |
-| **Tema scuro e colore principale a scelta**: qui verde acqua al posto del viola di serie | **Impostazioni generali**: nome, loghi chiaro e scuro, icona, colore e tema di partenza |
+| **Licenza**: tipo, cosa consente, il codice installazione da mandare a chi vende, il campo per incollarla | **Postazioni**: il codice di 6 cifre per registrare un PC, l'elenco con ultimo accesso e revoca |
+| ![Backup](docs/screenshots/backup.png) | ![Rete e certificato](docs/screenshots/rete.png) |
+| **Backup** cifrati, ogni notte, su disco esterno, NAS, FTP, FTPS o SFTP, con lo storico | **Rete e certificato**: indirizzo pubblico, proxy fidati e certificato, solo per l'amministratore |
 | ![Importa clienti](docs/screenshots/import.png) | ![Anteprima dell'import](docs/screenshots/import-anteprima.png) |
 | **Importa clienti** (Clienti › Importa): anagrafica e storico da Excel o CSV, colonna per colonna | **Anteprima**: le prime righe, cosa succede, le righe che non entrano e perché |
+| ![Tema scuro](docs/screenshots/dashboard-scuro.png) | ![Aspetto](docs/screenshots/aspetto.png) |
+| **Tema scuro e colore principale a scelta**: qui verde acqua al posto del viola di serie | **Impostazioni generali**: nome, loghi chiaro e scuro, icona, colore e tema di partenza |
 
 ## Installare
 
@@ -32,34 +42,61 @@ L'MSI non ha ancora una firma digitale, quindi Windows non riconosce chi lo pubb
 
 Per togliere gli avvisi serve un certificato di firma del codice, che costa qualche centinaio di euro l'anno.
 
-### Il PC server
+### Un PC solo, o il PC server
 
 1. Doppio clic sull'MSI, poi **Avanti**. Accetta la licenza d'uso.
-2. In **Funzioni** lascia attivi **Server** e **Programma per la postazione**, poi **Installa** e dai il permesso di amministratore. La prima volta servono un paio di minuti: l'installer crea il database e i servizi.
-3. Alla fine lascia spuntato **Apri TD Booking Suite**, oppure usa l'icona sul desktop. L'indirizzo del server è già scritto: premi **Collegati** e poi **Continua**. Si apre **Primo avvio**: crea l'**amministratore del programma**, con email e password. Da qui si configurano attività, postazioni, backup e licenza.
-4. Vai in **Licenza**: incolla la licenza oppure **Attiva la prova di 7 giorni**.
-5. Vai in **Clienti**, poi **Nuovo cliente**, e crea l'attività. Con la versione portale puoi crearne quante ne consente la licenza.
-6. Vai in **Backup**: imposta la password dei backup, attiva il backup automatico e aggiungi almeno una destinazione fuori dal PC.
+2. Alla domanda **Come userai TD Booking Suite su questo PC?** scegli **Un PC solo** oppure **Server con postazioni**, poi **Installa** e dai il permesso di amministratore. La prima volta servono un paio di minuti: l'installer crea il database e i servizi. La scelta si cambia dopo, aprendo di nuovo l'installazione: i dati restano.
+3. Alla fine lascia spuntato **Apri TD Booking Suite**, oppure usa l'icona sul desktop. Sul PC con il server la finestra apre da sola il programma installato lì, già verificato: niente indirizzo né impronta da controllare.
+4. Si apre **Primo avvio**. Il **codice del primo avvio** lo mostra il menu Start, **TD Booking Suite**, **Codice del primo avvio**, che chiede il permesso di amministratore: così un altro utente di Windows dello stesso PC non può creare l'amministratore al posto tuo. Poi scegli lo **username** dell'amministratore del programma, l'email se vuoi, e la password. **Resta collegato su questo PC** è già spuntato.
+5. Si apre la **configurazione guidata**:
+   - **Licenza**: incolla la licenza oppure **Attiva la prova di 7 giorni**;
+   - **La tua attività e chi ci lavora**: nome e tipo dell'attività, poi **Io, con questo account** (un solo account configura e lavora, proposto con Un PC solo) oppure **Il titolare, con un suo account** (username, email facoltativa e password del titolare, proposto con Server con postazioni e quando installi per un cliente);
+   - **Backup**: password dei backup, backup automatico e almeno una destinazione fuori dal PC;
+   - **Postazioni**, solo con Server con postazioni.
+6. **Al lavoro**: con *Io, con questo account* **Vai all'agenda**; con il titolare **Esci ed entra come …** apre l'accesso con il suo username già scritto.
 
 | ![Primo avvio](docs/screenshots/primo-avvio.png) | ![Senza licenza](docs/screenshots/bloccato.png) |
 |---|---|
-| **Primo avvio**: solo dal PC server, solo finché l'amministratore non c'è | **Dopo la prova**: restano aperte solo Licenza e Backup, e i dati sono al sicuro |
+| **Primo avvio**: solo dal PC server, solo finché l'amministratore non c'è, con il codice che vede solo un amministratore di Windows | **Dopo la prova**: restano aperte solo Licenza, Backup e la configurazione guidata, e i dati sono al sicuro |
 
-L'indirizzo del programma è `https://NOME-DEL-PC:8443`, e lo trovi nella pagina **Postazioni**. Per sceglierne un altro, installa da riga di comando:
+### Gli account
+
+| Account | Cosa fa |
+|---|---|
+| **Amministratore del programma** | Licenza, backup, configurazione guidata, impostazioni generali; sul server anche postazioni e rete. Agenda e clienti solo se lavora nell'attività (*Io, con questo account*) |
+| **Titolare** | Il lavoro dell'attività: agenda, prenotazioni, clienti, servizi, orari, persone e permessi |
+| **Persone dell'attività** | Quello che il loro ruolo consente, le aggiunge il titolare da *Persone e permessi* |
+
+- Ogni account nuovo ha uno **username**; l'email è facoltativa e, se c'è, si entra anche con quella. Uno username già usato da chi lavora in un'altra attività non aggancia il suo account: con l'email giusta sì.
+- **Resta collegato** (spuntato di serie): il programma si riapre già collegato fino a un anno senza usarlo. **Esci** in alto a destra cambia account.
+- **Secondo fattore**: con Un PC solo non c'è, si entra con username e password. Con Server con postazioni Authenticator e passkey sono facoltativi, e l'avviso *Proteggi il tuo account* lo vede solo l'amministratore del programma.
+
+### Installazione da riga di comando
 
 ```bat
-msiexec /i TD-Booking-Suite-2.8.0.msi ADDLOCAL=Server,Postazione PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 ALTRI_INDIRIZZI=192.168.1.10
+rem Un PC solo
+msiexec /i TD-Booking-Suite-2.9.0.msi MODALITA=standalone /qn
+rem Server con postazioni, con porta e indirizzi
+msiexec /i TD-Booking-Suite-2.9.0.msi MODALITA=server PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 ALTRI_INDIRIZZI=192.168.1.10 /qn
+rem Solo postazione
+msiexec /i TD-Booking-Suite-2.9.0.msi ADDLOCAL=Postazione /qn
 ```
+
+Senza `MODALITA` l'installazione tiene il tipo che il PC aveva: solo la finestra se c'è solo la postazione, altrimenti quello ricordato nel registro. Un server della 2.8, o i dati di un server rimasti dopo averlo disinstallato, o un `INDIRIZZO` dato, fanno Server con postazioni; un PC nuovo parte come Un PC solo. `MODALITA=postazione` da sola non si usa: ferma l'installazione e dice di usare `ADDLOCAL=Postazione`.
+
+L'indirizzo del programma è `https://NOME-DEL-PC:8443` (con Un PC solo `https://localhost:8443`), e lo trovi nella pagina **Postazioni**.
 
 ### Le postazioni
 
-1. Sugli altri PC installa lo stesso MSI e in **Funzioni** togli **Server**: resta solo **Programma per la postazione**.
+1. Sugli altri PC installa lo stesso MSI scegliendo **Solo postazione**.
 2. Al primo avvio il programma chiede l'**indirizzo del server** e mostra l'**impronta del certificato**. Se è uguale a quella della pagina Postazioni del server, premi **Continua**.
-3. Sul server, in **Postazioni**, scrivi un nome (per esempio *Reception*) e premi **Genera il codice**. Sulla postazione scrivi le 6 cifre entro 15 minuti. La registrazione si fa una volta sola.
+3. Sul server, in **Postazioni**, scrivi un nome (per esempio *Reception*) e premi **Genera il codice**. Sulla postazione scrivi le 6 cifre entro 15 minuti. La registrazione si fa una volta sola. Dopo 10 tentativi da uno stesso indirizzo, quell'indirizzo aspetta 15 minuti.
 
 Da **browser o telefono** basta aprire l'indirizzo del server e inserire il codice. Se il browser avvisa che la connessione non è sicura, scarica il certificato dal link nella pagina e installalo tra le autorità attendibili.
 
-Le postazioni contano per la licenza, il PC server no. Una postazione persa si **revoca** dalla pagina Postazioni. Il programma per la postazione segue il tema chiaro o scuro di Windows; per cambiare server, clic sull'icona in alto a sinistra della finestra e poi **Cambia server**.
+Le postazioni contano per la licenza, il PC server no. Una postazione persa si **revoca** dalla pagina Postazioni. Il programma per la postazione segue il tema chiaro o scuro di Windows; per cambiare server: menu Start, **Cambia server della postazione**, oppure clic sull'icona in alto a sinistra della finestra e poi **Cambia server**.
+
+La finestra usa da sola il server installato sullo stesso PC solo se lo ha installato l'MSI (lo dice il suo valore nel registro, che scrivono solo gli amministratori): su una postazione un utente normale non può farle aprire un server suo.
 
 ![Registra la postazione](docs/screenshots/registra-postazione.png)
 
@@ -70,8 +107,6 @@ Le sedi si collegano tutte allo **stesso server**, come postazioni: non c'è nie
 - **Indirizzo pubblico**, per esempio `https://booking.tuosito.it`: è quello dei link nelle email (conferme, consensi, inviti) e da usare fuori dall'ufficio. Vale da subito, senza riavviare.
 - **Proxy fidati**: gli IP dei proxy davanti al server, uno per riga o come rete (`10.0.0.0/24`). Da loro il programma legge l'indirizzo vero di chi si collega, per i limiti di accesso e l'elenco delle postazioni. Chi passa dal proxy non è mai il PC server: registra la postazione con il codice.
 - **Certificato**: quello interno, che il programma crea e rinnova da solo, oppure uno tuo caricato come `.pfx`/`.p12` o `.crt`/`.pem` con la sua `.key`, con la catena completa. Il programma controlla che chiave e certificato vadano insieme e che non sia scaduto, lo usa dalla connessione successiva e un mese prima della scadenza lo ricorda in cima alle pagine. Se scade torna da solo al certificato interno.
-
-![Rete e certificato](docs/screenshots/rete.png)
 
 **Con un proxy** (NPMplus, Nginx Proxy Manager, Caddy, IIS) che ha il suo certificato, per esempio Let's Encrypt:
 
@@ -87,69 +122,76 @@ Set-NetFirewallRule -DisplayName "TD Booking Suite" -Profile Any
 
 **Certificati autofirmati.** Il programma per la postazione si fida da solo di un certificato riconosciuto da Windows. Con il certificato interno o con uno autofirmato mostra l'impronta al primo collegamento: se è uguale a quella delle pagine Postazioni e Rete e certificato, premi **Continua** e da lì in avanti la ricorda. Se un giorno il certificato cambia, il programma avvisa e chiede se vuoi vedere quello nuovo e accettarlo: non si blocca, ma non accetta niente da solo.
 
-**La versione web.** Il programma per la postazione si collega anche a TD Booking Suite installato con Docker su un server Linux: installa l'MSI con il solo **Programma per la postazione** e scrivi l'indirizzo, per esempio `https://booking.tuosito.it`.
+**La versione web.** Il programma per la postazione si collega anche a TD Booking Suite installato con Docker su un server Linux: installa **Solo postazione** e scrivi l'indirizzo, per esempio `https://booking.tuosito.it`.
 
 Le **passkey** valgono per l'indirizzo con cui sono state create: chi entra sia dal nome dell'ufficio sia da quello pubblico ne registra una per ciascuno. Funzionano dove il browser si fida del certificato: il certificato interno sul server ce lo mette l'installer, sulle postazioni lo puoi installare dalla pagina di registrazione. Altrove si usa **Authenticator** per il secondo fattore.
 
 ## Licenze
 
-Le licenze le crei tu, sul tuo PC, con **TD Licenze.exe**. Lo costruisce GitHub a ogni push:
+Le licenze le crei tu con **TD Licenze.exe**. Lo costruisce GitHub a ogni push:
 
 1. apri **Actions**, poi l'ultima esecuzione verde;
 2. in fondo, in *Artifacts*, scarica **TD-Licenze**;
-3. scompattalo in una cartella, sul Desktop o su una chiavetta, e apri `TD Licenze.exe`. Windows lo segnala come l'MSI e si apre allo stesso modo.
+3. scompattalo in una cartella, di solito su una chiavetta, e apri `TD Licenze.exe`. Windows lo segnala come l'MSI e si apre allo stesso modo.
 
-È **portatile**: chiave, registro e licenze emesse restano nella sua cartella, accanto all'exe, quindi per portarlo via o fare il backup basta copiare la cartella intera. Se una versione precedente aveva messo la chiave in `%APPDATA%\TD Licenze`, al primo avvio la sposta lì da sola. Per aggiornare TD Licenze sostituisci solo `TD Licenze.exe` e la cartella `_internal`: i file della chiave non si toccano.
+È **portatile**: chiave, registro e licenze emesse si salvano solo nella sua cartella, accanto all'exe, e da nessun'altra parte. Dalla chiavetta lo apri sul PC del cliente, copi il codice installazione dalla sua pagina Licenza, crei la licenza e la incolli. Per il backup basta copiare la cartella intera. Se una versione precedente aveva messo la chiave in `%APPDATA%\TD Licenze`, al primo avvio la porta nella sua cartella. Per aggiornare TD Licenze sostituisci solo `TD Licenze.exe` e la cartella `_internal`: i file della chiave non si toccano.
 
 L'artefatto è privato come la repo e non va mai dato ai clienti.
 
 | Scheda | A cosa serve |
 |---|---|
 | **Chiave** | La prima volta crea la chiave delle licenze, con una password, e mostra la chiave pubblica da copiare |
-| **Nuova licenza** | Intestatario, attività, postazioni, codice installazione e scadenza: **Crea la licenza**, e la licenza è già negli appunti |
-| **Licenze emesse** | Tutte quelle fatte: doppio clic per copiarne di nuovo una |
+| **Nuova licenza** | Tipo, intestatario, attività, postazioni, codice installazione e scadenza: **Crea la licenza**, e la licenza è già pronta da copiare |
+| **Licenze emesse** | Tutte quelle fatte, con lo stato (in uso o sostituita): doppio clic per copiarne di nuovo una, **Cambia postazioni o scadenza** per farne una che la sostituisce |
 
-Chi preferisce la riga di comando ha `licenze/td_licenze.py`, che fa le stesse cose; per lavorare sulla cartella di TD Licenze.exe passagli `--cartella "percorso\della\cartella"`. Servono Python 3 e `pip install cryptography`.
+| Tipo | Attività | Postazioni in rete |
+|---|---|---|
+| **Un PC solo** | 1 | nessuna |
+| **Server con postazioni** | 1 | quante ne scegli, oltre al PC server |
+| **Portale, più attività** | 2 o più | quante ne scegli |
 
-**La prima volta**, una volta sola, crea la chiave dalla scheda **Chiave** di TD Licenze.exe, oppure con:
+**La prima volta**, una volta sola, crea la chiave dalla scheda **Chiave**. La **chiave privata**, protetta da una password, resta nella cartella di TD Licenze. La **chiave pubblica** la vedi a schermo:
 
-```bash
-python licenze/td_licenze.py chiave
-```
-
-La **chiave privata**, protetta da una password, finisce nella cartella di TD Licenze.exe (da riga di comando, di serie, in `%APPDATA%\TD Licenze` o `~/.td-licenze`). La **chiave pubblica** la vedi a schermo. Poi:
-
-1. Metti la chiave pubblica in `tdwin/licenza-chiave-pubblica.txt`, fai commit e push. Da quella build in poi il programma accetta le tue licenze.
-2. Tieni una copia della cartella di TD Licenze su una chiavetta: senza la chiave privata non puoi più emettere licenze per le installazioni che esistono già.
-3. La chiave privata non va mai nella repo (`.gitignore` blocca i `.pem`).
-
-**Ogni licenza** si crea dalla scheda **Nuova licenza**, oppure da riga di comando:
-
-```bash
-python licenze/td_licenze.py            # fa le domande
-python licenze/td_licenze.py crea --intestatario "Bar Roma" --attivita 1 --postazioni 3 --installazione ABCD-EFGH-IJKL-MNOP --scadenza 2027-12-31
-python licenze/td_licenze.py elenco     # quelle emesse, dal registro
-python licenze/td_licenze.py verifica   # incolli una licenza e vedi cosa contiene
-```
-
-Le domande sono queste:
-
-- **attività**: 1 per la versione singola, di più per il portale;
-- **postazioni in rete**, oltre al PC server;
-- **codice installazione**, quello che il cliente vede nella pagina Licenza e ti manda. Vuoto vale ovunque: sono le licenze *a stock*;
-- **scadenza**, vuota per sempre.
+1. Mettila in `tdwin/licenza-chiave-pubblica.txt`, fai commit e push. La build la scrive **dentro il codice compilato**: da quella build in poi il programma accetta le tue licenze, e nell'MSI non c'è un file con la chiave da sostituire.
+2. Tieni una copia della cartella di TD Licenze su un secondo supporto: senza la chiave privata non puoi più emettere licenze per le installazioni che esistono già.
+3. La chiave privata non va mai nella repo (`.gitignore` blocca i `.pem`, il registro e le licenze emesse).
 
 Ogni licenza esce come riga `TDBS1.…` e come file `licenze-emesse/licenza-TD-2026-0001-bar-roma.txt`, da mandare al cliente. Resta anche nel `registro-licenze.csv`.
 
+Chi preferisce la riga di comando ha `licenze/td_licenze.py` (Python 3 e `pip install cryptography`). Di serie lavora nella sua cartella; con `--cartella` usa quella di TD Licenze.exe:
+
+```bash
+python licenze/td_licenze.py chiave       # la prima volta
+python licenze/td_licenze.py              # fa le domande
+python licenze/td_licenze.py crea --intestatario "Bar Roma" --tipo server --postazioni 3 --installazione ABCD-EFGH-IJKL-MNOP --scadenza 2027-12-31
+python licenze/td_licenze.py crea --sostituisce TD-2026-0007 --postazioni 5   # il resto resta come nella 0007
+python licenze/td_licenze.py elenco       # quelle emesse, dal registro
+python licenze/td_licenze.py verifica     # incolli una licenza e vedi cosa contiene
+```
+
 | Cosa succede se il cliente… | |
 |---|---|
-| reinstalla sullo stesso PC e ripristina un backup | il codice installazione torna quello di prima e la licenza vale ancora |
-| cambia PC | nuovo codice: gli mandi una licenza nuova |
+| reinstalla il programma sullo stesso PC e ripristina un backup | il codice installazione torna quello di prima e la licenza vale ancora |
+| reinstalla Windows o cambia PC | nuovo codice: gli fai una licenza nuova con il codice nuovo |
+| copia la cartella dei dati su un altro PC | il codice cambia (contiene l'ID del PC) e la licenza non vale lì |
 | ha più attività di quelle della licenza nuova | il programma rifiuta la licenza e lo spiega |
+| ha più attività di quelle della licenza installata | le ultime create restano chiuse; i dati restano e sono nei backup |
 | ha più postazioni registrate | restano attive quelle registrate per prime, finché non ne revoca |
 | arriva alla scadenza | il programma si ferma come a fine prova: restano aperte Licenza e Backup |
+| sposta indietro la data del PC | prova e scadenza si contano dall'ultimo uso: non si allungano |
+| cancella la prova dal database | la prova resta usata: il segno sta anche nella cartella dei dati |
 
-Le licenze sono firmate con Ed25519: il programma contiene solo la chiave pubblica, quindi le verifica ma non le può creare, e funziona offline.
+### Come il programma protegge la licenza
+
+- Le licenze sono firmate con **Ed25519**: il programma contiene solo la chiave pubblica, quindi le verifica ma non le può creare, e funziona offline.
+- `windows/compile_tdwin.py`, nella build, scrive la chiave pubblica **dentro la verifica** e compila con **Cython** tutto il codice di `tdwin` in moduli nativi (`.pyd`): nell'MSI non ci sono i sorgenti dell'edizione Windows, né un file con la chiave, né le impostazioni dei test. La build si ferma se resta un `.py` di tdwin (a parte `__init__` e migrazioni).
+- Prima di fidarsi di una licenza la verifica prova una **firma falsa**: se viene accettata, qualcuno ha sostituito il verificatore e il programma si ferma.
+- All'avvio (`tdwin/apps.py`) il programma controlla che il controllo della licenza sia nelle impostazioni e che le sue funzioni siano quelle compilate; il middleware lo ricontrolla a ogni pagina. Altrimenti non parte: *TD Booking Suite è stato modificato*.
+- L'**orologio**: l'ultimo momento in cui il programma ha lavorato sta nel database e nella cartella dei dati, e prova e scadenza si contano da lì.
+- La **prova** è segnata nel database e nella cartella dei dati: cancellarne uno non la ridà.
+- Le **attività oltre la licenza** restano chiuse anche se qualcuno toglie il limite dal core.
+
+Su un PC dove il cliente è amministratore nessuna protezione è assoluta: questa serve a rendere necessario un reverse engineering vero, non la modifica di un file. Resta un limite noto: un port forward sul PC server (netsh portproxy, un proxy senza X-Forwarded-For) fa sembrare locali gli altri PC, che così non contano come postazioni.
 
 ## Vetrina pubblica
 
@@ -160,7 +202,7 @@ Il codice resta in questa repo privata. Quello che vedono tutti sta in **[TD-Boo
 - istruzioni;
 - gli MSI da scaricare, con la prova di 7 giorni.
 
-Per pubblicare una versione apri **Actions → Windows → Run workflow**, spunta **Pubblica il rilascio** e premi **Run workflow**. Va bene anche un tag, per esempio `git tag v2.8.0 && git push origin v2.8.0`. La build fa i test, l'MSI e la prova di installazione. Poi copia nella vetrina `vetrina/README.md` e `docs/screenshots/`, e pubblica lì una Release con l'MSI. Per scrivere nella vetrina usa il secret `VETRINA_TOKEN`: un token fine-grained con *Contents: Read and write* solo su quella repo. Il testo della vetrina si cambia in `vetrina/README.md`.
+Per pubblicare una versione apri **Actions → Windows → Run workflow**, spunta **Pubblica il rilascio** e premi **Run workflow**. Va bene anche un tag, per esempio `git tag v2.9.0 && git push origin v2.9.0`. La build fa i test, l'MSI e la prova di installazione. Poi copia nella vetrina `vetrina/README.md` e `docs/screenshots/`, e pubblica lì una Release con l'MSI. Per scrivere nella vetrina usa il secret `VETRINA_TOKEN`: un token fine-grained con *Contents: Read and write* solo su quella repo. Il testo della vetrina si cambia in `vetrina/README.md`. Le immagini di TD Licenze stanno in `docs/manuali/img-licenze`, mai in `docs/screenshots`, che va in pubblico.
 
 ## Backup e ripristino
 
@@ -174,17 +216,19 @@ Ogni backup contiene il database, le chiavi che lo aprono, la licenza e il codic
 
 - **Disco esterno o chiavetta**: percorso come `E:\Backup TD Booking`. Se il disco è staccato, la copia sul server si fa lo stesso e nello storico vedi la destinazione non riuscita. Con due dischi alternati ogni settimana hai sempre una copia fuori dall'ufficio.
 - **Cartella di rete o NAS**: `\\nome-del-nas\cartella`, con l'utente e la password del NAS. Non serve collegare l'unità in Windows.
-- **FTP, FTPS, SFTP**: server, utente, password e cartella. Meglio SFTP o FTPS. Al primo collegamento il programma memorizza la chiave o il certificato del server, e poi controlla che non cambi.
+- **FTP, FTPS, SFTP**: server, utente, password e cartella. Meglio SFTP o FTPS. Al primo collegamento il programma memorizza la chiave o il certificato del server, e poi controlla che non cambi. Un server FTPS con un certificato riconosciuto da Windows resta legato a quello: se un giorno il certificato non è più riconosciuto, il programma non manda la password e lo segnala.
 
 Ogni destinazione ha il pulsante **Prova**, e lo **storico** dice com'è andato ogni backup. Se un backup non riesce, o i backup sono spenti, l'amministratore lo vede in cima alle pagine.
 
 **Ripristino**: sul PC server apri menu Start, **TD Booking Suite**, **Ripristina backup**. Scegli il file `.tdbk` e scrivi la password. Il programma si ferma un minuto, rimette i dati e riparte. Il database di prima non viene cancellato: resta da parte con la data nel nome. Su un PC nuovo installa prima l'MSI, poi ripristina, poi chiedi la licenza con il nuovo codice installazione.
 
-**Password dell'amministratore persa**: menu Start, **TD Booking Suite**, **Recupera amministratore**. Serve il PC server e un account amministratore di Windows.
+**Password dimenticata**, dell'amministratore del programma, del titolare o di chiunque: menu Start, **TD Booking Suite**, **Recupera accesso**, con username o email. Serve il PC server e un account amministratore di Windows. Azzera anche Authenticator e passkey, apre la pagina per la password nuova (valida 24 ore) e resta scritto nel Registro attività di ogni attività dell'account, come *Console del server*.
 
-## Aggiornare e disinstallare
+## Aggiornare, cambiare tipo, disinstallare
 
-Per aggiornare, apri l'MSI nuovo sopra quello vecchio: servizi, porta, database e dati restano. Prima di applicare la versione nuova, l'installer salva una copia del database in `backup\prima-dell-aggiornamento.dump`. Se l'aggiornamento non riesce, Windows rimette la versione di prima e la fa ripartire.
+Per aggiornare, apri l'MSI nuovo sopra quello vecchio: tipo, servizi, porta, database e dati restano. Prima di applicare la versione nuova, l'installer salva una copia del database in `backup\prima-dell-aggiornamento.dump`. Se l'aggiornamento non riesce, Windows rimette la versione di prima e la fa ripartire.
+
+Per **cambiare tipo** apri di nuovo l'MSI (o Impostazioni › App › TD Booking Suite › Modifica), scegli di cambiare l'installazione e il tipo nuovo. Da riga di comando: `msiexec /i TD-Booking-Suite-2.9.0.msi MODALITA=standalone /qn`. I dati restano.
 
 La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramData\TD Booking Suite`. Per cancellarli davvero, elimina quella cartella.
 
@@ -192,11 +236,12 @@ La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramDa
 
 | | |
 |---|---|
-| `C:\Program Files\TD Booking Suite\server` | Python, il programma, PostgreSQL 17, gli script |
+| `C:\Program Files\TD Booking Suite\server` | Python, il programma (tdwin compilato in `.pyd`), PostgreSQL 17, gli script |
 | `C:\Program Files\TD Booking Suite\postazione` | il programma per la postazione (WebView2) |
 | `C:\ProgramData\TD Booking Suite` | configurazione, database, licenza, certificati, backup, log |
+| `C:\ProgramData\TD Booking Suite Postazione\server.txt` | indirizzo e impronta del server di questo PC, per la finestra |
 | servizio **TDBookingDB** | PostgreSQL, solo su 127.0.0.1, porta 55432 |
-| servizio **TDBookingWeb** | il programma in HTTPS sulla porta 8443 |
+| servizio **TDBookingWeb** | il programma in HTTPS sulla porta 8443 (con Un PC solo solo su 127.0.0.1) |
 | servizio **TDBookingWorker** | email, promemoria e backup |
 
 Ogni servizio gira con un suo account virtuale di Windows (`NT SERVICE\…`):
@@ -205,20 +250,22 @@ Ogni servizio gira con un suo account virtuale di Windows (`NT SERVICE\…`):
 - solo il worker, che fa i backup, la legge;
 - la cartella dei dati la vedono solo Windows, gli amministratori e i servizi.
 
-Il firewall apre la porta 8443 solo sulle reti private e di dominio.
+Una cartella dati, o la cartella condivisa della postazione, creata prima dell'installazione da un utente normale (magari con una sua autorità di certificazione o un `config.json` suo dentro) non viene usata: l'installazione la mette da parte come `….non-fidata-<data>` e ne crea una nuova. Una giunzione al loro posto ferma l'installazione.
+
+Il firewall apre la porta solo con Server con postazioni, sulle reti private e di dominio.
 
 ## Costruire l'MSI
 
 GitHub Actions (`.github/workflows/windows.yml`) gira a ogni push su `main`:
 
 1. esegue i test;
-2. costruisce l'MSI con `windows/build.ps1`;
-3. lo installa davvero su Windows (`windows/smoke-test.ps1`): servizi e loro account, HTTPS con il certificato, un backup fatto dal worker, aggiornamento sopra, disinstallazione che lascia i dati;
+2. costruisce l'MSI con `windows/build.ps1`, che compila tdwin con Cython (`windows/compile_tdwin.py`);
+3. lo installa davvero su Windows (`windows/smoke-test.ps1`): un server con i servizi e i loro account, HTTPS con il certificato, un backup fatto dal worker; poi l'aggiornamento di un server come quelli della 2.8, senza il tipo nel registro, che resta server con porta, dati e backup; poi la modifica verso Un PC solo (solo su 127.0.0.1, niente firewall); infine la disinstallazione che lascia i dati;
 4. lo mette tra gli *Artifacts* dell'esecuzione, per 30 giorni.
 
-Con un tag `v2.8.0` crea anche una **Release** con l'MSI allegato.
+Con un tag `v2.9.0` crea anche una **Release** con l'MSI allegato.
 
-Per costruirlo a mano su Windows servono Python 3.14, .NET SDK 8 e PowerShell 7:
+Per costruirlo a mano su Windows servono Python 3.14, .NET SDK 8, PowerShell 7 e i Visual Studio Build Tools con il compilatore C++ (per Cython):
 
 ```powershell
 git clone --recurse-submodules https://github.com/Giuseppe-sciarra/TD-Booking-Suite-Windows
@@ -232,17 +279,21 @@ Per prendere l'ultima versione del core:
 git submodule update --remote suite && git commit -am "Core aggiornato"
 ```
 
+Le istruzioni in PDF si rifanno con `python docs/manuali/build.py` (Pillow e Playwright con Chromium), dagli HTML di `docs/manuali/` e dagli screenshot di `docs/screenshots/`.
+
 ## Struttura
 
 | | |
 |---|---|
 | `suite/` | il core web, sottomodulo del repository pubblico |
-| `tdwin/` | l'app Django dell'edizione Windows: licenza, postazioni, primo avvio, HTTPS, certificati, backup e ripristino |
-| `licenze/` | il programma per creare le licenze, solo per chi vende |
+| `tdwin/` | l'app Django dell'edizione Windows: licenza, postazioni, primo avvio, configurazione guidata, HTTPS, certificati, rete, backup e ripristino |
+| `licenze/` | TD Licenze, il programma per creare le licenze, solo per chi vende |
 | `windows/client/` | il programma per la postazione, C# .NET Framework 4.8 con WebView2 |
-| `windows/wix/` | l'MSI, WiX 5 |
-| `windows/script/` | configurazione del server, rimozione, ripristino, recupero dell'amministratore |
+| `windows/wix/` | l'MSI, WiX 5, con la finestra della scelta del tipo (`Modalita.wxs`) |
+| `windows/script/` | configurazione del server, rimozione, ripristino, recupero di un accesso, codice del primo avvio |
 | `windows/servizi/` | i servizi Windows, WinSW |
+| `windows/compile_tdwin.py` | la compilazione di tdwin con Cython e la chiave della licenza, nella build |
+| `docs/` | le istruzioni in PDF, gli screenshot e le loro sorgenti in `docs/manuali/` |
 | `tests/` | test, anche con PostgreSQL vero: `TDWIN_PG_ADMIN=postgresql://postgres:…@127.0.0.1:5432/postgres pytest` |
 
 ## Licenza
