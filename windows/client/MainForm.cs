@@ -32,13 +32,23 @@ namespace TDBookingSuite
             this.config = config;
             Text = "TD Booking Suite";
             Icon = AppIcon();
-            StartPosition = FormStartPosition.CenterScreen;
-            Size = new Size(1360, 900);
+            StartPosition = FormStartPosition.Manual;
             MinimumSize = new Size(800, 560);
             Controls.Add(web);
-            Load += async (s, e) => await Start();
+            Load += async (s, e) => { FitScreen(); await Start(); };
             SystemEvents.UserPreferenceChanged += ThemeChanged;
             FormClosed += (s, e) => SystemEvents.UserPreferenceChanged -= ThemeChanged;
+        }
+
+        /// <summary>The window fits the screen it opens on: 90% of it, centred, and maximized when the screen is small
+        /// for a desktop program (Full HD at 125% and below), where every point of height counts.</summary>
+        void FitScreen()
+        {
+            var area = Screen.FromPoint(Cursor.Position).WorkingArea;
+            Size = new Size(area.Width * 9 / 10, area.Height * 9 / 10);
+            Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
+            float scale = DeviceDpi / 96f;
+            if (area.Width / scale < 1600 || area.Height / scale < 900) WindowState = FormWindowState.Maximized;
         }
 
         void ThemeChanged(object sender, UserPreferenceChangedEventArgs e)

@@ -38,6 +38,8 @@ TDWIN_STANDALONE=CONFIG.get("modalita","server")=="standalone"
 EXTRA_NAV=[{"label":"Configurazione guidata","url":"/platform/inizia/"},{"label":"Licenza","url":"/platform/licenza/"}]+(
     [] if TDWIN_STANDALONE else [{"label":"Postazioni","url":"/platform/postazioni/"}])+[{"label":"Backup","url":"/platform/backup/"}]+(
     [] if TDWIN_STANDALONE else [{"label":"Rete e certificato","url":"/platform/rete/"}])
+# a desktop program on Full HD screens: denser pages than the web edition, on every page
+EXTRA_CSS=["tdwin/tdwin.css"]
 # who is who: the program's administrator configures, the business's owner and people work
 AGENCY_NAMES={"area":"Configurazione del programma","admin":"Amministratore del programma","who":"amministratore del programma","access":"Accesso dell'amministratore"}
 ROLE_LABELS={"owner":"Titolare"}
