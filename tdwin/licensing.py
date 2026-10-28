@@ -1,6 +1,6 @@
 """Licence of the Windows edition.
 
-licenze/td-licenze.py signs every licence offline with the seller's Ed25519 private key; the program holds only
+licenze/td_licenze.py signs every licence offline with the seller's Ed25519 private key; the program holds only
 the public key, so it checks a licence but can never make one. A licence may be bound to one installation code,
 built from this installation and this PC: a data folder copied to another PC shows another code."""
 import base64,binascii,hashlib,json,os,time
@@ -26,8 +26,8 @@ def machine_id():
         with open("/etc/machine-id") as f:return f.read().strip()
     except OSError:return ""
 
-def install_code():
-    digest=hashlib.sha256(f"tdbs-installazione\n{settings.TDWIN_CONFIG['install_id']}\n{machine_id()}".encode()).digest()
+def install_code(install_id=None):
+    digest=hashlib.sha256(f"tdbs-installazione\n{install_id or settings.TDWIN_CONFIG['install_id']}\n{machine_id()}".encode()).digest()
     code=base64.b32encode(digest).decode()[:16]
     return "-".join(code[i:i+4] for i in range(0,16,4))
 
@@ -50,10 +50,11 @@ def parse(text):
     if data["attivita"]<1 or data["postazioni"]<0:raise ValueError("Licenza non valida.")
     return data
 
-def problem(data,today):
+def problem(data,today,code=None):
     """Why a genuine licence does not apply here, or an empty string."""
-    if data["installazione"] and normalize(data["installazione"])!=normalize(install_code()):
-        return f"Questa licenza è per l'installazione {data['installazione']}, non per questa ({install_code()})."
+    code=code or install_code()
+    if data["installazione"] and normalize(data["installazione"])!=normalize(code):
+        return f"Questa licenza è per l'installazione {data['installazione']}, non per questa ({code})."
     if data["scadenza"] and data["scadenza"]<today:return f"La licenza è scaduta il {data['scadenza']:%d/%m/%Y}."
     return ""
 

@@ -37,7 +37,12 @@ def current(request):
     now=timezone.now()
     if not found.ultimo_accesso or now-found.ultimo_accesso>timedelta(minutes=5):
         Postazione.objects.filter(pk=found.pk).update(ultimo_accesso=now,ultimo_ip=request.META.get("REMOTE_ADDR"))
+        request.renew_postazione=True
     return found
+
+def set_cookie(response,token):
+    # browsers keep a cookie at most 400 days: it is set again while the workstation is in use
+    response.set_cookie(COOKIE,token,max_age=400*86400,secure=not settings.DEV,httponly=True,samesite="Lax",path="/")
 
 def pending():return Postazione.objects.filter(token__isnull=True,scadenza_codice__gt=timezone.now(),tentativi__lt=MAX_TRIES)
 
@@ -79,7 +84,7 @@ def pair_view(request):
         except ValueError as ex:error=str(ex)
         else:
             response=redirect(target)
-            response.set_cookie(COOKIE,token,max_age=3650*86400,secure=not settings.DEV,httponly=True,samesite="Lax",path="/")
+            set_cookie(response,token)
             return response
     return render(request,"tdwin/postazione.html",{"next":target,"error":error,"over":over,"limit":limit()},status=403 if error else 200)
 

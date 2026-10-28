@@ -4,12 +4,14 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package Name="TD Booking Suite" Manufacturer="Tastiere Digitali" Version="$(var.Version)" UpgradeCode="6F3B2C61-8D7E-4B1A-9C55-3E2A1D9B7F40"
            Scope="perMachine" Language="1040" Codepage="1252" InstallerVersion="500">
-    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="È già installata una versione più recente di TD Booking Suite." />
+    <!-- the old version goes inside the same transaction: if the new one fails, Windows puts the old one back -->
+    <MajorUpgrade Schedule="afterInstallInitialize" AllowSameVersionUpgrades="yes" DowngradeErrorMessage="È già installata una versione più recente di TD Booking Suite." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
     <Icon Id="app.ico" SourceFile="!(bindpath.postazione)\app.ico" />
     <Property Id="ARPPRODUCTICON" Value="app.ico" />
     <!-- for a silent install:  msiexec /i TD-Booking-Suite.msi ADDLOCAL=Server,Postazione PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 /qn -->
-    <Property Id="PORTA" Value="8443" Secure="yes" />
+    <!-- empty: a new server gets 8443, an update keeps the port it has -->
+    <Property Id="PORTA" Secure="yes" />
     <Property Id="INDIRIZZO" Secure="yes" />
     <Property Id="ALTRI_INDIRIZZI" Secure="yes" />
 
@@ -57,11 +59,24 @@
     <SetProperty Id="SetupServer" Sequence="execute" Before="SetupServer"
                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[SERVERDIR]script\setup-server.ps1&quot; -Porta &quot;[PORTA]&quot; -Origine &quot;[INDIRIZZO]&quot; -Indirizzi &quot;[ALTRI_INDIRIZZI]&quot;" />
     <CustomAction Id="SetupServer" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred" Impersonate="no" Return="check" />
-    <SetProperty Id="RemoveServer" Sequence="execute" Before="RemoveServer"
+    <!-- removal: everything on uninstall; during an upgrade the services are only stopped -->
+    <SetProperty Id="RemoveServer" Action="SetRemoveServer" Sequence="execute" Before="RemoveServer" Condition="NOT UPGRADINGPRODUCTCODE"
                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[SERVERDIR]script\remove-server.ps1&quot;" />
+    <SetProperty Id="RemoveServer" Action="SetRemoveServerUpgrade" Sequence="execute" Before="RemoveServer" Condition="UPGRADINGPRODUCTCODE"
+                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[SERVERDIR]script\remove-server.ps1&quot; -Aggiornamento" />
     <CustomAction Id="RemoveServer" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred" Impersonate="no" Return="ignore" />
+    <!-- a failed upgrade puts the old files back: its services, only stopped, start again -->
+    <SetProperty Id="RestartServer" Sequence="execute" Before="RestartServer"
+                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -Command &quot;Start-Service TDBookingDB; Start-Service TDBookingWeb, TDBookingWorker&quot;" />
+    <CustomAction Id="RestartServer" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="rollback" Impersonate="no" Return="ignore" />
+    <!-- a failed first installation leaves no services behind -->
+    <SetProperty Id="UndoSetupServer" Sequence="execute" Before="UndoSetupServer"
+                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[SERVERDIR]script\remove-server.ps1&quot;" />
+    <CustomAction Id="UndoSetupServer" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="rollback" Impersonate="no" Return="ignore" />
     <InstallExecuteSequence>
+      <Custom Action="RestartServer" Before="RemoveServer" Condition="(!Server=3) AND (&amp;Server=2) AND UPGRADINGPRODUCTCODE" />
       <Custom Action="RemoveServer" Before="RemoveFiles" Condition="(!Server=3) AND (&amp;Server=2)" />
+      <Custom Action="UndoSetupServer" Before="SetupServer" Condition="(&amp;Server=3) AND NOT (!Server=3) AND NOT WIX_UPGRADE_DETECTED" />
       <Custom Action="SetupServer" Before="InstallFinalize" Condition="&amp;Server=3" />
     </InstallExecuteSequence>
 

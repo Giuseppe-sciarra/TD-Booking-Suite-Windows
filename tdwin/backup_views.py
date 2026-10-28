@@ -61,11 +61,12 @@ def page(request):
                 ImpostazioniBackup.objects.filter(pk=1).update(richiesto=timezone.now())
                 messages.success(request,"Backup avviato: tra qualche minuto lo trovi nello storico qui sotto.")
         elif action=="destinazione":
+            before=(target.tipo,target.host,target.porta) if target else None
             form=DestinationForm(request.POST,instance=target)
             if form.is_valid():
                 d=form.save(commit=False)
                 if form.cleaned_data["password_nuova"]:backup.seal_secret(d,form.cleaned_data["password_nuova"])
-                if target and (target.host,target.porta)!=(d.host,d.porta):d.impronta=""  # another server, another key
+                if before and before!=(d.tipo,d.host,d.porta):d.impronta=""  # another server, another key
                 d.prova_richiesta=timezone.now();d.save()
                 messages.success(request,"Destinazione salvata: ora la provo, l'esito compare qui sotto tra qualche secondo.")
                 return redirect("/platform/backup/")
@@ -86,7 +87,7 @@ def page(request):
 
 def download(request,name):
     staff_only(request);fresh(request)
-    if not re.fullmatch(r"tdbs-\d{8}-\d{6}\.tdbk",name):raise Http404
+    if not re.fullmatch(r"tdbs-[a-z2-7]{16}-\d{8}-\d{6}\.tdbk",name):raise Http404
     path=backup.local_folder()/name
     if not path.exists():raise Http404
     return FileResponse(path.open("rb"),as_attachment=True,filename=name)

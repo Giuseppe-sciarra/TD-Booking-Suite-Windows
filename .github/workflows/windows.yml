@@ -37,6 +37,16 @@ jobs:
           path: build/cache
           key: downloads-${{ hashFiles('windows/build.ps1') }}
 
+      # the runner's own PostgreSQL, so the end-to-end test (setup, pg_dump, HTTPS, restore) runs too
+      - name: PostgreSQL per i test
+        run: |
+          $service = Get-Service "postgresql*" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $service) { Write-Host "::notice::PostgreSQL non presente sul runner: il test con il database vero viene saltato"; exit 0 }
+          Set-Service $service.Name -StartupType Manual
+          Start-Service $service.Name
+          "TDWIN_PG_ADMIN=postgresql://postgres:root@127.0.0.1:5432/postgres" >> $env:GITHUB_ENV
+          "$env:PGBIN" >> $env:GITHUB_PATH
+
       - name: Test
         run: |
           python -m pip install --disable-pip-version-check -r windows/requirements-test.txt
@@ -54,6 +64,30 @@ jobs:
           path: dist/*.msi
           retention-days: 30
 
+  licenze:
+    # TD Licenze.exe, the seller's window to make licences: never inside the customers' MSI
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: TD Licenze.exe
+        run: |
+          python -m pip install --disable-pip-version-check "pyinstaller>=6.11,<7" cryptography
+          python -m PyInstaller --noconfirm --windowed --name "TD Licenze" --icon windows/client/app.ico --add-data "windows/client/app.ico;." --paths licenze --distpath dist-licenze --workpath build/pyinstaller licenze/td_licenze_gui.py
+          $p = Start-Process "dist-licenze/TD Licenze/TD Licenze.exe" -ArgumentList "--prova" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "TD Licenze.exe non parte, codice $($p.ExitCode)" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TD-Licenze
+          path: dist-licenze/TD Licenze
+          retention-days: 90
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: msi
@@ -61,13 +95,39 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: TD-Booking-Suite-Windows
+          path: dist
+
       - name: Rilascio con l'MSI allegato
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" *.msi --repo "${GITHUB_REPOSITORY}" \
+          gh release create "${GITHUB_REF_NAME}" dist/*.msi --repo "${GITHUB_REPOSITORY}" \
             --title "TD Booking Suite per Windows ${GITHUB_REF_NAME}" \
             --notes "MSI per server e postazioni. Windows lo segnala come app non riconosciuta perché non è firmato: Ulteriori informazioni, poi Esegui comunque."
+
+      # the public showcase: README, screenshots and the MSI, never the code
+      - name: Vetrina pubblica
+        env:
+          GH_TOKEN: ${{ secrets.VETRINA_TOKEN }}
+          VETRINA: ${{ vars.VETRINA_REPO || 'Giuseppe-sciarra/TD-Booking-Suite-per-Windows' }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "::notice::Manca il secret VETRINA_TOKEN: vetrina non aggiornata"; exit 0; fi
+          git clone -q "https://x-access-token:${GH_TOKEN}@github.com/${VETRINA}.git" vetrina-repo
+          mkdir -p vetrina-repo/screenshots
+          cp vetrina/README.md vetrina-repo/README.md
+          cp docs/screenshots/*.png vetrina-repo/screenshots/
+          cd vetrina-repo
+          git checkout -q -B main
+          git config user.name "TD Booking Suite"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -q -m "TD Booking Suite per Windows ${GITHUB_REF_NAME}"
+          git push -q origin main
+          gh release create "${GITHUB_REF_NAME}" ../dist/*.msi --repo "${VETRINA}" \
+            --title "TD Booking Suite per Windows ${GITHUB_REF_NAME}" \
+            --notes "Un solo MSI per il server e per le postazioni, con 7 giorni di prova. Windows lo segnala perché non è ancora firmato: Ulteriori informazioni, poi Esegui comunque. Le istruzioni sono nella pagina principale."

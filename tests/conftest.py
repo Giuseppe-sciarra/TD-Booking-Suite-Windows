@@ -9,7 +9,7 @@ REMOTE="203.0.113.20"  # TEST-NET-3: never one of this PC's addresses
 PASSWORD="A-test-password-12345"
 
 def load_tool():
-    spec=importlib.util.spec_from_file_location("td_licenze",ROOT/"licenze"/"td-licenze.py")
+    spec=importlib.util.spec_from_file_location("td_licenze",ROOT/"licenze"/"td_licenze.py")
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
     return module
 
@@ -26,7 +26,7 @@ def fresh_state(db):
 
 @pytest.fixture
 def seller(settings,tmp_path):
-    """The seller's key pair, made by the real td-licenze.py; returns a function that signs a licence."""
+    """The seller's key pair, made by the real td_licenze.py; returns a function that signs a licence."""
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
     tool=load_tool();key=Ed25519PrivateKey.generate()
     settings.TDWIN_LICENSE_KEY=tool.public_text(key)

@@ -1,4 +1,4 @@
-"""Licences made by td-licenze.py, checked by the program; the 7-day trial; what stops without a licence."""
+"""Licences made by td_licenze.py, checked by the program; the 7-day trial; what stops without a licence."""
 import getpass
 from datetime import date,timedelta
 import pytest
@@ -15,22 +15,27 @@ def test_generator_makes_keys_and_licences_the_program_accepts(tmp_path,monkeypa
     answers=iter(["chiave-segreta-1","chiave-segreta-1"])
     monkeypatch.setattr(getpass,"getpass",lambda prompt="":next(answers))
     tool.main(["--cartella",str(folder),"chiave"])
-    assert b"ENCRYPTED" in (folder/"chiave-privata.pem").read_bytes()
+    assert b"ENCRYPTED" in (folder/"chiave-privata.pem").read_bytes() and tool.key_encrypted(folder)
     with pytest.raises(SystemExit,match="esiste già"):tool.main(["--cartella",str(folder),"chiave"])
-    settings.TDWIN_LICENSE_KEY=(folder/"chiave-pubblica.txt").read_text().strip()
+    settings.TDWIN_LICENSE_KEY=tool.public_key_text(folder)
     code=licensing.install_code()
-    monkeypatch.setattr(getpass,"getpass",lambda prompt="":"chiave-segreta-1")
     out=tmp_path/"emesse"
-    licence=tool.create(folder,"  Bar   Roma ",3,5,code.lower().replace("-",""),"2030-12-31",out)
+    licence,path,data=tool.create(folder,"  Bar   Roma ",3,5,code.lower().replace("-",""),"2030-12-31",out,"chiave-segreta-1")
+    assert path.exists() and licence in path.read_text(encoding="utf-8")
     data=licensing.parse(licence)
     assert data["intestatario"]=="Bar Roma" and data["attivita"]==3 and data["postazioni"]==5 and data["installazione"]==code
     assert data["scadenza"]==date(2030,12,31) and data["id"].endswith("-0001")
-    second=tool.create(folder,"Pizzeria",1,0,"","",out)
+    monkeypatch.setattr(getpass,"getpass",lambda prompt="":"chiave-segreta-1")
+    tool.main(["--cartella",str(folder),"--uscita",str(out),"crea","--intestatario","Pizzeria","--attivita","1","--postazioni","0"])
+    second=tool.registry(folder)[-1]["licenza"]
     assert licensing.parse(second)["id"].endswith("-0002") and licensing.parse(second)["installazione"]==""
     assert len(tool.registry(folder))==2 and len(list(out.glob("licenza-TD-*.txt")))==2
+    with pytest.raises(ValueError,match="errata"):tool.create(folder,"Altro",1,0,"","",out,"sbagliata")
+    with pytest.raises(ValueError,match="16 lettere"):tool.create(folder,"Altro",1,0,"ABC","",out,"chiave-segreta-1")
     monkeypatch.setattr(getpass,"getpass",lambda prompt="":"sbagliata")
-    with pytest.raises(SystemExit,match="errata"):tool.create(folder,"Altro",1,0,"","",out)
-    with pytest.raises(SystemExit,match="16 lettere"):tool.create(folder,"Altro",1,0,"ABC","",out)
+    with pytest.raises(SystemExit,match="errata"):tool.main(["--cartella",str(folder),"crea","--intestatario","Altro"])
+    assert tool.read(second,tool.public_key_text(folder))["intestatario"]=="Pizzeria"
+    with pytest.raises(ValueError,match="modificata"):tool.read(second[:-3]+"AAA",tool.public_key_text(folder))
 
 def test_tampered_foreign_and_broken_licences_are_refused(seller):
     good=seller()

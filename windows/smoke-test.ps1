@@ -1,6 +1,10 @@
 ﻿# Prova l'MSI come farebbe un cliente, su GitHub Actions: installazione silenziosa di server e postazione,
-# il programma risponde in HTTPS con il suo certificato, il worker fa un backup con il suo account, disinstallazione.
-param([string]$Msi = (Get-ChildItem (Join-Path (Split-Path $PSScriptRoot -Parent) "dist\*.msi") | Select-Object -First 1).FullName)
+# il programma risponde in HTTPS con il suo certificato, il worker fa un backup con il suo account,
+# aggiornamento vero (un MSI con un altro codice prodotto) che tiene porta e dati, disinstallazione.
+param(
+    [string]$Msi = (Get-ChildItem (Join-Path (Split-Path $PSScriptRoot -Parent) "dist\*.msi") | Select-Object -First 1).FullName,
+    [string]$Upgrade = (Join-Path (Split-Path $PSScriptRoot -Parent) "build\aggiornamento.msi")
+)
 $ErrorActionPreference = "Stop"
 $data = Join-Path $env:ProgramData "TD Booking Suite"
 $app = Join-Path $env:ProgramFiles "TD Booking Suite\server"
@@ -13,7 +17,7 @@ function Install-Msi([string[]]$Arguments, [string]$Log) {
 }
 
 Write-Host "Installo $Msi"
-Install-Msi @("/i", "`"$Msi`"", "ADDLOCAL=Server,Postazione", "PORTA=8443") "install.log"
+Install-Msi @("/i", "`"$Msi`"", "ADDLOCAL=Server,Postazione", "PORTA=9443") "install.log"
 try {
     foreach ($name in "TDBookingDB", "TDBookingWeb", "TDBookingWorker") {
         $service = Get-Service $name
@@ -22,7 +26,7 @@ try {
         if ($service.Status -ne "Running" -or $account -ne "NT SERVICE\$name") { throw "$name non è partito con il suo account" }
     }
     # trusted through the local authority added by the setup: no certificate check is skipped
-    $page = Invoke-WebRequest "https://localhost:8443/primo-avvio/" -UseBasicParsing
+    $page = Invoke-WebRequest "https://localhost:9443/primo-avvio/" -UseBasicParsing
     if ($page.StatusCode -ne 200 -or $page.Content -notmatch "Primo avvio") { throw "Pagina del primo avvio non trovata" }
     if (-not (Test-Path (Join-Path $env:ProgramFiles "TD Booking Suite\postazione\TDBookingSuite.exe"))) { throw "Manca il programma della postazione" }
     # the web service must not read the database owner's password
@@ -38,16 +42,19 @@ try {
     if (-not $file) { Show-Logs; throw "Il worker non ha fatto il backup" }
     Write-Host "Backup del worker: $($file.Name), $($file.Length) byte"
 
-    Write-Host "Reinstallo sopra, come un aggiornamento"
-    Install-Msi @("/i", "`"$Msi`"", "ADDLOCAL=Server,Postazione") "upgrade.log"
-    if ((Get-Service TDBookingWeb).Status -ne "Running") { throw "Dopo l'aggiornamento il servizio web è fermo" }
+    Write-Host "Aggiorno con un MSI nuovo, senza dire la porta"
+    Install-Msi @("/i", "`"$Upgrade`"") "upgrade.log"
+    foreach ($name in "TDBookingDB", "TDBookingWeb", "TDBookingWorker") { if ((Get-Service $name).Status -ne "Running") { throw "Dopo l'aggiornamento $name è fermo" } }
     if (-not (Test-Path (Join-Path $data "backup\prima-dell-aggiornamento.dump"))) { throw "Manca la copia del database prima dell'aggiornamento" }
-    Invoke-WebRequest "https://localhost:8443/primo-avvio/" -UseBasicParsing | Out-Null
+    if (-not (Test-Path $file.FullName)) { throw "L'aggiornamento ha perso i backup" }
+    Invoke-WebRequest "https://localhost:9443/primo-avvio/" -UseBasicParsing | Out-Null
+    $installed = Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" | Where-Object { $_.DisplayName -eq "TD Booking Suite" }
+    if (($installed | Measure-Object).Count -ne 1) { throw "Dopo l'aggiornamento risultano installate $(($installed | Measure-Object).Count) versioni" }
 }
 catch { Show-Logs; throw }
 
 Write-Host "Disinstallo"
-Install-Msi @("/x", "`"$Msi`"") "uninstall.log"
+Install-Msi @("/x", "`"$Upgrade`"") "uninstall.log"
 foreach ($name in "TDBookingDB", "TDBookingWeb", "TDBookingWorker") { if (Get-Service $name -ErrorAction SilentlyContinue) { throw "$name è rimasto dopo la disinstallazione" } }
 if (-not (Test-Path (Join-Path $data "config.json"))) { throw "La disinstallazione ha cancellato i dati" }
 Write-Host "Prova completa riuscita"

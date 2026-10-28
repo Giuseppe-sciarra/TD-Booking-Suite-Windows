@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -74,5 +75,19 @@ namespace TDBookingSuite
         }
 
         public static byte[] PemToDer(string pem) => Convert.FromBase64String(Regex.Replace(pem, "-----[^-]+-----|\\s", ""));
+
+        /// <summary>True only when the authority really signed the certificate and it is within its dates:
+        /// the authority's certificate is public, matching its fingerprint alone proves nothing.</summary>
+        public static bool SignedBy(X509Certificate2 certificate, X509Certificate2 authority)
+        {
+            using (var chain = new X509Chain())
+            {
+                chain.ChainPolicy.ExtraStore.Add(authority);
+                chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
+                chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+                if (!chain.Build(certificate)) return false;
+                return chain.ChainElements[chain.ChainElements.Count - 1].Certificate.Thumbprint == authority.Thumbprint;
+            }
+        }
     }
 }

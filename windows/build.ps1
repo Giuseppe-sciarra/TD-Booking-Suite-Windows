@@ -37,6 +37,8 @@ function Invoke-Native([string]$Exe, [string[]]$Arguments) {
 }
 
 if (-not (Test-Path (Join-Path $root "tdwin\licenza-chiave-pubblica.txt"))) {
+    # a release without the key would accept no licence at all: its customers would stop after the trial
+    if ($env:GITHUB_REF -like "refs/tags/*") { throw "Manca tdwin/licenza-chiave-pubblica.txt: un rilascio senza la chiave non accetterebbe nessuna licenza." }
     Write-Host "::warning::Manca tdwin/licenza-chiave-pubblica.txt: questa build accetta solo la prova di 7 giorni, nessuna licenza."
 }
 
@@ -96,3 +98,9 @@ Invoke-Native wix @("build", (Join-Path $root "windows\wix\Package.wxs"), "-arch
     "-ext", "WixToolset.Util.wixext", "-ext", "WixToolset.UI.wixext",
     "-bindpath", "server=$server", "-bindpath", "postazione=$postazione", "-d", "Version=$Version", "-o", $msi)
 Write-Host "Pronto: $msi ($([math]::Round((Get-Item $msi).Length / 1MB)) MB)"
+if ($env:GITHUB_ACTIONS) {
+    # a second build of the same files has another product code: smoke-test.ps1 uses it as a real upgrade
+    Invoke-Native wix @("build", (Join-Path $root "windows\wix\Package.wxs"), "-arch", "x64", "-culture", "it-IT",
+        "-ext", "WixToolset.Util.wixext", "-ext", "WixToolset.UI.wixext",
+        "-bindpath", "server=$server", "-bindpath", "postazione=$postazione", "-d", "Version=$Version", "-o", (Join-Path $build "aggiornamento.msi"))
+}

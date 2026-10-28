@@ -46,8 +46,16 @@ class Command(BaseCommand):
             config=json.loads(config_path.read_text("utf-8"))
             config["env"].update({k:secrets[k] for k in ("DJANGO_SECRET_KEY","TDBS_KEYS","TDBS_ACTIVE_KEY")})
             config["install_id"]=info["install_id"]
-            # written in place: the file keeps the permissions set by the installer
-            with open(config_path,"r+",encoding="utf-8") as f:f.write(json.dumps(config,ensure_ascii=False,indent=1));f.truncate()
-            if (work/"licenza.txt").exists():
-                licensing.path().parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(work/"licenza.txt",licensing.path())
+            from tdwin.setup_files import replace_json
+            replace_json(config_path,config)
+            # the licence that works here after the restore: a renewal made after the backup wins over the backup's
+            code=licensing.install_code(info["install_id"])
+            def usable(text):
+                try:return not licensing.problem(licensing.parse(text),timezone.localdate(),code)
+                except ValueError:return False
+            current=licensing.path().read_text("utf-8") if licensing.path().exists() else ""
+            restored=(work/"licenza.txt").read_text("utf-8") if (work/"licenza.txt").exists() else ""
+            chosen=current if usable(current) else restored if usable(restored) else current or restored
+            if chosen and chosen!=current:
+                licensing.path().parent.mkdir(parents=True,exist_ok=True);licensing.path().write_text(chosen,encoding="utf-8")
         self.stdout.write(f"Ripristino completato. Il database di prima resta come {old}"+("" if exists else ", non c'era")+": quando sei sicuro puoi eliminarlo.")

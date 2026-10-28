@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
@@ -120,8 +121,14 @@ namespace TDBookingSuite
         void CertificateError(object sender, CoreWebView2ServerCertificateErrorDetectedEventArgs e)
         {
             var chain = e.ServerCertificate.PemEncodedIssuerCertificateChain;
-            var accepted = config.Ca != "" && e.ErrorStatus == CoreWebView2WebErrorStatus.CertificateIsInvalid && config.SameOrigin(e.RequestUri)
-                && chain.Count > 0 && Config.Fingerprint(Config.PemToDer(chain[chain.Count - 1])) == config.Ca;
+            var accepted = false;
+            if (config.Ca != "" && e.ErrorStatus == CoreWebView2WebErrorStatus.CertificateIsInvalid && config.SameOrigin(e.RequestUri) && chain.Count > 1)
+            {
+                // the last one must be the registered authority, and it must have signed the server's certificate
+                var authority = new X509Certificate2(Config.PemToDer(chain[chain.Count - 1]));
+                var server = new X509Certificate2(Config.PemToDer(e.ServerCertificate.ToPemEncoding()));
+                accepted = Config.Fingerprint(authority.RawData) == config.Ca && Config.SignedBy(server, authority);
+            }
             e.Action = accepted ? CoreWebView2ServerCertificateErrorAction.AlwaysAllow : CoreWebView2ServerCertificateErrorAction.Cancel;
             if (!accepted)
                 BeginInvoke((Action)(() => MessageBox.Show(this,

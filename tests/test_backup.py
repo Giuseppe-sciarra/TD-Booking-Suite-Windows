@@ -1,5 +1,5 @@
 """Backups: encrypted with the backup password, copied to folder, network, FTP, FTPS and SFTP, kept N at a time."""
-import io,json,re,sys,tarfile,types
+import json,sys,tarfile,types
 from datetime import datetime,time as clock,timedelta
 from pathlib import Path
 import pytest
@@ -61,11 +61,11 @@ def test_backup_holds_database_keys_licence_and_keeps_n_copies(fake_pg,tmp_path,
         job=backup.run(manual=True)
         assert job.esito=="ok",job.dettagli
         names.append(job.file);Esecuzione.objects.filter(pk=job.pk).update(inizio=job.inizio)
-        Path(backup.local_folder()/job.file).rename(backup.local_folder()/f"tdbs-2026010{n}-000000.tdbk")
-        Path(disk.percorso,job.file).rename(Path(disk.percorso,f"tdbs-2026010{n}-000000.tdbk"))
-    assert sorted(p.name for p in backup.local_folder().glob("*.tdbk"))==["tdbs-20260102-000000.tdbk","tdbs-20260103-000000.tdbk"]
+        Path(backup.local_folder()/job.file).rename(backup.local_folder()/f"{backup.prefix()}-2026010{n}-000000.tdbk")
+        Path(disk.percorso,job.file).rename(Path(disk.percorso,f"{backup.prefix()}-2026010{n}-000000.tdbk"))
+    assert sorted(p.name for p in backup.local_folder().glob("*.tdbk"))==[f"{backup.prefix()}-20260102-000000.tdbk",f"{backup.prefix()}-20260103-000000.tdbk"]
     assert len(list(Path(disk.percorso).glob("*.tdbk")))==3
-    members=opened(backup.local_folder()/"tdbs-20260103-000000.tdbk")
+    members=opened(backup.local_folder()/f"{backup.prefix()}-20260103-000000.tdbk")
     assert members["database.dump"].startswith(b"PGDMP") and members["licenza.txt"].startswith(b"TDBS1.")
     secrets=json.loads(members["segreti.json"])
     assert secrets["DJANGO_SECRET_KEY"]==settings.SECRET_KEY and json.loads(secrets["TDBS_KEYS"])==settings.KEYS
@@ -83,12 +83,12 @@ def test_one_unreachable_destination_does_not_stop_the_others(fake_pg,tmp_path):
 def test_ftp_and_ftps_with_pinned_certificate(fake_pg,tmp_path):
     backup.set_password(PASS)
     (tmp_path/"ftp").mkdir();server,port=servers.ftp(tmp_path/"ftp")
-    plain=destination(nome="FTP",tipo="ftp",host="127.0.0.1",porta=port,utente="bk",secret="segreta-ftp",percorso="/backup/booking",conserva=1)
+    destination(nome="FTP",tipo="ftp",host="127.0.0.1",porta=port,utente="bk",secret="segreta-ftp",percorso="/backup/booking",conserva=1)
     cert=servers.self_signed(tmp_path/"cert.pem");(tmp_path/"ftps").mkdir();tls,tls_port=servers.ftp(tmp_path/"ftps",tls=True,certfile=cert)
     secure=destination(nome="FTPS",tipo="ftps",host="127.0.0.1",porta=tls_port,utente="bk",secret="segreta-ftp",percorso="booking")
     for n in range(2):
         job=backup.run();assert job.esito=="ok",job.dettagli
-        old=f"tdbs-2020010{n}-000000.tdbk"  # the next run, in the same second, gets another name
+        old=f"{backup.prefix()}-2020010{n}-000000.tdbk"  # the next run, in the same second, gets another name
         (backup.local_folder()/job.file).rename(backup.local_folder()/old)
         for root in ("ftp/backup/booking","ftps/booking"):
             for f in (tmp_path/root).glob("*.tdbk"):
@@ -134,7 +134,7 @@ def test_network_folder_uses_its_own_credentials(fake_pg,tmp_path,monkeypatch):
     destination(nome="NAS",tipo="rete",percorso="//nas/backup/booking/",utente="ufficio",secret="segreta-nas",conserva=2)
     for n in range(3):
         job=backup.run();assert job.esito=="ok",job.dettagli
-        folder=disk/"nas/backup/booking";(folder/job.file).rename(folder/f"tdbs-2019010{n}-000000.tdbk")
+        folder=disk/"nas/backup/booking";(folder/job.file).rename(folder/f"{backup.prefix()}-2019010{n}-000000.tdbk")
         (backup.local_folder()/job.file).unlink()
     assert sessions[0]==("nas","ufficio","segreta-nas") and len(list((disk/"nas/backup/booking").glob("*.tdbk")))==2
 
@@ -200,3 +200,31 @@ def test_worker_start_empties_the_work_folder_but_keeps_it():
     root=backup.work_root();(root/"vecchio").mkdir();(root/"vecchio"/"database.dump").write_text("in chiaro");(root/"x.tar").write_text("x")
     backup.clean_work()
     assert root.is_dir() and not list(root.iterdir())
+
+def test_other_installations_copies_and_cut_files_are_left_alone(fake_pg,tmp_path,monkeypatch):
+    backup.set_password(PASS)
+    shared=tmp_path/"nas";shared.mkdir()
+    theirs=[shared/f"tdbs-{'b'*16}-2020010{n}-000000.tdbk" for n in range(4)]
+    for f in theirs:f.write_bytes(b"di un altro ufficio")
+    destination(nome="NAS condiviso",tipo="cartella",percorso=str(shared),conserva=1)
+    for n in range(3):
+        job=backup.run();assert job.esito=="ok",job.dettagli
+        (shared/job.file).rename(shared/f"{backup.prefix()}-2021010{n}-000000.tdbk")
+        (backup.local_folder()/job.file).unlink()
+    mine=sorted(p.name for p in shared.glob(f"{backup.prefix()}-*.tdbk"))
+    assert len(mine)==1 and all(f.exists() for f in theirs)
+    def broken(source,dest,key,salt):
+        Path(dest).write_bytes(b"mezzo file");raise OSError(28,"spazio esaurito")
+    monkeypatch.setattr(backup,"encrypt",broken)
+    job=backup.run()
+    assert job.esito=="errore" and "spazio esaurito" in job.dettagli
+    assert not list(backup.local_folder().glob("*.tdbk")) and not list(backup.local_folder().glob("*.part"))
+
+def test_another_server_clears_the_pin(admin,trial):
+    user,c=admin
+    d=destination(nome="SFTP",tipo="sftp",host="vecchio.example.com",utente="u",secret="x",percorso="/b",impronta="ssh-ed25519 VECCHIA")
+    form={"azione":"destinazione","id":str(d.pk),"nome":"SFTP","tipo":"sftp","utente":"u","percorso":"/b","conserva":"3","attiva":"on"}
+    c.post(f"/platform/backup/?modifica={d.pk}",{**form,"host":"vecchio.example.com"})
+    d.refresh_from_db();assert d.impronta=="ssh-ed25519 VECCHIA"
+    c.post(f"/platform/backup/?modifica={d.pk}",{**form,"host":"nuovo.example.com"})
+    d.refresh_from_db();assert d.host=="nuovo.example.com" and d.impronta==""

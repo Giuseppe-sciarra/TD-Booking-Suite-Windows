@@ -10,6 +10,12 @@ from urllib.parse import urlparse
 
 def key():return base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()
 
+def replace_json(path,data):
+    """All or nothing: config.json holds the only copy of the keys. The new file inherits the folder's rights."""
+    temporary=Path(str(path)+".tmp")
+    with open(temporary,"w",encoding="utf-8") as f:json.dump(data,f,ensure_ascii=False,indent=1);f.flush();os.fsync(f.fileno())
+    os.replace(temporary,path)
+
 def write_new(path,data):
     with os.fdopen(os.open(path,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600),"w",encoding="utf-8") as f:json.dump(data,f,ensure_ascii=False,indent=1)
 
@@ -37,10 +43,7 @@ def prepare(data,origine=None,porta=None,indirizzi=None,pg_bin=None,pg_port=5543
         config["origine"]=f"https://{socket.gethostname().lower()}"+("" if config["porta"]==443 else f":{config['porta']}")
     if indirizzi is not None:config["indirizzi"]=[h.strip() for h in indirizzi.split(",") if h.strip()]
     if pg_bin:config["pg_bin"]=str(pg_bin)
-    text=json.dumps(config,ensure_ascii=False,indent=1)
-    if config_path.exists():
-        # rewritten in place: the file keeps the permissions set by the installer
-        with open(config_path,"r+",encoding="utf-8") as f:f.write(text);f.truncate()
+    if config_path.exists():replace_json(config_path,config)
     else:write_new(config_path,config)
     return config,admin
 

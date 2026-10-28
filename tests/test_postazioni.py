@@ -86,3 +86,38 @@ def test_certificate_download_and_fingerprint(admin,trial):
     assert answer.status_code==200 and b"BEGIN CERTIFICATE" in answer.content
     user,staff=admin
     assert certs.fingerprint()[:9] in staff.get("/platform/postazioni/").content.decode()
+
+def test_certificates_cover_this_pc_and_the_authority_only_signs_for_it(settings):
+    import ssl,socket
+    from cryptography import x509
+    from tdwin import certs
+    cert,key=certs.ensure()
+    ca=x509.load_pem_x509_certificate(certs.ca_path().read_bytes())
+    assert certs.permitted(ca,"ufficio.test") and certs.permitted(ca,"192.168.7.9") and not certs.permitted(ca,"www.banca.example")
+    leaf=x509.load_pem_x509_certificates(cert.read_bytes())[0]
+    alt={str(n.value) for n in leaf.extensions.get_extension_for_class(x509.SubjectAlternativeName).value}
+    assert {"localhost","127.0.0.1","ufficio.test",socket.gethostname().lower()}<=alt
+    # Python's own verification, strict, with the name constraints
+    context=ssl.create_default_context(cafile=str(certs.ca_path()));context.load_cert_chain(cert,key)
+    first=certs.fingerprint()
+    assert certs.ensure()==(cert,key) and certs.fingerprint()==first  # nothing changes without a reason
+    settings.TDWIN_CONFIG={**settings.TDWIN_CONFIG,"indirizzi":["ufficio.test","booking.example.com"]}
+    certs.ensure()
+    assert certs.fingerprint()!=first and certs.permitted(x509.load_pem_x509_certificate(certs.ca_path().read_bytes()),"booking.example.com")
+
+def test_workstation_cookie_is_renewed_while_in_use(admin,trial):
+    user,staff=admin
+    item,code=postazioni.new_code("Reception");token,_=postazioni.pair(code)
+    far=login(user,remote());far.cookies[postazioni.COOKIE]=token
+    answer=far.get("/platform/")
+    assert answer.status_code==200 and answer.cookies[postazioni.COOKIE]["max-age"]==400*86400
+    assert postazioni.COOKIE not in far.get("/platform/").cookies  # once every few minutes, not on every page
+
+def test_admin_recovery_link_opens_without_a_licence(admin):
+    user,staff=admin
+    from core.platform import invitation
+    user.set_unusable_password();user.save()
+    link=invitation(user)
+    from django.test import Client
+    page=Client().get(link[link.index("/invite/"):])
+    assert page.status_code==200 and "password" in page.content.decode().lower()

@@ -2,7 +2,6 @@
 and a restore over changed data. Runs when TDWIN_PG_ADMIN points to a PostgreSQL superuser, for example
 TDWIN_PG_ADMIN=postgresql://postgres:password@127.0.0.1:55432/postgres"""
 import json,os,socket,ssl,subprocess,sys,time,urllib.request
-from pathlib import Path
 from urllib.parse import urlparse
 import pytest
 from tests.conftest import ROOT
@@ -53,9 +52,10 @@ def test_setup_backup_https_and_restore(install,seller):
     assert again["install_id"]==json.loads((data/"config.json").read_text())["install_id"]  # an update keeps the keys
     install.run("migrate","--noinput",admin=True)
     install.run("grant_runtime",admin=True)
-    install.run("check_runtime")
+    install.run("check_runtime",TDBS_EDITION="cloud")
     install.run("collectstatic","--noinput","-v0")
-    install.shell("from core.models import User,Tenant;User.objects.create_superuser('admin@example.invalid','A-test-password-12345');Tenant.objects.create(slug='bar-roma',name='Bar Roma')")
+    install.shell("from core.models import User,Tenant;User.objects.create_superuser('admin@example.invalid','A-test-password-12345');Tenant.objects.create(slug='bar-roma',name='Bar Roma');Tenant.objects.create(slug='pizzeria',name='Pizzeria')")
+    # two businesses: the service must take the edition from the licence before the core's runtime check
     # HTTPS: the service makes the certificates, checks the database and answers with the local authority
     server=subprocess.Popen([sys.executable,"-m","django","serve_https"],env=install.env,cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
     try:
@@ -86,9 +86,9 @@ def test_setup_backup_https_and_restore(install,seller):
     (data/"pw").write_text("password-dei-backup-1\n")
     done=install.run("ripristina_backup",str(file),"--password-file",str(data/"pw"),admin=True)
     assert "Ripristino completato" in done.stdout
-    install.run("migrate","--noinput",admin=True);install.run("grant_runtime",admin=True);install.run("check_runtime")
+    install.run("migrate","--noinput",admin=True);install.run("grant_runtime",admin=True);install.run("check_runtime",TDBS_EDITION="cloud")
     restored=json.loads((data/"config.json").read_text())
     assert restored["env"]["DJANGO_SECRET_KEY"]==before["env"]["DJANGO_SECRET_KEY"] and restored["install_id"]==before["install_id"]
-    assert install.shell("from core.models import Tenant;print(list(Tenant.objects.values_list('name',flat=True)))")=="['Bar Roma']"
+    assert install.shell("from core.models import Tenant;print(sorted(Tenant.objects.values_list('name',flat=True)))")=="['Bar Roma', 'Pizzeria']"
     assert any(db.startswith("tdwin_e2e_prima_") for db in psql("SELECT datname FROM pg_database").split())
     assert not list((data/"tmp").iterdir())

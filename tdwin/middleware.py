@@ -1,28 +1,30 @@
 """Windows edition, on every request: the first start, the registered workstations and the licence."""
-import socket
+import time
 from urllib.parse import urlencode
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.utils import timezone
+from . import netnames
 
 # reachable from any device: booking pages and links for the customers of the businesses, the pairing page
 PUBLIC=("/book/","/action/","/brand/","/site/","/static/","/prezzi/","/privacy/","/perche-sceglierci/","/perche-sceglierlo/","/prova/","/api/wordpress/","/postazione/")
 # needed before the administrator exists
 SETUP=("/static/","/site/","/primo-avvio/")
 # still open without a licence: sign in, the licence itself and the backups, so the data stays reachable
-UNLICENSED=SETUP+("/postazione/","/login/","/logout/","/verify/","/security/","/passkey/","/platform/licenza/","/platform/backup/")
+UNLICENSED=SETUP+("/postazione/","/login/","/logout/","/verify/","/security/","/passkey/","/invite/","/platform/licenza/","/platform/backup/")
 
-def own_addresses():
-    found={"127.0.0.1","::1"}
-    try:found|={info[4][0] for info in socket.getaddrinfo(socket.gethostname(),None)}
-    except OSError:pass
-    return found
-LOCAL=own_addresses()
+_local={"at":-1e9,"value":set()}
+def local_addresses():
+    """This PC's addresses, read again once a minute: a new IP or a cable plugged in counts at once."""
+    if time.monotonic()-_local["at"]>60:_local.update(at=time.monotonic(),value=netnames.own_addresses())
+    return _local["value"]
 
 def is_local(request):
-    """The server PC itself. Not when a proxy forwards the request: everything would look local."""
+    """The server PC itself. Not when a proxy adds its headers: everything would look local.
+    shortcut: a port forward on the server PC (netsh portproxy, a proxy without X-Forwarded-For) also looks
+    local and skips the workstation count; acceptable while the licence is a deterrent, not DRM"""
     meta=request.META
-    return meta.get("REMOTE_ADDR") in LOCAL and not (meta.get("HTTP_X_FORWARDED_FOR") or meta.get("HTTP_FORWARDED"))
+    return meta.get("REMOTE_ADDR") in local_addresses() and not (meta.get("HTTP_X_FORWARDED_FOR") or meta.get("HTTP_FORWARDED"))
 
 _ready=[]
 def configured():
@@ -53,7 +55,9 @@ class WindowsMiddleware:
                 return HttpResponse("Servizio non attivo.",status=503,content_type="text/plain; charset=utf-8")
             return redirect("/platform/licenza/")
         request.extra_notices=notices(request,state)
-        return self.get_response(request)
+        response=self.get_response(request)
+        if getattr(request,"renew_postazione",False):postazioni.set_cookie(response,request.COOKIES[postazioni.COOKIE])
+        return response
 
 def notices(request,state):
     """The trial's last days, a licence about to expire, backups off or failing: on top of the agency's pages."""

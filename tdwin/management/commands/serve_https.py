@@ -9,8 +9,9 @@ class Command(BaseCommand):
         from django.core.wsgi import get_wsgi_application
         from tdwin import certs,licensing
         cert,key=certs.ensure()
-        call_command("check_runtime")
+        # first the edition from the licence: the core's check refuses Private with more than one business
         licensing.apply(force=True)
+        call_command("check_runtime")
         address=(settings.TDWIN_CONFIG.get("ascolto","0.0.0.0"),int(settings.TDWIN_CONFIG.get("porta",8443)))
         server=wsgi.Server(address,get_wsgi_application(),numthreads=int(settings.TDWIN_CONFIG.get("thread",16)),server_name="TD Booking Suite")
         server.ssl_adapter=BuiltinSSLAdapter(str(cert),str(key))

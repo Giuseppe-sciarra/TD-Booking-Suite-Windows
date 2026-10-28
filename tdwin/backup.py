@@ -16,7 +16,13 @@ from .models import ImpostazioniBackup,Destinazione,Esecuzione
 
 log=logging.getLogger("tdwin.backup")
 MAGIC=b"TDBS-WINBACKUP-1\n"
-PATTERN="tdbs-*.tdbk"
+PATTERN="tdbs-*.tdbk"  # every backup, of any installation
+
+def prefix():
+    """The installation's code in the file names: installations sharing a NAS or FTP folder keep their own copies."""
+    from .licensing import install_code,normalize
+    return "tdbs-"+normalize(install_code()).lower()
+def own(name):return fnmatch(name,prefix()+"-*.tdbk")
 CHUNK=1<<20
 NO_WINDOW=getattr(subprocess,"CREATE_NO_WINDOW",0)
 
@@ -125,7 +131,7 @@ class Folder:
         self.root.mkdir(parents=True,exist_ok=True)
     def put(self,local,name):
         shutil.copyfile(local,self.root/(name+".part"));os.replace(self.root/(name+".part"),self.root/name)
-    def list(self):return [p.name for p in self.root.glob(PATTERN)]
+    def list(self):return [p.name for p in self.root.glob(PATTERN) if own(p.name)]
     def remove(self,name):(self.root/name).unlink()
     def close(self):pass
 
@@ -144,7 +150,7 @@ class Network:
     def put(self,local,name):
         with open(local,"rb") as src,self.smb.open_file(self.root+"\\"+name+".part",mode="wb") as out:shutil.copyfileobj(src,out,CHUNK)
         self.smb.replace(self.root+"\\"+name+".part",self.root+"\\"+name)
-    def list(self):return [n for n in self.smb.listdir(self.root) if fnmatch(n,PATTERN)]
+    def list(self):return [n for n in self.smb.listdir(self.root) if own(n)]
     def remove(self,name):self.smb.remove(self.root+"\\"+name)
     def close(self):pass
 
@@ -155,17 +161,26 @@ class TLSReuse(ftplib.FTP_TLS):
         if self._prot_p:conn=self.context.wrap_socket(conn,server_hostname=self.host,session=self.sock.session)
         return conn,size
 
+def ftps(d,verify):
+    context=ssl.create_default_context()
+    if not verify:context.check_hostname=False;context.verify_mode=ssl.CERT_NONE
+    ftp=TLSReuse(context=context);ftp.connect(d.host,d.porta or 21,timeout=60)
+    try:ftp.auth()
+    except BaseException:ftp.close();raise
+    return ftp
+
 class FTP:
     def __init__(self,d):
         tls=d.tipo=="ftps"
         if tls:
-            context=ssl.create_default_context();context.check_hostname=False;context.verify_mode=ssl.CERT_NONE  # pinned below instead
-            self.ftp=TLSReuse(context=context)
-        else:self.ftp=ftplib.FTP()
-        self.ftp.connect(d.host,d.porta or 21,timeout=60)
-        if tls:
-            self.ftp.auth()
-            pin(d,"sha256 "+hashlib.sha256(self.ftp.sock.getpeercert(binary_form=True)).hexdigest())
+            # a certificate Windows would trust (Let's Encrypt, renewed every few months) needs no pin;
+            # a self-signed one, as on many NAS, is pinned at the first connection
+            try:self.ftp=ftps(d,True)
+            except ssl.SSLCertVerificationError:
+                self.ftp=ftps(d,False)
+                pin(d,"sha256 "+hashlib.sha256(self.ftp.sock.getpeercert(binary_form=True)).hexdigest())
+        else:
+            self.ftp=ftplib.FTP();self.ftp.connect(d.host,d.porta or 21,timeout=60)
         self.ftp.login(d.utente or "anonymous",secret(d))
         if tls:self.ftp.prot_p()
         for part in PurePosixPath(d.percorso or "/").parts:
@@ -177,7 +192,7 @@ class FTP:
     def list(self):
         try:names=self.ftp.nlst()
         except ftplib.error_perm:names=[]  # some servers answer 550 for an empty folder
-        return [PurePosixPath(n).name for n in names if fnmatch(PurePosixPath(n).name,PATTERN)]
+        return [PurePosixPath(n).name for n in names if own(PurePosixPath(n).name)]
     def remove(self,name):self.ftp.delete(name)
     def close(self):
         try:self.ftp.quit()
@@ -205,7 +220,7 @@ class SFTP:
         self.sftp.put(str(local),self._path(name+".part"))
         try:self.sftp.posix_rename(self._path(name+".part"),self._path(name))
         except IOError:self.sftp.rename(self._path(name+".part"),self._path(name))
-    def list(self):return [n for n in self.sftp.listdir(self.root) if fnmatch(n,PATTERN)]
+    def list(self):return [n for n in self.sftp.listdir(self.root) if own(n)]
     def remove(self,name):self.sftp.remove(self._path(name))
     def close(self):self.transport.close()
 
@@ -230,7 +245,7 @@ def check(d):
         finally:target.close()
 
 def prune(folder,keep):
-    for old in sorted(folder.glob(PATTERN))[:-keep] if keep else []:old.unlink()
+    for old in sorted(p for p in folder.glob(PATTERN) if own(p.name))[:-keep] if keep else []:old.unlink()
 
 def run(manual=False):
     row=ImpostazioniBackup.get()
@@ -240,12 +255,18 @@ def run(manual=False):
         if not row.chiave:raise ValueError("Manca la password dei backup: impostala nella pagina Backup.")
         salt,key=unb64(row.sale),unb64(reveal(row.chiave,"backup-key"))
         folder=local_folder();folder.mkdir(parents=True,exist_ok=True)
-        while (folder/(name:=f"tdbs-{timezone.localtime():%Y%m%d-%H%M%S}.tdbk")).exists():time.sleep(1)  # two runs in the same second
-        with tempfile.TemporaryDirectory(dir=work_root()) as work:
-            work=Path(work)
-            pg([tool("pg_dump"),"-Fc","--no-password","-d",settings.DATABASES["default"]["NAME"],"-f",str(work/"database.dump")])
-            bundle(work,work/"bundle.tar")
-            encrypt(work/"bundle.tar",folder/name,key,salt)
+        while (folder/(name:=f"{prefix()}-{timezone.localtime():%Y%m%d-%H%M%S}.tdbk")).exists():time.sleep(1)  # two runs in the same second
+        part=folder/(name+".part")
+        try:
+            with tempfile.TemporaryDirectory(dir=work_root()) as work:
+                work=Path(work)
+                pg([tool("pg_dump"),"-Fc","--no-password","-d",settings.DATABASES["default"]["NAME"],"-f",str(work/"database.dump")])
+                bundle(work,work/"bundle.tar")
+                part.unlink(missing_ok=True)
+                encrypt(work/"bundle.tar",part,key,salt)
+            # only a complete file gets the backup name: a cut one never counts as a copy
+            os.replace(part,folder/name)
+        finally:part.unlink(missing_ok=True)
         job.file=name;job.dimensione=(folder/name).stat().st_size
         prune(folder,row.conserva_locali)
         lines.append(f"Copia sul PC server: {folder/name}")

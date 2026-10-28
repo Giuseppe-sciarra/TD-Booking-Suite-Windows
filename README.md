@@ -76,27 +76,41 @@ Il certificato lo crea il programma. Le **passkey** funzionano solo dove Windows
 
 ## Licenze
 
-Le licenze le crei tu, sul tuo PC, con `licenze/td-licenze.py`. Ti servono Python 3 e `pip install cryptography`. Su Windows basta il doppio clic su `licenze/TD Licenze.cmd`.
+Le licenze le crei tu, sul tuo PC, con **TD Licenze.exe**. Lo costruisce GitHub a ogni push:
 
-**La prima volta**, una volta sola:
+1. apri **Actions**, poi l'ultima esecuzione verde;
+2. in fondo, in *Artifacts*, scarica **TD-Licenze**;
+3. scompattalo in una cartella e apri `TD Licenze.exe`. Windows lo segnala come l'MSI e si apre allo stesso modo.
+
+L'artefatto è privato come la repo e non va mai dato ai clienti.
+
+| Scheda | A cosa serve |
+|---|---|
+| **Chiave** | La prima volta crea la chiave delle licenze, con una password, e mostra la chiave pubblica da copiare |
+| **Nuova licenza** | Intestatario, attività, postazioni, codice installazione e scadenza: **Crea la licenza**, e la licenza è già negli appunti |
+| **Licenze emesse** | Tutte quelle fatte: doppio clic per copiarne di nuovo una |
+
+Chi preferisce la riga di comando ha `licenze/td_licenze.py`, che fa le stesse cose e usa la stessa cartella. Servono Python 3 e `pip install cryptography`.
+
+**La prima volta**, una volta sola, crea la chiave dalla scheda **Chiave** di TD Licenze.exe, oppure con:
 
 ```bash
-python licenze/td-licenze.py chiave
+python licenze/td_licenze.py chiave
 ```
 
-Il comando crea la **chiave privata**, protetta da una password, in `%APPDATA%\TD Licenze` (su Mac e Linux in `~/.td-licenze`), e stampa la **chiave pubblica**. Poi:
+La **chiave privata**, protetta da una password, finisce in `%APPDATA%\TD Licenze` (su Mac e Linux in `~/.td-licenze`). La **chiave pubblica** la vedi a schermo. Poi:
 
 1. Metti la chiave pubblica in `tdwin/licenza-chiave-pubblica.txt`, fai commit e push. Da quella build in poi il programma accetta le tue licenze.
 2. Copia la cartella `TD Licenze` su una chiavetta: senza la chiave privata non puoi più emettere licenze per le installazioni che esistono già.
 3. La chiave privata non va mai nella repo (`.gitignore` blocca i `.pem`).
 
-**Ogni licenza:**
+**Ogni licenza** si crea dalla scheda **Nuova licenza**, oppure da riga di comando:
 
 ```bash
-python licenze/td-licenze.py            # fa le domande
-python licenze/td-licenze.py crea --intestatario "Bar Roma" --attivita 1 --postazioni 3 --installazione ABCD-EFGH-IJKL-MNOP --scadenza 2027-12-31
-python licenze/td-licenze.py elenco     # quelle emesse, dal registro
-python licenze/td-licenze.py verifica   # incolli una licenza e vedi cosa contiene
+python licenze/td_licenze.py            # fa le domande
+python licenze/td_licenze.py crea --intestatario "Bar Roma" --attivita 1 --postazioni 3 --installazione ABCD-EFGH-IJKL-MNOP --scadenza 2027-12-31
+python licenze/td_licenze.py elenco     # quelle emesse, dal registro
+python licenze/td_licenze.py verifica   # incolli una licenza e vedi cosa contiene
 ```
 
 Le domande sono queste:
@@ -117,6 +131,23 @@ Ogni licenza esce come riga `TDBS1.…` e come file `licenze-emesse/licenza-TD-2
 | arriva alla scadenza | il programma si ferma come a fine prova: restano aperte Licenza e Backup |
 
 Le licenze sono firmate con Ed25519: il programma contiene solo la chiave pubblica, quindi le verifica ma non le può creare, e funziona offline.
+
+## Vetrina pubblica
+
+Il codice resta in questa repo privata. Quello che vedono tutti sta in **[TD-Booking-Suite-per-Windows](https://github.com/Giuseppe-sciarra/TD-Booking-Suite-per-Windows)**, che è la pagina da collegare al sito:
+
+- presentazione;
+- screenshot;
+- istruzioni;
+- gli MSI da scaricare, con la prova di 7 giorni.
+
+A ogni tag, per esempio:
+
+```bash
+git tag v2.8.0 && git push origin v2.8.0
+```
+
+la build fa i test, l'MSI e la prova di installazione. Poi copia nella vetrina `vetrina/README.md` e `docs/screenshots/`, e pubblica lì una Release con l'MSI. Per scrivere nella vetrina usa il secret `VETRINA_TOKEN`: un token fine-grained con *Contents: Read and write* solo su quella repo. Il testo della vetrina si cambia in `vetrina/README.md`.
 
 ## Backup e ripristino
 
@@ -140,7 +171,7 @@ Ogni destinazione ha il pulsante **Prova**, e lo **storico** dice com'è andato 
 
 ## Aggiornare e disinstallare
 
-Per aggiornare, apri l'MSI nuovo sopra quello vecchio: servizi, database e dati restano. Prima di applicare la versione nuova, l'installer salva una copia del database in `backup\prima-dell-aggiornamento.dump`.
+Per aggiornare, apri l'MSI nuovo sopra quello vecchio: servizi, porta, database e dati restano. Prima di applicare la versione nuova, l'installer salva una copia del database in `backup\prima-dell-aggiornamento.dump`. Se l'aggiornamento non riesce, Windows rimette la versione di prima e la fa ripartire.
 
 La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramData\TD Booking Suite`. Per cancellarli davvero, elimina quella cartella.
 

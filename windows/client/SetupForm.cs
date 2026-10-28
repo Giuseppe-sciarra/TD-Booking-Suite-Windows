@@ -112,15 +112,7 @@ namespace TDBookingSuite
             if ((errors & SslPolicyErrors.RemoteCertificateNameMismatch) != 0) throw new Exception("questo indirizzo non è tra quelli del certificato del server. Usa l'indirizzo della pagina Postazioni.");
             var text = Encoding.ASCII.GetString(body);
             var ca = new X509Certificate2(text.Contains("-----BEGIN") ? Config.PemToDer(text) : body);
-            using (var chain = new X509Chain())
-            {
-                chain.ChainPolicy.ExtraStore.Add(ca);
-                chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
-                chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-                var built = chain.Build(leaf);
-                var root = chain.ChainElements[chain.ChainElements.Count - 1].Certificate;
-                if (!built || root.Thumbprint != ca.Thumbprint) throw new Exception("il certificato del server non è firmato dalla sua autorità: collegamento non sicuro.");
-            }
+            if (!Config.SignedBy(leaf, ca)) throw new Exception("il certificato del server non è firmato dalla sua autorità: collegamento non sicuro.");
             return Config.Fingerprint(ca.RawData);
         }
     }

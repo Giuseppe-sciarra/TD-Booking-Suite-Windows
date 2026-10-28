@@ -1,7 +1,15 @@
 ﻿# Toglie servizi, regola del firewall e fiducia nel certificato prima della disinstallazione o di un aggiornamento.
 # Dati, backup e licenza restano in C:\ProgramData\TD Booking Suite.
+# -Aggiornamento: l'MSI nuovo sostituisce i file, quindi i servizi si fermano soltanto e restano registrati;
+# se l'aggiornamento non riesce, Windows rimette i file di prima e i servizi ripartono.
+param([switch]$Aggiornamento)
 . "$PSScriptRoot\comune.ps1"
 $ErrorActionPreference = "Continue"
+if ($Aggiornamento) {
+    Stop-Program
+    Stop-Service TDBookingDB -Force -ErrorAction SilentlyContinue
+    exit 0
+}
 foreach ($name in $Services) {
     if (Get-Service $name -ErrorAction SilentlyContinue) {
         Stop-Service $name -Force
