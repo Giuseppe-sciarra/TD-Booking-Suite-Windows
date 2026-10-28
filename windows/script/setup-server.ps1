@@ -104,7 +104,9 @@ try {
     if (-not (Test-Path $key)) { New-Item -Path $key | Out-Null }
     Set-ItemProperty -Path $key -Name "Modalita" -Value $config.modalita
 
-    # 7. start, then this PC trusts the program's own certification authority
+    # 7. start, then this PC trusts the program's own certification authority. Services still running (a change of
+    # type or port from the installer, a run by hand) are restarted: they read config.json only when they start
+    Stop-Program
     Start-Program
     Wait-Web ([int]$config.porta)
     $ca = Join-Path $Data "certs\ca.crt"
