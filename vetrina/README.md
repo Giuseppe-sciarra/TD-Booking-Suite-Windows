@@ -14,6 +14,8 @@ TD Booking Suite gestisce appuntamenti, tavoli, camere, lezioni ed eventi. Si in
 | **Postazioni**: ogni PC si registra una volta con un codice di 6 cifre | **Backup automatici**, cifrati, su disco esterno, NAS o server remoto |
 | ![Importa clienti](screenshots/import.png) | ![Anteprima dell'import](screenshots/import-anteprima.png) |
 | **Importa i clienti** dal programma di prima, da Excel o CSV | **Anteprima** prima di importare: cosa entra e cosa no |
+| ![Rete e certificato](screenshots/rete.png) | ![Aspetto](screenshots/aspetto.png) |
+| **Rete e certificato**: indirizzo pubblico, proxy e certificato, solo per l'amministratore | **Il tuo marchio**: nome, loghi, colore principale e tema di partenza |
 
 ## Cosa fa
 
@@ -23,6 +25,7 @@ TD Booking Suite gestisce appuntamenti, tavoli, camere, lezioni ed eventi. Si in
 - **Importa dal programma di prima**: anagrafica e storico dei trattamenti da Excel o CSV. Per ogni colonna scegli cosa contiene e guardi l'anteprima prima di importare. Chi c'è già non viene sovrascritto né raddoppiato. I consensi marketing restano da confermare dal cliente.
 - **Una o più attività**: la versione singola è per un'attività, la versione portale per chi ne gestisce diverse.
 - **Più postazioni**: i PC della rete usano il programma per la postazione; browser e telefono vanno bene lo stesso. Le sedi lontane si collegano allo stesso server.
+- **Da fuori dall'ufficio**: dietro un proxy con il suo certificato (NPMplus, Caddy, IIS) o con un tuo certificato caricato nel programma. Anche i certificati autofirmati vanno bene: le postazioni li riconoscono dall'impronta. Il programma per le postazioni si collega anche alla versione web su Docker.
 - **Sicurezza**:
   - HTTPS anche in rete locale;
   - secondo fattore con Authenticator o passkey;

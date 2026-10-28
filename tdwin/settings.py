@@ -24,13 +24,14 @@ INSTALLED_APPS=INSTALLED_APPS+["tdwin"]
 ROOT_URLCONF="tdwin.urls"
 _guard=MIDDLEWARE.index("core.middleware.GuardMiddleware")
 MIDDLEWARE=MIDDLEWARE[:_guard]+["tdwin.middleware.WindowsMiddleware"]+MIDDLEWARE[_guard:]
+MIDDLEWARE=[("tdwin.middleware.CsrfMiddleware" if m=="django.middleware.csrf.CsrfViewMiddleware" else m) for m in MIDDLEWARE]
 # the configured address plus this PC's names and addresses, the same that the certificate covers
 from tdwin.netnames import names as _names
 _port=int(CONFIG.get("porta",8443))
 _hosts=[f"[{h}]" if ":" in h else h for h in _names(CONFIG.get("indirizzi",[]))]
 ALLOWED_HOSTS=ALLOWED_HOSTS+_hosts
 CSRF_TRUSTED_ORIGINS=CSRF_TRUSTED_ORIGINS+["https://"+h+("" if _port==443 else f":{_port}") for h in _hosts]
-EXTRA_NAV=[{"label":"Licenza","url":"/platform/licenza/"},{"label":"Postazioni","url":"/platform/postazioni/"},{"label":"Backup","url":"/platform/backup/"}]
+EXTRA_NAV=[{"label":"Licenza","url":"/platform/licenza/"},{"label":"Postazioni","url":"/platform/postazioni/"},{"label":"Backup","url":"/platform/backup/"},{"label":"Rete e certificato","url":"/platform/rete/"}]
 MORE_TENANTS_HINT="Per più attività serve una licenza Portale con più attività: la inserisci da Licenza."
 EDITION_LABEL="Windows"
 STATIC_ROOT=Path(__file__).resolve().parent.parent/"static-collected"  # made by windows/build.ps1

@@ -117,23 +117,44 @@ namespace TDBookingSuite
             core.Navigate(config.Server + "/");
         }
 
-        /// <summary>The server's own authority is accepted only when it is the one registered at the first start.</summary>
+        bool warned;
+
+        /// <summary>A certificate Windows does not trust is accepted only when it is the one registered at the first
+        /// start: the server's own authority, or the server's certificate itself when it is self-signed.</summary>
         void CertificateError(object sender, CoreWebView2ServerCertificateErrorDetectedEventArgs e)
         {
-            var chain = e.ServerCertificate.PemEncodedIssuerCertificateChain;
             var accepted = false;
-            if (config.Ca != "" && e.ErrorStatus == CoreWebView2WebErrorStatus.CertificateIsInvalid && config.SameOrigin(e.RequestUri) && chain.Count > 1)
+            var status = e.ErrorStatus;
+            if (config.Ca != "" && config.SameOrigin(e.RequestUri) &&
+                (status == CoreWebView2WebErrorStatus.CertificateIsInvalid || status == CoreWebView2WebErrorStatus.CertificateCommonNameIsIncorrect))
             {
-                // the last one must be the registered authority, and it must have signed the server's certificate
-                var authority = new X509Certificate2(Config.PemToDer(chain[chain.Count - 1]));
                 var server = new X509Certificate2(Config.PemToDer(e.ServerCertificate.ToPemEncoding()));
-                accepted = Config.Fingerprint(authority.RawData) == config.Ca && Config.SignedBy(server, authority);
+                if (config.Ca.StartsWith(Config.CertPrefix)) accepted = Config.CertPrefix + Config.Fingerprint(server.RawData) == config.Ca;
+                else
+                {
+                    // the last one must be the registered authority, and it must have signed the server's certificate
+                    var chain = e.ServerCertificate.PemEncodedIssuerCertificateChain;
+                    if (chain.Count > 1)
+                    {
+                        var authority = new X509Certificate2(Config.PemToDer(chain[chain.Count - 1]));
+                        accepted = Config.Fingerprint(authority.RawData) == config.Ca && Config.SignedBy(server, authority);
+                    }
+                }
             }
             e.Action = accepted ? CoreWebView2ServerCertificateErrorAction.AlwaysAllow : CoreWebView2ServerCertificateErrorAction.Cancel;
-            if (!accepted)
-                BeginInvoke((Action)(() => MessageBox.Show(this,
-                    "Il certificato del server non è quello registrato su questa postazione. Se il server è stato reinstallato, usa Cambia server dal menu della finestra (clic sull'icona in alto a sinistra) e controlla l'impronta.",
-                    "TD Booking Suite", MessageBoxButtons.OK, MessageBoxIcon.Warning)));
+            if (accepted || warned) return;
+            warned = true;
+            BeginInvoke((Action)(() =>
+            {
+                if (MessageBox.Show(this,
+                    "Il certificato del server non è quello registrato su questa postazione: forse è stato rinnovato o cambiato, oppure qualcuno si mette in mezzo.\r\n\r\n" +
+                    "Vuoi vedere il nuovo certificato con la sua impronta e decidere se accettarlo?",
+                    "TD Booking Suite", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+                {
+                    Process.Start(Application.ExecutablePath, "--configura");
+                    Close();
+                }
+            }));
         }
 
         static void OpenOutside(string url)

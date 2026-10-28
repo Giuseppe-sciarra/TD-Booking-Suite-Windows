@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.IO;
 using System.Net;
 using System.Net.Security;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
@@ -39,7 +40,7 @@ namespace TDBookingSuite
             var title = new Label { Text = "Collega questa postazione", Font = new Font("Segoe UI Semibold", 14f), AutoSize = true, Dock = DockStyle.Top };
             var help = new Label
             {
-                Text = "Scrivi l'indirizzo del programma, quello della pagina Postazioni del server. Per esempio https://ufficio-pc:8443",
+                Text = "Scrivi l'indirizzo del programma, quello della pagina Postazioni del server, per esempio https://ufficio-pc:8443. Va bene anche l'indirizzo della versione web, per esempio https://booking.tuosito.it",
                 Dock = DockStyle.Top, Height = 52, Padding = new Padding(0, 8, 0, 0)
             };
             address.Text = current?.Server ?? "";
@@ -66,11 +67,14 @@ namespace TDBookingSuite
             status.Text = "Mi collego a " + server + "...";
             try
             {
-                var ca = await Task.Run(() => Probe(server));
+                var ca = await Task.Run(() => Config.Probe(server));
                 Result = new Config { Server = server, Ca = ca };
                 if (ca == "") status.Text = "Collegamento sicuro: il certificato del server è riconosciuto da Windows.";
                 else if (suggested != null && suggested.Ca == ca && string.Equals(suggested.Server, server, StringComparison.OrdinalIgnoreCase))
-                    status.Text = "È il server installato su questo PC: impronta del certificato verificata.\r\n\r\n" + ca;
+                    status.Text = "È il server installato su questo PC: impronta del certificato verificata.\r\n\r\n" + Config.Shown(ca);
+                else if (ca.StartsWith(Config.CertPrefix))
+                    status.Text = "Il certificato del server non è riconosciuto da Windows, per esempio perché è autofirmato. La sua impronta:\r\n\r\n" + Config.Shown(ca) +
+                        "\r\n\r\nControlla che sia uguale a quella che ti dà chi gestisce il server (TD Booking Suite per Windows la mostra nella pagina Postazioni), poi premi Continua.";
                 else status.Text = "Impronta del certificato del server:\r\n\r\n" + ca + "\r\n\r\nControlla che sia uguale a quella nella pagina Postazioni del server, poi premi Continua.";
                 ok.Enabled = true;
                 AcceptButton = ok;
@@ -81,39 +85,6 @@ namespace TDBookingSuite
                 status.Text = "Non riesco a collegarmi: " + ex.Message;
             }
             finally { connect.Enabled = true; }
-        }
-
-        /// <summary>The fingerprint of the server's own certification authority, or "" when Windows trusts the certificate.</summary>
-        static string Probe(string server)
-        {
-            X509Certificate2 leaf = null;
-            var errors = SslPolicyErrors.None;
-            var request = (HttpWebRequest)WebRequest.Create(server + "/postazione/certificato.crt");
-            request.Timeout = 15000;
-            request.AllowAutoRedirect = false;
-            // only to read the certificate: it is checked below, before anything is trusted
-            request.ServerCertificateValidationCallback = (s, cert, chain, err) => { leaf = new X509Certificate2(cert); errors = err; return true; };
-            byte[] body;
-            try
-            {
-                using (var response = (HttpWebResponse)request.GetResponse())
-                using (var copy = new MemoryStream())
-                {
-                    response.GetResponseStream().CopyTo(copy);
-                    body = copy.ToArray();
-                }
-            }
-            catch (WebException ex) when (ex.Response is HttpWebResponse r)
-            {
-                throw new Exception(r.StatusCode == HttpStatusCode.NotFound ? "a questo indirizzo non c'è un server TD Booking Suite." : "il server risponde " + (int)r.StatusCode + ".");
-            }
-            catch (WebException ex) { throw new Exception(ex.Status == WebExceptionStatus.NameResolutionFailure ? "nome del server sconosciuto." : ex.Status == WebExceptionStatus.Timeout ? "il server non risponde." : ex.Message); }
-            if (errors == SslPolicyErrors.None) return "";
-            if ((errors & SslPolicyErrors.RemoteCertificateNameMismatch) != 0) throw new Exception("questo indirizzo non è tra quelli del certificato del server. Usa l'indirizzo della pagina Postazioni.");
-            var text = Encoding.ASCII.GetString(body);
-            var ca = new X509Certificate2(text.Contains("-----BEGIN") ? Config.PemToDer(text) : body);
-            if (!Config.SignedBy(leaf, ca)) throw new Exception("il certificato del server non è firmato dalla sua autorità: collegamento non sicuro.");
-            return Config.Fingerprint(ca.RawData);
         }
     }
 }

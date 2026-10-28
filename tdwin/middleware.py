@@ -26,6 +26,14 @@ def is_local(request):
     meta=request.META
     return meta.get("REMOTE_ADDR") in local_addresses() and not (meta.get("HTTP_X_FORWARDED_FOR") or meta.get("HTTP_FORWARDED"))
 
+from django.middleware.csrf import CsrfViewMiddleware
+class CsrfMiddleware(CsrfViewMiddleware):
+    """Django's, with the trusted origins read on every check: the public address of Rete e certificato counts
+    at once, also behind a proxy that rewrites the Host."""
+    csrf_trusted_origins_hosts=property(CsrfViewMiddleware.csrf_trusted_origins_hosts.real_func)
+    allowed_origins_exact=property(CsrfViewMiddleware.allowed_origins_exact.real_func)
+    allowed_origin_subdomains=property(CsrfViewMiddleware.allowed_origin_subdomains.real_func)
+
 _ready=[]
 def configured():
     if not _ready:
@@ -36,9 +44,13 @@ def configured():
 class WindowsMiddleware:
     def __init__(self,get_response):self.get_response=get_response
     def __call__(self,request):
-        from . import licensing,postazioni
+        from . import licensing,postazioni,rete
         path=request.path
-        request.server_pc=is_local(request);request.postazione=None
+        network=rete.apply()
+        # a declared proxy is never the server PC, even on this PC and without X-Forwarded-For
+        request.server_pc=is_local(request) and not rete.trusted(request.META,network["proxies"]);request.postazione=None
+        # behind a trusted proxy the visitor's own address, for the login limits and the workstation list
+        if network["proxies"]:request.META["REMOTE_ADDR"]=rete.client(request.META,network["proxies"])
         if not configured():
             if path.startswith(SETUP):return self.get_response(request)
             if request.server_pc:return redirect("/primo-avvio/")
@@ -75,4 +87,8 @@ def notices(request,state):
             found.append({"title":"Backup non attivo","text":"Se il PC si rompe perdi prenotazioni e clienti: attiva il backup automatico","url":"/platform/backup/","action":"Attiva il backup"})
         elif last and last.esito!="ok":
             found.append({"title":"Ultimo backup non riuscito","text":f"Del {timezone.localtime(last.inizio):%d/%m/%Y %H:%M}: controlla le destinazioni","url":"/platform/backup/","action":"Apri Backup"})
+    if not request.path.startswith("/platform/rete/"):
+        from . import rete
+        for text in rete.warnings(rete.apply())[:1]:
+            if "scad" in text:found.append({"title":"Certificato del server","text":text,"url":"/platform/rete/","action":"Apri Rete e certificato"})
     return found

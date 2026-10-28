@@ -16,12 +16,13 @@ def load_tool():
 @pytest.fixture(autouse=True)
 def fresh_state(db):
     """Every test starts from an empty data folder and no cached licence state."""
-    from tdwin import licensing,middleware
+    from tdwin import licensing,middleware,rete
     for name in ("licenza","backup","tmp","certs"):shutil.rmtree(settings.TDWIN_DATA/name,ignore_errors=True)
     licensing._file.update(stamp=None,value=(None,""));licensing._applied.update(at=0.0,value=None);middleware._ready.clear()
-    saved={k:getattr(settings,k) for k in ("EDITION","TENANT_LIMIT","EDITION_LABEL")}
+    saved={k:getattr(settings,k) for k in ("EDITION","TENANT_LIMIT","EDITION_LABEL","ALLOWED_HOSTS","CSRF_TRUSTED_ORIGINS","PUBLIC_ORIGIN")}
+    rete._applied.update(at=-1e9,value=None);rete._base.clear();rete._served.update(stamp=None);rete.ADAPTERS.clear()
     yield
-    licensing._applied.update(at=0.0,value=None)
+    licensing._applied.update(at=0.0,value=None);rete._applied.update(at=-1e9,value=None);rete._base.clear();rete.ADAPTERS.clear()
     for k,v in saved.items():setattr(settings,k,v)
 
 @pytest.fixture

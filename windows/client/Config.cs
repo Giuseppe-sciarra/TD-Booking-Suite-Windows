@@ -1,5 +1,7 @@
-using System;
+﻿using System;
 using System.IO;
+using System.Net.Security;
+using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -7,12 +9,16 @@ using System.Text.RegularExpressions;
 
 namespace TDBookingSuite
 {
-    /// <summary>The server this workstation opens and the fingerprint of its certification authority.
-    /// An empty fingerprint means a certificate Windows already trusts (a server in the cloud).</summary>
+    /// <summary>The server this workstation opens and what it trusts: the fingerprint of the server's certification
+    /// authority, "cert:" and the fingerprint of the server's own certificate (self-signed), or nothing for a
+    /// certificate Windows already trusts (a server in the cloud, a proxy with Let's Encrypt).</summary>
     class Config
     {
         public string Server;
         public string Ca = "";
+        /// <summary>Before a fingerprint: the server's own certificate is trusted, not an authority (self-signed).</summary>
+        public const string CertPrefix = "cert:";
+        public static string Shown(string ca) => ca.StartsWith(CertPrefix) ? ca.Substring(CertPrefix.Length) : ca;
 
         static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TD Booking Suite");
         static string FilePath => Path.Combine(Folder, "postazione.txt");
@@ -88,6 +94,49 @@ namespace TDBookingSuite
                 if (!chain.Build(certificate)) return false;
                 return chain.ChainElements[chain.ChainElements.Count - 1].Certificate.Thumbprint == authority.Thumbprint;
             }
+        }
+
+        /// <summary>What this workstation will trust: "" when Windows trusts the certificate (Let's Encrypt, a company
+        /// authority, the web version), the fingerprint of the program's own authority (TD Booking Suite per Windows
+        /// with its internal certificate), or "cert:" and the fingerprint of the certificate itself (self-signed).</summary>
+        public static string Probe(string server)
+        {
+            X509Certificate2 leaf = null;
+            var errors = SslPolicyErrors.None;
+            var request = (HttpWebRequest)WebRequest.Create(server + "/postazione/certificato.crt");
+            request.Timeout = 15000;
+            request.AllowAutoRedirect = false;
+            // only to read the certificate: it is checked below, before anything is trusted
+            request.ServerCertificateValidationCallback = (s, cert, chain, err) => { leaf = new X509Certificate2(cert); errors = err; return true; };
+            byte[] body = null;
+            try
+            {
+                using (var response = (HttpWebResponse)request.GetResponse())
+                using (var copy = new MemoryStream())
+                {
+                    if (response.StatusCode == HttpStatusCode.OK) response.GetResponseStream().CopyTo(copy);
+                    body = copy.ToArray();
+                }
+            }
+            catch (WebException ex) when (ex.Response is HttpWebResponse) { }  // a server without that page: the web version, a proxy
+            catch (WebException ex) { throw new Exception(ex.Status == WebExceptionStatus.NameResolutionFailure ? "nome del server sconosciuto." : ex.Status == WebExceptionStatus.Timeout ? "il server non risponde." : ex.Message); }
+            if (leaf == null) throw new Exception("il server non ha mostrato un certificato: l'indirizzo deve essere https.");
+            // trusted by Windows, but a name only in the CN and not among the alternative names is refused by
+            // WebView2 as by every browser: then this very certificate is the one to recognise
+            if (errors == SslPolicyErrors.None && leaf.Extensions["2.5.29.17"] != null) return "";
+            if (body != null && body.Length > 0)
+            {
+                try
+                {
+                    var text = Encoding.ASCII.GetString(body);
+                    var ca = new X509Certificate2(text.Contains("-----BEGIN") ? PemToDer(text) : body);
+                    if (SignedBy(leaf, ca)) return Fingerprint(ca.RawData);
+                }
+                catch (CryptographicException) { }
+                catch (FormatException) { }
+            }
+            // a certificate no authority known here vouches for: this very certificate, recognised by its fingerprint
+            return CertPrefix + Fingerprint(leaf.RawData);
         }
     }
 }

@@ -1,6 +1,6 @@
 from django.urls import path
 from tdbooking.urls import urlpatterns as core
-from . import views,postazioni,backup_views
+from . import views,postazioni,backup_views,rete_views
 urlpatterns=[
  path("primo-avvio/",views.first_run,name="first_run"),
  path("platform/licenza/",views.licence_view,name="licence"),
@@ -8,5 +8,6 @@ urlpatterns=[
  path("postazione/certificato.crt",postazioni.ca_view,name="ca_certificate"),
  path("platform/postazioni/",postazioni.admin_view,name="workstations"),
  path("platform/backup/",backup_views.page,name="backup"),
+ path("platform/rete/",rete_views.page,name="network"),
  path("platform/backup/scarica/<str:name>",backup_views.download,name="backup_download"),
 ]+core

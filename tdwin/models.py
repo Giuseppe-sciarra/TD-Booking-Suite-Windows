@@ -64,3 +64,13 @@ class Esecuzione(models.Model):
     dettagli=models.TextField(blank=True)
     manuale=models.BooleanField(default=False)
     class Meta:ordering=["-inizio"]
+
+class Rete(models.Model):
+    """One row: how the server is reached from outside. Set by the supreme administrator in Rete e certificato."""
+    indirizzo=models.CharField(max_length=200,blank=True)  # https://booking.example.com, the address used in emails and from outside
+    proxy=models.TextField(blank=True)  # trusted proxies, one address or network per line
+    certificato=models.CharField(max_length=10,default="interno",choices=[("interno","Certificato interno"),("proprio","Certificato caricato")])
+    info=models.JSONField(default=dict)  # subject, issuer, names and expiry of the uploaded certificate
+    aggiornata=models.DateTimeField(auto_now=True)
+    @classmethod
+    def get(cls):return cls.objects.get_or_create(pk=1)[0]

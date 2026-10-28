@@ -3,3 +3,4 @@ form.inline{display:inline}
 .backup-dest{display:grid;gap:4px}
 .backup-dest small{color:var(--muted)}
 .usage-table td form{display:inline;margin:0}
+.steps-list{margin:0 0 12px;padding-left:20px;font-size:14px;line-height:1.55}.steps-list li{margin:0 0 8px}

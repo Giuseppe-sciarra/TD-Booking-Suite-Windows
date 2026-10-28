@@ -89,7 +89,7 @@ def pair_view(request):
     return render(request,"tdwin/postazione.html",{"next":target,"error":error,"over":over,"limit":limit()},status=403 if error else 200)
 
 def admin_view(request):
-    from . import certs
+    from . import rete
     staff_only(request)
     code=None
     if request.method=="POST":
@@ -109,7 +109,7 @@ def admin_view(request):
     items=list(paired().order_by("abbinata"))
     for p in items:p.attiva=p.pk in allowed
     return render(request,"tdwin/postazioni.html",{"items":items,"waiting":list(pending().order_by("creata")),"limit":limit(),"code":code,
-        "origin":settings.PUBLIC_ORIGIN,"fingerprint":certs.fingerprint(),"minutes":CODE_MINUTES})
+        "origin":settings.TDWIN_CONFIG["origine"],"public_origin":rete.apply()["origin"],"fingerprint":rete.fingerprint(),"minutes":CODE_MINUTES})
 
 def ca_view(request):
     """The local certification authority, for phones and browsers that should trust the program's address."""

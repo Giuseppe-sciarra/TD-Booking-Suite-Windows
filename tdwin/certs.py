@@ -3,7 +3,7 @@
 The client program trusts that authority after the first connection (its fingerprint is on the Postazioni page);
 browsers and phones can install it from /postazione/certificato.crt. The server certificate covers the configured
 names, this PC's names and addresses, and is renewed by itself a month before it expires."""
-import datetime,ipaddress,os,socket
+import datetime,ipaddress,os,socket,ssl,tempfile,threading
 from urllib.parse import urlparse
 from django.conf import settings
 from cryptography import x509
@@ -14,19 +14,48 @@ from cryptography.x509.oid import NameOID,ExtendedKeyUsageOID
 def folder():return settings.TDWIN_DATA/"certs"
 def ca_path():return folder()/"ca.crt"
 
+def office():
+    """The address chosen at installation. Not the public one of Rete e certificato: a new public name must not
+    remake the authority that every workstation has registered."""
+    return settings.TDWIN_CONFIG.get("origine") or settings.PUBLIC_ORIGIN
+
 def names():
-    """Every name and address a workstation may use to reach this PC."""
+    """Every name and address a workstation may use to reach this PC: the configured ones, its names and its
+    private addresses. Not the public addresses it finds by itself (a rotating IPv6 one): each new one would
+    remake the authority and every workstation would have to confirm it again."""
     from .netnames import names as local_names
-    return local_names([*settings.TDWIN_CONFIG.get("indirizzi",[]),urlparse(settings.PUBLIC_ORIGIN).hostname])
+    configured=[n for n in [*settings.TDWIN_CONFIG.get("indirizzi",[]),urlparse(office()).hostname] if n]
+    keep={n.lower() for n in configured}
+    out=[]
+    for n in local_names(configured):
+        try:address=ipaddress.ip_address(n)
+        except ValueError:out.append(n);continue
+        if n in keep or any(address in net for net in PRIVATE if net.version==address.version):out.append(n)
+    return out
 
 def _alt(name):
     try:return x509.IPAddress(ipaddress.ip_address(name))
     except ValueError:return x509.DNSName(name)
 
+LOCK=threading.RLock()  # requests check the certificate once a minute: one writer at a time
+
 def _write(path,data):
-    temporary=path.with_suffix(path.suffix+".tmp")
-    with open(temporary,"wb") as f:f.write(data)
-    os.replace(temporary,path)
+    handle,temporary=tempfile.mkstemp(dir=path.parent,prefix=path.name+".")
+    with os.fdopen(handle,"wb") as f:f.write(data)
+    replace(temporary,path)
+
+def replace(source,target):
+    """os.replace, waiting a moment when Windows still has the file open in another thread."""
+    for attempt in range(20):
+        try:return os.replace(source,target)
+        except PermissionError:
+            if attempt==19:raise
+            import time;time.sleep(0.1)
+
+def loadable(cert,key):
+    """True when the HTTPS server can use the pair: both readable and the key is the certificate's."""
+    try:ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH).load_cert_chain(str(cert),str(key));return True
+    except (OSError,ssl.SSLError,ValueError):return False
 
 def _key_pem(key):return key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption())
 
@@ -47,8 +76,9 @@ def authority(wanted):
     folder().mkdir(parents=True,exist_ok=True)
     key_path=folder()/"ca.key"
     if key_path.exists() and ca_path().exists():
-        ca=x509.load_pem_x509_certificate(ca_path().read_bytes())
-        if all(permitted(ca,n) for n in wanted):return serialization.load_pem_private_key(key_path.read_bytes(),None),ca
+        ca=x509.load_pem_x509_certificate(ca_path().read_bytes());key=serialization.load_pem_private_key(key_path.read_bytes(),None)
+        spki=lambda k:k.public_bytes(serialization.Encoding.DER,serialization.PublicFormat.SubjectPublicKeyInfo)
+        if all(permitted(ca,n) for n in wanted) and spki(ca.public_key())==spki(key.public_key()):return key,ca
         print("Nuovi indirizzi fuori dall'autorità del programma: ne creo una nuova. Le postazioni chiederanno di confermare la nuova impronta.")
     key=ec.generate_private_key(ec.SECP256R1())
     now=datetime.datetime.now(datetime.timezone.utc)
@@ -70,19 +100,25 @@ def authority(wanted):
 
 def ensure(now=None):
     """Paths of the server certificate (with the authority after it) and its key, made or renewed when needed."""
+    with LOCK:return _ensure(now)
+
+def _ensure(now):
     wanted=names()
     ca_key,ca=authority(wanted)
     cert_path,key_path=folder()/"server.crt",folder()/"server.key"
     now=now or datetime.datetime.now(datetime.timezone.utc)
     if cert_path.exists() and key_path.exists():
-        current=x509.load_pem_x509_certificates(cert_path.read_bytes())[0]
-        try:alt=current.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
-        except x509.ExtensionNotFound:alt=[]
-        have={str(n.value).lower() for n in alt}
-        signed=current.extensions.get_extension_for_class(x509.AuthorityKeyIdentifier).value.key_identifier==x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()).digest
-        if current.not_valid_after_utc-now>datetime.timedelta(days=30) and set(wanted)<=have and signed:return cert_path,key_path
+        try:
+            current=x509.load_pem_x509_certificates(cert_path.read_bytes())[0]
+            try:alt=current.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+            except x509.ExtensionNotFound:alt=[]
+            have={str(n.value).lower() for n in alt}
+            signed=current.extensions.get_extension_for_class(x509.AuthorityKeyIdentifier).value.key_identifier==x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()).digest
+            # a pair left half-written (a stop between the two files) is made again instead of stopping the server
+            if current.not_valid_after_utc-now>datetime.timedelta(days=30) and set(wanted)<=have and signed and loadable(cert_path,key_path):return cert_path,key_path
+        except (ValueError,x509.ExtensionNotFound):pass
     key=ec.generate_private_key(ec.SECP256R1())
-    cert=(x509.CertificateBuilder().subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,(urlparse(settings.PUBLIC_ORIGIN).hostname or "localhost")[:64])]))
+    cert=(x509.CertificateBuilder().subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,(urlparse(office()).hostname or "localhost")[:64])]))
         .issuer_name(ca.subject).public_key(key.public_key()).serial_number(x509.random_serial_number())
         .not_valid_before(now-datetime.timedelta(days=1)).not_valid_after(now+datetime.timedelta(days=397))
         .add_extension(x509.SubjectAlternativeName([_alt(n) for n in wanted]),critical=False)

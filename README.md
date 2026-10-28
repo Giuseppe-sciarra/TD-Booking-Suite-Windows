@@ -63,18 +63,33 @@ Le postazioni contano per la licenza, il PC server no. Una postazione persa si *
 
 ![Registra la postazione](docs/screenshots/registra-postazione.png)
 
-### Server in cloud o sedi diverse
+### Da fuori dall'ufficio: proxy, certificato, server in cloud
 
-Le sedi si collegano tutte allo **stesso server**, come postazioni: non c'è niente da sincronizzare. Il server può essere un PC dell'ufficio raggiungibile da fuori oppure un Windows in cloud. In cloud:
+Le sedi si collegano tutte allo **stesso server**, come postazioni: non c'è niente da sincronizzare. Il server può essere un PC dell'ufficio raggiungibile da fuori oppure un Windows in cloud. Tutto si imposta dopo l'installazione in **Rete e certificato**, che vede e modifica solo l'amministratore del programma, con la conferma della password o del secondo fattore:
 
-- installa con `INDIRIZZO=https://booking.tuodominio.it:8443` e punta il DNS sull'IP della macchina;
-- apri la porta 8443 anche alla rete pubblica:
-  ```powershell
-  Set-NetFirewallRule -DisplayName "TD Booking Suite" -Profile Any
-  ```
-- ogni sede usa il programma per la postazione o il browser, con il suo codice.
+- **Indirizzo pubblico**, per esempio `https://booking.tuosito.it`: è quello dei link nelle email (conferme, consensi, inviti) e da usare fuori dall'ufficio. Vale da subito, senza riavviare.
+- **Proxy fidati**: gli IP dei proxy davanti al server, uno per riga o come rete (`10.0.0.0/24`). Da loro il programma legge l'indirizzo vero di chi si collega, per i limiti di accesso e l'elenco delle postazioni. Chi passa dal proxy non è mai il PC server: registra la postazione con il codice.
+- **Certificato**: quello interno, che il programma crea e rinnova da solo, oppure uno tuo caricato come `.pfx`/`.p12` o `.crt`/`.pem` con la sua `.key`, con la catena completa. Il programma controlla che chiave e certificato vadano insieme e che non sia scaduto, lo usa dalla connessione successiva e un mese prima della scadenza lo ricorda in cima alle pagine. Se scade torna da solo al certificato interno.
 
-Il certificato lo crea il programma. Le **passkey** funzionano solo dove Windows si fida di quel certificato: sul server ce lo mette l'installer, sulle postazioni lo puoi installare dalla pagina di registrazione. Altrove si usa **Authenticator** per il secondo fattore.
+![Rete e certificato](docs/screenshots/rete.png)
+
+**Con un proxy** (NPMplus, Nginx Proxy Manager, Caddy, IIS) che ha il suo certificato, per esempio Let's Encrypt:
+
+1. nel proxy crea l'host con il nome pubblico, destinazione `https://IP-DEL-SERVER:8443`, schema **https**, senza controllare il certificato del server;
+2. lascia l'intestazione Host com'è e aggiungi X-Forwarded-For (NPMplus lo fa già);
+3. in Rete e certificato scrivi l'indirizzo pubblico e l'IP del proxy.
+
+**Senza proxy**: carica un certificato per il nome pubblico, punta il DNS sull'IP della macchina e apri la porta anche alla rete pubblica:
+
+```powershell
+Set-NetFirewallRule -DisplayName "TD Booking Suite" -Profile Any
+```
+
+**Certificati autofirmati.** Il programma per la postazione si fida da solo di un certificato riconosciuto da Windows. Con il certificato interno o con uno autofirmato mostra l'impronta al primo collegamento: se è uguale a quella delle pagine Postazioni e Rete e certificato, premi **Continua** e da lì in avanti la ricorda. Se un giorno il certificato cambia, il programma avvisa e chiede se vuoi vedere quello nuovo e accettarlo: non si blocca, ma non accetta niente da solo.
+
+**La versione web.** Il programma per la postazione si collega anche a TD Booking Suite installato con Docker su un server Linux: installa l'MSI con il solo **Programma per la postazione** e scrivi l'indirizzo, per esempio `https://booking.tuosito.it`.
+
+Le **passkey** valgono per l'indirizzo con cui sono state create: chi entra sia dal nome dell'ufficio sia da quello pubblico ne registra una per ciascuno. Funzionano dove il browser si fida del certificato: il certificato interno sul server ce lo mette l'installer, sulle postazioni lo puoi installare dalla pagina di registrazione. Altrove si usa **Authenticator** per il secondo fattore.
 
 ## Licenze
 
