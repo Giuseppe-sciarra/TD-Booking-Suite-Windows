@@ -22,7 +22,8 @@ def test_first_start_only_from_the_server_pc():
     assert "primo-avvio.txt" in page and code not in page  # the code is only in the admin-only data folder
     assert "Codice del primo avvio sbagliato" in c.post("/primo-avvio/",{"codice":"AAAA-BBBB","username":"admin","password":PASSWORD,"password2":PASSWORD}).content.decode()
     assert not User.objects.exists()
-    first=lambda **kw:c.post("/primo-avvio/",{"codice":code.lower().replace("-"," "),**kw})
+    first=lambda **kw:c.post("/primo-avvio/",{"codice":code.lower().replace("-"," "),**kw})  # spaces and small letters are fine
+    assert "Scegli lo username" in c.post("/primo-avvio/",{"codice":code,"password":PASSWORD,"password2":PASSWORD}).content.decode()  # as written in the file
     assert "almeno 12" in first(username="admin",password="corta",password2="corta").content.decode()
     assert "non coincidono" in first(username="admin",password=PASSWORD,password2=PASSWORD+"x").content.decode()
     # the administrator is signed in at once and goes on with the guided setup

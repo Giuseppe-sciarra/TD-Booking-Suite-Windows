@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>TD Licenze · Istruzioni</title>
+<link rel="stylesheet" href="manuale.css">
+</head>
+<body>
+
+<section class="cover">
+  <div class="mark">TD</div>
+  <div class="kicker">Riservato · solo per chi vende · versione {{VERSION}}</div>
+  <h1>TD Licenze</h1>
+  <p class="sub">Il programma che crea le licenze di TD Booking Suite per Windows: la chiave, le licenze nuove, quelle da cambiare, il registro. Si porta su una chiavetta.</p>
+  <div class="foot"><div><strong>Tastiere Digitali</strong>documento interno, non va ai clienti</div><div>{{DATE}}</div></div>
+</section>
+
+<section class="toc">
+  <h2>Indice</h2>
+  <ol>
+    <li><span>1</span><a href="#cose">Cos'è e dove si prende</a></li>
+    <li><span>2</span><a href="#chiavetta">Sulla chiavetta</a><small>cosa salva e dove</small></li>
+    <li><span>3</span><a href="#chiave">La prima volta: la chiave</a></li>
+    <li><span>4</span><a href="#nuova">Una licenza nuova</a></li>
+    <li><span>5</span><a href="#emesse">Licenze emesse</a></li>
+    <li><span>6</span><a href="#cambia">Cambiare postazioni o scadenza</a></li>
+    <li><span>7</span><a href="#casi">Cosa succede se il cliente…</a></li>
+    <li><span>8</span><a href="#protezione">Come il programma protegge la licenza</a></li>
+    <li><span>9</span><a href="#riga">Da riga di comando</a></li>
+  </ol>
+</section>
+
+<h2 id="cose"><span class="num">1</span>Cos'è e dove si prende</h2>
+<p class="lead">TD Licenze firma le licenze con la chiave privata di Tastiere Digitali. Il programma dei clienti contiene solo la chiave pubblica: verifica le licenze ma non può crearle, e funziona senza Internet.</p>
+<ol class="steps">
+  <li>Su GitHub, nella repo privata, apri <strong>Actions</strong> e poi l'ultima esecuzione verde di <strong>Windows</strong>.</li>
+  <li>In fondo, in <em>Artifacts</em>, scarica <strong>TD-Licenze</strong>.</li>
+  <li>Scompattalo in una cartella, sulla chiavetta, e apri <code>TD Licenze.exe</code>. Windows lo segnala come l'MSI e si apre allo stesso modo (<em>Ulteriori informazioni</em>, <em>Esegui comunque</em>).</li>
+</ol>
+<div class="warn"><strong>Non va mai ai clienti</strong>L'artefatto è privato come la repo. Chi ha la cartella con la chiave privata, e la sua password, può creare licenze quante vuole.</div>
+
+<h2 id="chiavetta"><span class="num">2</span>Sulla chiavetta</h2>
+<p>TD Licenze è <strong>portatile</strong>: salva tutto nella sua cartella, accanto a <code>TD Licenze.exe</code>, e da nessun'altra parte. Se la cartella sta su una chiavetta, sul PC del cliente non resta nessun file del programma.</p>
+<table class="plain">
+  <tr><td><code>chiave-privata.pem</code></td><td>la chiave che firma, protetta dalla sua password</td></tr>
+  <tr><td><code>chiave-pubblica.txt</code></td><td>la chiave pubblica, quella che va nel programma</td></tr>
+  <tr><td><code>registro-licenze.csv</code></td><td>tutte le licenze emesse, con numero, cliente, tipo, postazioni, installazione, scadenza e quella che sostituiscono</td></tr>
+  <tr><td><code>licenze-emesse\</code></td><td>un file per licenza, da mandare al cliente</td></tr>
+  <tr><td><code>TD Licenze.exe</code>, <code>_internal\</code></td><td>il programma. Per aggiornarlo sostituisci solo questi due: i file della chiave non si toccano</td></tr>
+</table>
+<ul>
+  <li><strong>Fai una copia della cartella intera</strong> su un secondo supporto: senza la chiave privata non puoi più emettere licenze per le installazioni che esistono già.</li>
+  <li>Una versione vecchia teneva la chiave in <code>%APPDATA%\TD Licenze</code>: al primo avvio TD Licenze la porta nella sua cartella e cancella la copia vecchia, quando è identica.</li>
+  <li><strong>Copia la licenza</strong> la mette negli appunti di Windows, come un copia e incolla normale.</li>
+</ul>
+
+<h2 id="chiave"><span class="num">3</span>La prima volta: la chiave</h2>
+<figure class="narrow"><img src="img-licenze/tdl-chiave.png" alt=""><figcaption><strong>Chiave</strong>: si crea una volta sola, con una password.</figcaption></figure>
+<ol class="steps">
+  <li>Scheda <strong>Chiave</strong>: scegli una password (consigliata) e crea la chiave.</li>
+  <li>TD Licenze mostra la <strong>chiave pubblica</strong>. Va nella repo, nel file <code>tdwin/licenza-chiave-pubblica.txt</code>, con commit e push.</li>
+  <li>Da quella build in poi il programma accetta le tue licenze. La build la scrive dentro il codice compilato: nell'MSI non c'è un file con la chiave da sostituire.</li>
+</ol>
+<div class="warn"><strong>La chiave privata non va mai nella repo</strong>Il <code>.gitignore</code> blocca i file <code>.pem</code>, il registro e le licenze emesse. Una release senza chiave pubblica si ferma: non accetterebbe nessuna licenza.</div>
+
+<h2 id="nuova"><span class="num">4</span>Una licenza nuova</h2>
+<figure><img src="img-licenze/tdl-nuova.png" alt=""><figcaption><strong>Nuova licenza</strong> per un server con 2 postazioni.</figcaption></figure>
+<table>
+  <tr><th>Campo</th><th>Cosa scrivere</th></tr>
+  <tr><td>Tipo</td><td><strong>Un PC solo</strong> (1 attività, nessuna postazione), <strong>Server con postazioni</strong> (1 attività, le postazioni che vuoi), <strong>Portale, più attività</strong> (2 o più attività).</td></tr>
+  <tr><td>Intestatario</td><td>Il nome del cliente.</td></tr>
+  <tr><td>Attività</td><td>Solo per il Portale.</td></tr>
+  <tr><td>Postazioni in rete</td><td>Altri PC, tablet e telefoni oltre al PC server.</td></tr>
+  <tr><td>Codice installazione</td><td>Quello che il cliente vede nella pagina Licenza e ti manda. Vuoto: la licenza vale ovunque, a stock.</td></tr>
+  <tr><td>Scadenza</td><td><code>AAAA-MM-GG</code>, vuota per sempre.</td></tr>
+</table>
+<p>Premi <strong>Crea la licenza</strong>: la licenza compare nel riquadro e con <strong>Copia la licenza</strong> la mandi al cliente. Resta anche come file in <code>licenze-emesse\</code> e nel registro.</p>
+<figure><img src="img-licenze/tdl-nuova-pc.png" alt=""><figcaption>Con <strong>Un PC solo</strong> attività e postazioni sono fisse.</figcaption></figure>
+<div class="tip"><strong>Dal cliente</strong>Sul PC del cliente, nella pagina <strong>Licenza</strong> del programma, copi il codice installazione, crei la licenza con TD Licenze dalla chiavetta e la incolli nella stessa pagina. Il programma riparte subito.</div>
+
+<h2 id="emesse"><span class="num">5</span>Licenze emesse</h2>
+<figure><img src="img-licenze/tdl-emesse.png" alt=""><figcaption><strong>Licenze emesse</strong>: doppio clic su una riga per copiarla di nuovo.</figcaption></figure>
+
+<h2 id="cambia"><span class="num">6</span>Cambiare postazioni o scadenza</h2>
+<ol class="steps">
+  <li>In <strong>Licenze emesse</strong> seleziona la licenza e premi <strong>Cambia postazioni o scadenza</strong>.</li>
+  <li>Si apre <strong>Nuova licenza</strong> con intestatario e installazione della vecchia. Cambia postazioni, scadenza o tipo e premi <strong>Crea la licenza</strong>.</li>
+  <li>Il cliente incolla la licenza nuova al posto della vecchia: nessun dato si perde. Nel registro la vecchia risulta <em>sostituita da</em> la nuova.</li>
+</ol>
+<figure><img src="img-licenze/tdl-cambia.png" alt=""><figcaption>La licenza che sostituisce TD-2026-0002, con 5 postazioni invece di 3.</figcaption></figure>
+<figure><img src="img-licenze/tdl-emesse-dopo.png" alt=""><figcaption>Nel registro: <strong>in uso</strong> e <strong>sostituita da</strong>.</figcaption></figure>
+<p><strong>Nuova da zero</strong> torna a una licenza nuova, senza legami con quella di prima.</p>
+
+<h2 id="casi"><span class="num">7</span>Cosa succede se il cliente…</h2>
+<table>
+  <tr><th>Il cliente…</th><th>Cosa succede</th></tr>
+  <tr><td>reinstalla il programma sullo stesso PC e ripristina un backup</td><td>il codice installazione torna quello di prima e la licenza vale ancora</td></tr>
+  <tr><td>reinstalla Windows o cambia PC</td><td>nuovo codice installazione: gli fai una licenza nuova da <strong>Nuova licenza</strong> con il codice nuovo (<strong>Cambia postazioni o scadenza</strong> tiene il codice della vecchia)</td></tr>
+  <tr><td>copia la cartella dei dati su un altro PC</td><td>il codice cambia e la licenza non vale lì</td></tr>
+  <tr><td>ha più attività di quelle della licenza nuova</td><td>il programma rifiuta la licenza e lo spiega</td></tr>
+  <tr><td>ha più postazioni registrate</td><td>restano attive quelle registrate per prime, finché non ne revoca</td></tr>
+  <tr><td>arriva alla scadenza</td><td>il programma si ferma come a fine prova: restano aperte Licenza e Backup</td></tr>
+  <tr><td>sposta indietro la data del PC</td><td>prova e scadenza si contano dall'ultimo uso: non si allungano</td></tr>
+  <tr><td>cancella la prova dal database</td><td>la prova resta usata: il segno sta anche nella cartella dei dati</td></tr>
+</table>
+
+<h2 id="protezione"><span class="num">8</span>Come il programma protegge la licenza</h2>
+<ul>
+  <li>Le licenze sono firmate con <strong>Ed25519</strong>: chi non ha la chiave privata non può crearne, né cambiarne una (attività, postazioni, scadenza).</li>
+  <li>La <strong>chiave pubblica è scritta nel codice compilato</strong>: nell'MSI non c'è un file da sostituire con una chiave propria.</li>
+  <li>La parte Windows del programma è <strong>compilata in codice nativo</strong> (Cython): nell'MSI non ci sono i sorgenti da leggere o modificare.</li>
+  <li>Prima di fidarsi di una licenza il programma prova una <strong>firma falsa</strong>: se viene accettata, qualcuno ha manomesso la verifica e il programma si ferma.</li>
+  <li>All'avvio, e a ogni pagina, controlla che il controllo della licenza sia al suo posto e non sostituito: altrimenti non parte.</li>
+  <li>Il <strong>codice installazione</strong> unisce l'installazione e il PC: una licenza legata a un codice non vale su un altro PC.</li>
+  <li>Le attività oltre quelle della licenza restano chiuse.</li>
+</ul>
+<div class="note"><strong>Il limite</strong>Su un PC dove il cliente è amministratore nessuna protezione è assoluta. Questa serve a rendere necessario un lavoro di reverse engineering vero, non una modifica a un file.</div>
+
+<h2 id="riga"><span class="num">9</span>Da riga di comando</h2>
+<p>Per chi preferisce: <code>licenze/td_licenze.py</code> fa le stesse cose. Servono Python 3 e <code>pip install cryptography</code>. Di serie lavora nella sua cartella; con <code>--cartella</code> sceglie un'altra cartella, per esempio quella di TD Licenze sulla chiavetta.</p>
+<pre>python td_licenze.py chiave                       la prima volta
+python td_licenze.py                              fa le domande
+python td_licenze.py crea --intestatario "Bar Roma" --tipo server --postazioni 3 --installazione ABCD-EFGH-IJKL-MNOP --scadenza 2027-12-31
+python td_licenze.py crea --sostituisce TD-2026-0007 --postazioni 5
+python td_licenze.py elenco                       le licenze emesse
+python td_licenze.py verifica                     incolli una licenza e vedi cosa contiene</pre>
+<p>Con <code>--sostituisce</code> quello che non scrivi resta come nella licenza sostituita: cambiando le postazioni la scadenza resta, cambiando la scadenza restano le postazioni. <code>--scadenza ""</code> la toglie.</p>
+
+</body>
+</html>

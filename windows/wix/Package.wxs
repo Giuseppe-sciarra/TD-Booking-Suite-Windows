@@ -57,6 +57,9 @@
       <Shortcut Id="RecoverShortcut" Name="Recupera accesso" Description="Password dimenticata: amministratore del programma o titolare"
                 Target="[System64Folder]WindowsPowerShell\v1.0\powershell.exe" Icon="app.ico" WorkingDirectory="SERVERDIR"
                 Arguments="-NoProfile -ExecutionPolicy Bypass -File &quot;[SERVERDIR]script\recupera-admin.ps1&quot;" />
+      <Shortcut Id="FirstRunShortcut" Name="Codice del primo avvio" Description="Il codice che chiede la pagina Primo avvio, solo per un amministratore di Windows"
+                Target="[System64Folder]WindowsPowerShell\v1.0\powershell.exe" Icon="app.ico" WorkingDirectory="SERVERDIR"
+                Arguments="-NoProfile -ExecutionPolicy Bypass -File &quot;[SERVERDIR]script\codice-primo-avvio.ps1&quot;" />
       <RemoveFolder Id="RemoveMenuServer" On="uninstall" />
       <RegistryValue Root="HKLM" Key="Software\TD Booking Suite" Name="Server" Type="integer" Value="1" KeyPath="yes" />
     </Component>

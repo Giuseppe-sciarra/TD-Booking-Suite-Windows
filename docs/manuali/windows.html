@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>TD Booking Suite per Windows · Istruzioni</title>
+<link rel="stylesheet" href="manuale.css">
+</head>
+<body>
+
+<section class="cover">
+  <div class="mark">TD</div>
+  <div class="kicker">Istruzioni · versione {{VERSION}}</div>
+  <h1>TD Booking Suite per Windows</h1>
+  <p class="sub">Installare il programma, configurarlo con la configurazione guidata, lavorarci ogni giorno, collegare le postazioni, fare i backup e gestire la licenza.</p>
+  <div class="foot"><div><strong>Tastiere Digitali</strong>tastieredigitali.tech</div><div>{{DATE}}</div></div>
+</section>
+
+<section class="toc">
+  <h2>Indice</h2>
+  <ol>
+    <li><span>1</span><a href="#breve">In breve</a><small>tipi di installazione, account, licenza</small></li>
+    <li><span>2</span><a href="#prima">Prima di installare</a><small>requisiti, avvisi di Windows</small></li>
+    <li><span>3</span><a href="#installare">Installare</a><small>la scelta del tipo</small></li>
+    <li><span>4</span><a href="#primo">Primo avvio</a><small>l'amministratore del programma</small></li>
+    <li><span>5</span><a href="#guida">Configurazione guidata</a><small>licenza, attività, backup, postazioni</small></li>
+    <li><span>6</span><a href="#account">Gli account e l'accesso</a><small>chi vede cosa, entrare e uscire</small></li>
+    <li><span>7</span><a href="#lavoro">Il lavoro di ogni giorno</a><small>agenda, clienti, persone, import</small></li>
+    <li><span>8</span><a href="#postazioni">Le postazioni</a><small>solo Server con postazioni</small></li>
+    <li><span>9</span><a href="#fuori">Da fuori dall'ufficio</a><small>proxy, certificato, versione web</small></li>
+    <li><span>10</span><a href="#backup">Backup e ripristino</a></li>
+    <li><span>11</span><a href="#licenza">La licenza</a><small>tipi, codice installazione, prova</small></li>
+    <li><span>12</span><a href="#problemi">Se qualcosa non va</a></li>
+    <li><span>13</span><a href="#aggiornare">Aggiornare, cambiare tipo, disinstallare</a></li>
+    <li><span>14</span><a href="#tecnico">Per il tecnico</a><small>riga di comando, file, servizi</small></li>
+  </ol>
+</section>
+
+<h2 id="breve"><span class="num">1</span>In breve</h2>
+<p class="lead">TD Booking Suite gestisce prenotazioni, agenda e clienti. Si installa con un solo file MSI e i dati restano sul PC, in ufficio: non passano da server esterni.</p>
+
+<h3>Tre modi di installarlo</h3>
+<table>
+  <tr><th>Tipo</th><th>Quando</th><th>Cosa fa</th></tr>
+  <tr><td>Un PC solo</td><td>Un'attività con un solo computer.</td><td>Programma e dati sullo stesso PC. Risponde solo a quel PC: niente altri computer, telefoni o prenotazioni dal sito. Si entra con username e password.</td></tr>
+  <tr><td>Server con postazioni</td><td>Un ufficio con più computer, tablet o telefoni.</td><td>Questo PC tiene i dati e resta acceso. Gli altri PC con la postazione, i telefoni dell'ufficio e, se lo metti online, il sito si collegano a lui. Sul server si usa anche il programma.</td></tr>
+  <tr><td>Solo postazione</td><td>Ogni altro PC dell'ufficio.</td><td>Solo la finestra del programma, che si collega a un server già installato o a TD Booking Suite su Internet.</td></tr>
+</table>
+
+<h3>Due account, oppure uno</h3>
+<div class="cols">
+  <div class="card"><h4>Amministratore del programma</h4><p>Si crea al primo avvio. Configura licenza, backup, attività e, sul server, postazioni e rete. Da solo non vede agenda e clienti.</p></div>
+  <div class="card"><h4>Titolare</h4><p>Lavora nell'attività: agenda, prenotazioni, clienti, servizi, orari. Aggiunge le altre persone da Persone e permessi.</p></div>
+</div>
+<p style="margin-top:3mm">Se il programma lo usi tu, nella configurazione guidata scegli <strong>Io, con questo account</strong>: un solo account configura e lavora. Se lo installi per un cliente, scegli <strong>Il titolare, con un suo account</strong>.</p>
+
+<h3>La licenza</h3>
+<p>Senza licenza si attiva una <strong>prova di 7 giorni</strong>, con un'attività e due postazioni. La licenza dice il tipo (Un PC solo, Server con postazioni, Portale con più attività), quante postazioni in rete si usano e se scade. Vale per un'installazione precisa, riconosciuta dal suo <strong>codice installazione</strong>.</p>
+
+<h2 id="prima"><span class="num">2</span>Prima di installare</h2>
+<h3>Cosa serve</h3>
+<ul>
+  <li>Windows 10 o 11 a 64 bit, con un account amministratore di Windows per installare.</li>
+  <li>Sul PC che tiene i dati: almeno 4 GB di RAM e qualche GB libero. Con Server con postazioni deve restare acceso mentre si lavora.</li>
+  <li>Microsoft Edge WebView2, già presente in Windows 11 e nei Windows 10 aggiornati. Se manca, il programma lo dice e porta alla pagina per scaricarlo.</li>
+</ul>
+<h3>Windows segnala il file: si installa lo stesso</h3>
+<p>Il file MSI non ha ancora una firma digitale: Windows non riconosce chi lo pubblica e lo segnala, anche se il file è a posto.</p>
+<ol class="steps">
+  <li><strong>Edge o Chrome</strong> dicono che il file <em>non viene scaricato comunemente</em>: apri il menu <strong>…</strong> del download, poi <strong>Mantieni</strong>, <strong>Mostra altro</strong> e <strong>Mantieni comunque</strong>.</li>
+  <li><strong>Windows ha protetto il PC</strong>, la finestra blu, compare al doppio clic: premi <strong>Ulteriori informazioni</strong> e poi <strong>Esegui comunque</strong>.</li>
+  <li>Se il file arriva da una chiavetta o da una email e non parte: tasto destro, <strong>Proprietà</strong>, spunta <strong>Sblocca</strong> in basso, <strong>OK</strong>.</li>
+</ol>
+
+<h2 id="installare"><span class="num">3</span>Installare</h2>
+<ol class="steps">
+  <li>Doppio clic sull'MSI, poi <strong>Avanti</strong>. Accetta la licenza d'uso e premi <strong>Avanti</strong>.</li>
+  <li>Alla domanda <strong>Come userai TD Booking Suite su questo PC?</strong> scegli il tipo: <strong>Un PC solo</strong>, <strong>Server con postazioni</strong> o <strong>Solo postazione</strong> (sono spiegati nel capitolo 1). La scelta si cambia dopo, aprendo di nuovo l'installazione: i dati restano.</li>
+  <li>Premi <strong>Installa</strong> e dai il permesso di amministratore. La prima volta servono un paio di minuti: l'installer prepara il database e i servizi di Windows.</li>
+  <li>Alla fine lascia spuntato <strong>Apri TD Booking Suite</strong>, oppure usa l'icona sul desktop.</li>
+</ol>
+<div class="note"><strong>Sul PC con il server la finestra non fa domande</strong>Con Un PC solo e con Server con postazioni la finestra apre da sola il programma installato su quel PC, già verificato. Indirizzo e impronta del certificato li chiede solo una postazione (capitolo 8).</div>
+
+<h2 id="primo"><span class="num">4</span>Primo avvio</h2>
+<p>La prima volta il programma chiede di creare l'<strong>amministratore del programma</strong>. Si fa solo dal PC dove c'è il server, e solo finché un amministratore non esiste.</p>
+<figure class="narrow"><img src="img/primo-avvio.jpg" alt=""><figcaption><strong>Primo avvio</strong>: il codice, lo username, l'email facoltativa e la password.</figcaption></figure>
+<ol class="steps">
+  <li><strong>Codice del primo avvio</strong>: apri il menu Start, <strong>TD Booking Suite</strong>, <strong>Codice del primo avvio</strong>. Windows chiede il permesso di amministratore e mostra il codice: scrivilo nella pagina. Serve perché un altro utente di Windows dello stesso PC non crei l'amministratore al posto tuo.</li>
+  <li><strong>Username</strong>: con questo entri nel programma. Lettere, numeri, punto e trattino, da 3 a 40 caratteri, per esempio <code>mario</code>.</li>
+  <li><strong>Email, facoltativa</strong>: se la metti puoi entrare anche con quella.</li>
+  <li><strong>Password</strong> di almeno 12 caratteri, due volte. Conservala bene: se la perdi si recupera solo da questo PC (capitolo 12).</li>
+  <li><strong>Resta collegato su questo PC</strong>, già spuntato: alla prossima apertura entri senza scrivere niente.</li>
+</ol>
+<p>Premi <strong>Crea l'amministratore</strong>: sei già dentro e si apre la configurazione guidata.</p>
+
+<h2 id="guida"><span class="num">5</span>Configurazione guidata</h2>
+<p>Pochi passi, ognuno dice se è <strong>Fatto</strong> o <strong>Da fare</strong> e porta alla pagina giusta. La ritrovi nel menu a sinistra, <strong>Configurazione guidata</strong>.</p>
+<figure><img src="img/guida.jpg" alt=""><figcaption><strong>Configurazione guidata</strong> con Un PC solo, dopo aver attivato la prova.</figcaption></figure>
+
+<h3>Passo 1 · Licenza</h3>
+<p>Premi <strong>Attiva la prova di 7 giorni</strong> per partire subito, oppure <strong>Inserisci la licenza</strong>. Nella pagina <strong>Licenza</strong> trovi il <strong>codice installazione</strong>: mandalo a Tastiere Digitali per ricevere la licenza di questo PC, poi incollala nella stessa pagina e premi <strong>Attiva la licenza</strong>.</p>
+<figure><img src="img/licenza.jpg" alt=""><figcaption><strong>Licenza</strong>: il tipo, cosa consente, il codice installazione e il campo per incollare la licenza nuova.</figcaption></figure>
+
+<h3>Passo 2 · La tua attività e chi ci lavora</h3>
+<p>Scrivi il nome dell'attività e scegli il tipo (parrucchiere, ristorante, studio…): prepara servizi, orari e domande giuste per quel lavoro, che poi si cambiano in <strong>Configura l'attività</strong>. Poi scegli chi ci lavora.</p>
+<figure><img src="img/guida-io.jpg" alt=""><figcaption><strong>Io, con questo account</strong>: un solo account configura e lavora. È la scelta proposta con Un PC solo.</figcaption></figure>
+<figure><img src="img/guida-titolare.jpg" alt=""><figcaption><strong>Il titolare, con un suo account</strong>: scrivi il suo username, se vuoi la sua email, e la sua password. È la scelta proposta con Server con postazioni, e quando installi per un cliente.</figcaption></figure>
+<div class="note"><strong>Se il titolare ha già un account</strong>, per esempio perché ha già un'altra attività con la licenza Portale, scrivi solo il suo username o la sua email e lascia vuote le password: resta la sua.</div>
+
+<h3>Passo 3 · Backup</h3>
+<p>Imposta la password dei backup, attiva il backup di ogni notte e aggiungi una destinazione fuori dal PC: disco esterno, NAS, FTP o SFTP. È spiegato nel capitolo 10.</p>
+
+<h3>Passo 4 · Postazioni e accesso da fuori</h3>
+<p>Solo con Server con postazioni: registri gli altri PC (capitolo 8) e, se serve, l'accesso da fuori dall'ufficio (capitolo 9).</p>
+
+<h3>Al lavoro</h3>
+<figure><img src="img/guida-al-lavoro-io.jpg" alt=""><figcaption>Con <strong>Io, con questo account</strong>: <strong>Vai all'agenda</strong> e lavori subito.</figcaption></figure>
+<figure><img src="img/guida-al-lavoro-titolare.jpg" alt=""><figcaption>Con il titolare: <strong>Esci ed entra come …</strong> chiude la sessione dell'amministratore e apre l'accesso con lo username del titolare già scritto.</figcaption></figure>
+
+<h2 id="account"><span class="num">6</span>Gli account e l'accesso</h2>
+<h3>Chi vede cosa</h3>
+<table>
+  <tr><th>Account</th><th>Vede e fa</th></tr>
+  <tr><td>Amministratore del programma</td><td>Licenza, backup, configurazione guidata, impostazioni generali; sul server anche postazioni e rete. Agenda e clienti solo se lavora nell'attività (<strong>Io, con questo account</strong>).</td></tr>
+  <tr><td>Titolare</td><td>Tutto il lavoro dell'attività: agenda, prenotazioni, clienti, servizi, orari, persone e permessi, marketing, registro attività.</td></tr>
+  <tr><td>Persone dell'attività</td><td>Quello che il loro ruolo consente: per esempio l'operatore vede l'agenda delle sue risorse, la reception le prenotazioni, il marketing contatti e campagne.</td></tr>
+</table>
+<h3>Entrare</h3>
+<figure><img src="img/accesso.jpg" alt=""><figcaption><strong>Accesso</strong>: username o email e password. Sotto il modulo c'è il promemoria dei due account.</figcaption></figure>
+<ul>
+  <li>Scrivi lo <strong>username</strong> oppure l'<strong>email</strong>, se l'account ne ha una, e la password.</li>
+  <li><strong>Resta collegato su questo dispositivo</strong> è spuntato di serie: il programma si riapre già collegato, fino a un anno senza usarlo.</li>
+  <li><strong>Esci</strong>, in alto a destra, chiude la sessione: serve per entrare con un altro account, per esempio come amministratore.</li>
+</ul>
+<h3>Il secondo fattore</h3>
+<p>Con <strong>Un PC solo</strong> si entra solo con username e password: il programma risponde solo a quel PC. Con <strong>Server con postazioni</strong> si può aggiungere, da <strong>Account e sicurezza</strong>, Authenticator (Google Authenticator, Microsoft Authenticator…) o una passkey: è facoltativo, e l'avviso <em>Proteggi il tuo account</em> lo vede solo l'amministratore del programma.</p>
+<p>Le pagine che cambiano accessi o impostazioni chiedono di confermare che sei tu, al massimo ogni 15 minuti: con la password, o con il secondo fattore se lo hai attivato.</p>
+
+<h2 id="lavoro"><span class="num">7</span>Il lavoro di ogni giorno</h2>
+<figure><img src="img/al-lavoro.jpg" alt=""><figcaption><strong>Dashboard dell'attività</strong>: prenotazioni di oggi e dei prossimi giorni, ricevute e disdette. Nel menu a sinistra agenda, clienti, configurazione e comunicazioni.</figcaption></figure>
+<ul>
+  <li><strong>Agenda e prenotazioni</strong>: le prenotazioni della giornata e della settimana; <strong>Nuova prenotazione</strong> per quelle al banco o al telefono.</li>
+  <li><strong>Clienti</strong>: la scheda con lo storico, le note, i trattamenti, le intolleranze e i consensi marketing.</li>
+  <li><strong>Configura l'attività</strong>: sedi, orari, servizi, risorse, domande del modulo di prenotazione.</li>
+  <li><strong>Persone e permessi</strong>: aggiungi chi lavora con te con uno <strong>username</strong>, l'email se vuoi, e il ruolo. L'accesso si consegna con un link di invito oppure con una password che scegli tu. Una persona che ha già un account si aggiunge scrivendo solo il suo username o la sua email.</li>
+</ul>
+<h3>Importare i clienti dal programma di prima</h3>
+<p>In <strong>Clienti › Importa</strong> carichi un file Excel (.xlsx) o CSV con l'anagrafica e, se il tuo settore ha la scheda trattamenti, anche lo storico.</p>
+<figure class="half"><img src="img/import-file.jpg" alt=""><figcaption><strong>Il file</strong>: fino a 20 MB e 20.000 righe.</figcaption></figure><figure class="half"><img src="img/import.jpg" alt=""><figcaption><strong>Le colonne</strong>: per ognuna scegli cosa contiene.</figcaption></figure>
+<figure><img src="img/import-anteprima.jpg" alt=""><figcaption><strong>Anteprima</strong>: cosa succede a ogni riga e perché alcune non entrano. Chi è già in archivio prende solo i dati mancanti; reimportare lo stesso file non raddoppia niente.</figcaption></figure>
+<h3>Aspetto</h3>
+<p>In <strong>Impostazioni generali</strong> l'amministratore cambia nome, loghi chiaro e scuro, icona, colore principale e tema di partenza. Ognuno sceglie per sé il tema chiaro o scuro dalla barra in alto.</p>
+<figure class="half"><img src="img/aspetto.jpg" alt=""><figcaption><strong>Impostazioni generali</strong>.</figcaption></figure><figure class="half"><img src="img/dashboard-scuro.jpg" alt=""><figcaption><strong>Tema scuro</strong> con un altro colore principale.</figcaption></figure>
+
+<h2 id="postazioni"><span class="num">8</span>Le postazioni</h2>
+<p>Solo con <strong>Server con postazioni</strong>. Le postazioni sono gli altri PC dell'ufficio, ma anche un browser o un telefono: ognuna si registra una volta con un codice.</p>
+<h3>Un altro PC</h3>
+<ol class="steps">
+  <li>Installa lo stesso MSI scegliendo <strong>Solo postazione</strong>.</li>
+  <li>Al primo avvio la finestra chiede l'<strong>indirizzo del server</strong>, quello della pagina Postazioni del server, per esempio <code>https://ufficio-pc:8443</code>, e premi <strong>Collegati</strong>.</li>
+  <li>Mostra l'<strong>impronta del certificato</strong>: se è uguale a quella della pagina Postazioni del server, premi <strong>Continua</strong>. Da lì in avanti la ricorda.</li>
+  <li>Sul server, in <strong>Postazioni</strong>, scrivi un nome (per esempio <em>Reception</em>) e premi <strong>Genera il codice</strong>. Sulla postazione scrivi le 6 cifre entro 15 minuti.</li>
+</ol>
+<figure><img src="img/postazioni.jpg" alt=""><figcaption><strong>Postazioni</strong> sul server: il codice da scrivere sulla postazione, l'indirizzo del programma, l'impronta del certificato e l'elenco con l'ultimo accesso.</figcaption></figure>
+<figure><img src="img/registra-postazione.jpg" alt=""><figcaption><strong>Registra la postazione</strong>: quello che vede un PC o un telefono non ancora registrato.</figcaption></figure>
+<h3>Browser e telefono</h3>
+<p>Apri l'indirizzo del server e scrivi il codice. Se il browser avvisa che la connessione non è sicura, scarica il certificato dal link nella pagina e installalo tra le autorità attendibili.</p>
+<ul>
+  <li>Le postazioni contano per la licenza, il PC server no.</li>
+  <li>Una postazione persa o rubata si <strong>revoca</strong> dalla pagina Postazioni.</li>
+  <li>Per collegare una postazione a un altro server: menu Start, <strong>Cambia server della postazione</strong>, oppure clic sull'icona in alto a sinistra della finestra e <strong>Cambia server</strong>.</li>
+  <li>Dopo 10 codici sbagliati da uno stesso PC, quel PC aspetta 15 minuti.</li>
+</ul>
+
+<h2 id="fuori"><span class="num">9</span>Da fuori dall'ufficio</h2>
+<p>Le sedi e chi lavora da fuori si collegano tutti allo <strong>stesso server</strong>, come postazioni: non c'è niente da sincronizzare. Il server può essere un PC dell'ufficio raggiungibile da Internet oppure un Windows in cloud. Si imposta in <strong>Rete e certificato</strong>, che vede solo l'amministratore del programma.</p>
+<figure><img src="img/rete.jpg" alt=""><figcaption><strong>Rete e certificato</strong>: indirizzo pubblico, proxy fidati e certificato.</figcaption></figure>
+<ul>
+  <li><strong>Indirizzo pubblico</strong>, per esempio <code>https://booking.tuosito.it</code>: è quello dei link nelle email (conferme, consensi, inviti) e da usare fuori dall'ufficio. Vale subito.</li>
+  <li><strong>Proxy fidati</strong>: gli indirizzi IP del proxy davanti al server (NPMplus, Nginx Proxy Manager, Caddy, IIS). Nel proxy crea l'host con il nome pubblico verso <code>https://IP-DEL-SERVER:8443</code>, schema https, senza controllare il certificato del server, e lascia l'intestazione Host com'è.</li>
+  <li><strong>Certificato</strong>: quello interno, che il programma crea e rinnova da solo, oppure uno tuo (<code>.pfx</code>/<code>.p12</code>, oppure <code>.crt</code>/<code>.pem</code> con la sua <code>.key</code>). Un mese prima della scadenza il programma lo ricorda; se scade torna al certificato interno.</li>
+</ul>
+<p><strong>La versione web.</strong> La finestra della postazione si collega anche a TD Booking Suite installato con Docker su un server Linux: installa <strong>Solo postazione</strong> e scrivi il suo indirizzo.</p>
+
+<h2 id="backup"><span class="num">10</span>Backup e ripristino</h2>
+<p>Dalla pagina <strong>Backup</strong>:</p>
+<ul>
+  <li>la <strong>password dei backup</strong>: senza, il file non si apre, nemmeno da chi ha installato il programma. Conservala fuori dal PC;</li>
+  <li>l'<strong>ora del backup</strong>, una volta al giorno: se il PC è spento a quell'ora, parte appena si riaccende;</li>
+  <li>quante <strong>copie tenere</strong>;</li>
+  <li>le <strong>destinazioni</strong>: disco esterno o chiavetta (<code>E:\Backup TD Booking</code>), cartella di rete o NAS (<code>\\nas\cartella</code>, con utente e password), FTP, FTPS o SFTP. Ognuna ha il pulsante <strong>Prova</strong>.</li>
+</ul>
+<figure><img src="img/backup.jpg" alt=""><figcaption><strong>Backup</strong>: password, orario, copie, destinazioni e storico.</figcaption></figure>
+<p>Ogni backup contiene database, chiavi, licenza e codice installazione, cifrati con AES-256. Se un backup non riesce o i backup sono spenti, l'amministratore lo vede in cima alle pagine. Con FTPS e SFTP il programma ricorda il server al primo collegamento e si rifiuta di mandare la password se poi cambia.</p>
+<h3>Ripristino</h3>
+<ol class="steps">
+  <li>Sul PC con il server: menu Start, <strong>TD Booking Suite</strong>, <strong>Ripristina backup</strong>.</li>
+  <li>Scegli il file <code>.tdbk</code> e scrivi la password dei backup. Il programma si ferma un minuto, rimette i dati e riparte. Il database di prima resta da parte, con la data nel nome.</li>
+  <li>Su un PC nuovo: installa prima l'MSI, poi ripristina, poi chiedi la licenza con il nuovo codice installazione.</li>
+</ol>
+
+<h2 id="licenza"><span class="num">11</span>La licenza</h2>
+<table>
+  <tr><th>Tipo</th><th>Attività</th><th>Postazioni in rete</th></tr>
+  <tr><td>Un PC solo</td><td>1</td><td>nessuna</td></tr>
+  <tr><td>Server con postazioni</td><td>1</td><td>quante ne dice la licenza, oltre al PC server</td></tr>
+  <tr><td>Portale, più attività</td><td>2 o più</td><td>quante ne dice la licenza</td></tr>
+</table>
+<ul>
+  <li>La licenza vale per il <strong>codice installazione</strong> che vedi nella pagina Licenza. Il codice dipende da questa installazione e da questo PC: copiando i dati su un altro PC il codice cambia.</li>
+  <li>Per cambiare postazioni, attività o scadenza Tastiere Digitali ti manda una licenza nuova: la incolli al posto della vecchia, senza perdere niente.</li>
+  <li>Se le attività sono più di quelle della licenza, le ultime create restano chiuse finché la licenza non le comprende; i dati restano e sono nei backup.</li>
+</ul>
+<h3>Dopo la prova, o alla scadenza</h3>
+<figure><img src="img/bloccato.jpg" alt=""><figcaption><strong>Senza licenza</strong>: restano aperte solo licenza, backup e configurazione guidata. Prenotazioni e clienti sono al sicuro.</figcaption></figure>
+<div class="note"><strong>La data del PC</strong>Prova e scadenza si contano dall'ultimo giorno in cui il programma ha lavorato: spostare indietro la data di Windows non le allunga. Tieni la data e l'ora di Windows giuste.</div>
+
+<h2 id="problemi"><span class="num">12</span>Se qualcosa non va</h2>
+<table>
+  <tr><th>Cosa succede</th><th>Cosa fare</th></tr>
+  <tr><td>Password dimenticata, dell'amministratore o di chiunque</td><td>Sul PC con il server: menu Start, <strong>TD Booking Suite</strong>, <strong>Recupera accesso</strong>. Serve un account amministratore di Windows. Scrivi username o email: si apre la pagina per scegliere la password nuova, valida 24 ore. Azzera anche Authenticator e passkey, e resta scritto nel Registro attività.</td></tr>
+  <tr><td>Il primo avvio chiede un codice</td><td>Menu Start, <strong>TD Booking Suite</strong>, <strong>Codice del primo avvio</strong>, come amministratore di Windows.</td></tr>
+  <tr><td>Una persona ha dimenticato la password</td><td>Il titolare, da <strong>Persone e permessi</strong>, preme <strong>Ripristina password</strong>: un link nuovo, per email o da consegnare a mano.</td></tr>
+  <tr><td>La postazione dice che non è registrata</td><td>Sul server, <strong>Postazioni</strong>, <strong>Genera il codice</strong>, e scrivilo sulla postazione entro 15 minuti.</td></tr>
+  <tr><td>La postazione avvisa che il certificato del server è cambiato</td><td>Se lo hai cambiato tu (nuovo certificato in Rete e certificato), confronta l'impronta con quella della pagina Postazioni del server e accettalo. Altrimenti non accettarlo e controlla la rete.</td></tr>
+  <tr><td>"Username già usato"</td><td>Lo username è di una persona che lavora in un'altra attività: scegline un altro, oppure scrivi l'email di quella persona se vuoi proprio lei.</td></tr>
+  <tr><td>La data del PC risulta indietro</td><td>Correggi data e ora di Windows. Prova e scadenza si contano comunque dall'ultimo uso.</td></tr>
+  <tr><td>"TD Booking Suite è stato modificato"</td><td>Qualcuno ha toccato i file del programma: reinstalla l'MSI sopra. I dati restano.</td></tr>
+  <tr><td>Un backup non riesce</td><td>In <strong>Backup</strong>, premi <strong>Prova</strong> sulla destinazione e leggi l'esito: disco staccato, password del NAS cambiata, server non raggiungibile.</td></tr>
+</table>
+
+<h2 id="aggiornare"><span class="num">13</span>Aggiornare, cambiare tipo, disinstallare</h2>
+<ul>
+  <li><strong>Aggiornare</strong>: apri l'MSI nuovo sopra quello vecchio. Tipo, porta, database e dati restano. Prima di aggiornare l'installer salva una copia del database in <code>backup\prima-dell-aggiornamento.dump</code>; se l'aggiornamento non riesce, Windows rimette la versione di prima.</li>
+  <li><strong>Cambiare tipo</strong> (per esempio da Un PC solo a Server con postazioni): apri di nuovo l'MSI, oppure Impostazioni di Windows › App › TD Booking Suite › Modifica, scegli di cambiare l'installazione e il tipo nuovo. I dati restano.</li>
+  <li><strong>Disinstallare</strong>: toglie programma e servizi ma lascia i dati in <code>C:\ProgramData\TD Booking Suite</code>. Per cancellarli davvero elimina quella cartella.</li>
+</ul>
+
+<h2 id="tecnico"><span class="num">14</span>Per il tecnico</h2>
+<h3>Installazione da riga di comando</h3>
+<pre>rem Un PC solo
+msiexec /i TD-Booking-Suite-{{VERSION}}.msi MODALITA=standalone /qn
+
+rem Server con postazioni, con porta e indirizzi
+msiexec /i TD-Booking-Suite-{{VERSION}}.msi MODALITA=server PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 ALTRI_INDIRIZZI=192.168.1.10 /qn
+
+rem Solo postazione
+msiexec /i TD-Booking-Suite-{{VERSION}}.msi ADDLOCAL=Postazione /qn</pre>
+<p>Senza <code>MODALITA</code> l'installazione mantiene il tipo che il PC aveva. Un PC nuovo parte come Un PC solo, a meno che si diano <code>INDIRIZZO</code> o <code>ALTRI_INDIRIZZI</code>, o che ci siano già i dati di un server.</p>
+<h3>Cosa c'è sul PC con il server</h3>
+<table class="plain">
+  <tr><td><code>C:\Program Files\TD Booking Suite\server</code></td><td>Python, il programma (la parte Windows compilata in codice nativo), PostgreSQL 17, gli script</td></tr>
+  <tr><td><code>C:\Program Files\TD Booking Suite\postazione</code></td><td>la finestra del programma (WebView2)</td></tr>
+  <tr><td><code>C:\ProgramData\TD Booking Suite</code></td><td>configurazione, database, licenza, certificati, backup, log: la leggono solo Windows, gli amministratori e i servizi</td></tr>
+  <tr><td>servizio <strong>TDBookingDB</strong></td><td>PostgreSQL, solo su 127.0.0.1, porta 55432</td></tr>
+  <tr><td>servizio <strong>TDBookingWeb</strong></td><td>il programma in HTTPS, porta 8443 (con Un PC solo solo su 127.0.0.1)</td></tr>
+  <tr><td>servizio <strong>TDBookingWorker</strong></td><td>email, promemoria e backup</td></tr>
+</table>
+<p>Ogni servizio gira con un suo account virtuale di Windows (<code>NT SERVICE\…</code>). Il servizio web non legge la password del proprietario del database. Il firewall apre la porta solo con Server con postazioni, sulle reti private e di dominio.</p>
+<p>Una cartella dati o una cartella condivisa create prima dell'installazione da un utente normale non vengono usate: l'installazione le mette da parte, con <code>.non-fidata</code> e la data nel nome, e ne crea di nuove.</p>
+
+</body>
+</html>

@@ -23,7 +23,8 @@ try {
     Write-Output "TD Booking Suite: configurazione del server in $App"
 
     # 1. configuration files: keys and passwords only the first time
-    $setup = @("-m", "tdwin.setup_files", "--data", $Data, "--pg-bin", $PgBin)
+    # -c, not -m: tdwin is compiled (.pyd) and python -m runs only modules with their source
+    $setup = @("-c", "import sys;from tdwin.setup_files import main;main(sys.argv[1:])", "--data", $Data, "--pg-bin", $PgBin)
     if ($Porta) { $setup += @("--porta", $Porta) }
     if ($Origine) { $setup += @("--origine", $Origine) }
     if ($Indirizzi) { $setup += @("--indirizzi", $Indirizzi) }

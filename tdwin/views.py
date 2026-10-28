@@ -30,6 +30,7 @@ def primo_avvio_code():
 def first_run(request):
     """The supreme administrator: configures the program, businesses, workstations, backups and licence. Only from
     the server PC, only while no administrator exists, and with the code from the admin-only data folder."""
+    import secrets
     from .middleware import configured
     if configured():return redirect("/login/")
     if not request.server_pc:return HttpResponse("Il primo avvio si fa dal PC server.",status=403,content_type="text/plain; charset=utf-8")
@@ -39,7 +40,8 @@ def first_run(request):
         from core.models import clean_username
         email=request.POST.get("email","").strip().casefold();password=request.POST.get("password","")
         try:
-            if "".join((request.POST.get("codice") or "").split()).upper()!=code.replace("-",""):
+            typed="".join(ch for ch in request.POST.get("codice") or "" if ch.isalnum()).upper()
+            if not secrets.compare_digest(typed,"".join(ch for ch in code if ch.isalnum())):
                 raise ValidationError("Codice del primo avvio sbagliato: aprilo come indicato sotto e ricopialo.")
             username=clean_username(request.POST.get("username",""))
             if not username:raise ValidationError("Scegli lo username dell'amministratore.")
