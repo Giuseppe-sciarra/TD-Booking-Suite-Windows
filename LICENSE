@@ -1,0 +1,13 @@
+TD Booking Suite per Windows
+Copyright (c) 2026 Tastiere Digitali. Tutti i diritti riservati.
+
+Questo repository (edizione Windows, pacchetto di installazione, programma per le postazioni, sistema di
+licenze e strumenti collegati) è di proprietà di Tastiere Digitali. Nessuna licenza d'uso, copia, modifica o
+distribuzione viene concessa senza un accordo scritto con Tastiere Digitali.
+
+Il programma installato si usa con una licenza rilasciata da Tastiere Digitali o nella prova gratuita di
+7 giorni, alle condizioni mostrate dall'installer (windows/wix/licenza.rtf).
+
+La cartella suite/ è il nucleo web di TD Booking Suite, pubblicato a parte con licenza AGPL-3.0:
+https://github.com/Giuseppe-sciarra/TD-Booking-Suite. I componenti di terze parti inclusi nell'installer
+(PostgreSQL, Python, Django e le altre librerie, WinSW, Microsoft Edge WebView2) restano sotto le loro licenze.

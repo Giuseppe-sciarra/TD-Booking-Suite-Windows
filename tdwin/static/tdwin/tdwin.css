@@ -1,0 +1,5 @@
+.big-code code{font-size:32px;letter-spacing:.18em;font-weight:700}
+form.inline{display:inline}
+.backup-dest{display:grid;gap:4px}
+.backup-dest small{color:var(--muted)}
+.usage-table td form{display:inline;margin:0}

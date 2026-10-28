@@ -1,0 +1,11 @@
+# Librerie dell'edizione Windows: quelle del core, provate nel suo rilascio, più server HTTPS e backup
+-r ../suite/requirements.lock
+cheroot==11.1.2            # server HTTPS dei servizi Windows, al posto di gunicorn
+jaraco.functools==4.6.0
+more-itertools==11.2.1
+paramiko==5.1.0            # backup SFTP
+bcrypt==5.0.0
+invoke==3.0.3
+PyNaCl==1.6.2
+smbprotocol==1.17.0        # backup su cartella di rete, NAS
+pyspnego==0.12.4

@@ -1,0 +1,25 @@
+<!-- WinSW 2: servizio Windows di TD Booking Suite. setup-server.ps1 lo installa e lo fa girare con l'account virtuale NT SERVICE\TDBookingWeb -->
+<service>
+  <id>TDBookingWeb</id>
+  <name>TD Booking Suite Web</name>
+  <description>Il programma TD Booking Suite in HTTPS, per il PC server e le postazioni.</description>
+  <executable>%BASE%\..\python\python.exe</executable>
+  <arguments>-m django serve_https</arguments>
+  <workingdirectory>%BASE%\..\app</workingdirectory>
+  <env name="DJANGO_SETTINGS_MODULE" value="tdwin.settings"/>
+  <env name="TDBS_DATA" value="%ProgramData%\TD Booking Suite"/>
+  <env name="PYTHONUNBUFFERED" value="1"/>
+  <env name="PYTHONDONTWRITEBYTECODE" value="1"/>
+  <depend>TDBookingDB</depend>
+  <startmode>Automatic</startmode>
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <onfailure action="restart" delay="2 min"/>
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>20 sec</stoptimeout>
+  <logpath>%ProgramData%\TD Booking Suite\log</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+</service>

@@ -1,0 +1,11 @@
+static-collected/
+__pycache__/
+*.pyc
+.pytest_cache/
+/build/
+/dist/
+*.pem
+licenze-emesse/
+registro-licenze.csv
+windows/client/bin/
+windows/client/obj/
