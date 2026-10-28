@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le finestre dell'installazione: quelle di WixUI_FeatureTree, con la scelta del tipo di installazione al posto
+     dell'albero delle funzioni. MODALITA: standalone (un PC solo), server (server con postazioni), postazione. -->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <UI Id="TDBookingUI">
+      <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
+      <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
+      <TextStyle Id="WixUI_Font_Title" FaceName="Tahoma" Size="9" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+
+      <DialogRef Id="ErrorDlg" />
+      <DialogRef Id="FatalError" />
+      <DialogRef Id="FilesInUse" />
+      <DialogRef Id="MsiRMFilesInUse" />
+      <DialogRef Id="PrepareDlg" />
+      <DialogRef Id="ProgressDlg" />
+      <DialogRef Id="ResumeDlg" />
+      <DialogRef Id="UserExit" />
+
+      <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999" />
+
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="LicenseAgreementDlg" Condition="NOT Installed" />
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Condition="Installed AND PATCH" />
+
+      <Publish Dialog="LicenseAgreementDlg" Control="Print" Event="DoAction" Value="WixUIPrintEula_X64" />
+      <Publish Dialog="LicenseAgreementDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" />
+      <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="ModalitaDlg" Condition="LicenseAccepted = &quot;1&quot;" />
+
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="ModalitaDlg" Order="1" Condition="NOT Installed OR WixUI_InstallMode = &quot;Change&quot;" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="2" Condition="Installed AND NOT PATCH" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="3" Condition="Installed AND PATCH" />
+
+      <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="ChangeButton" Event="NewDialog" Value="ModalitaDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg" />
+
+      <Dialog Id="ModalitaDlg" Width="370" Height="270" Title="Installazione di [ProductName]">
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="!(loc.CustomizeDlgBannerBitmap)" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="300" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Come userai TD Booking Suite su questo PC?" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="320" Height="15" Transparent="yes" NoPrefix="yes" Text="La scelta si cambia dopo, aprendo di nuovo l'installazione: i dati restano." />
+        <Control Id="Scelta" Type="RadioButtonGroup" X="20" Y="52" Width="330" Height="176" Property="MODALITA">
+          <RadioButtonGroup Property="MODALITA">
+            <RadioButton Value="standalone" X="0" Y="0" Width="320" Height="16" Text="Un PC solo" />
+            <RadioButton Value="server" X="0" Y="60" Width="320" Height="16" Text="Server con postazioni" />
+            <RadioButton Value="postazione" X="0" Y="120" Width="320" Height="16" Text="Solo postazione" />
+          </RadioButtonGroup>
+        </Control>
+        <Control Id="StandaloneText" Type="Text" X="37" Y="69" Width="310" Height="38" NoPrefix="yes"
+                 Text="Programma e dati su questo PC, che si usa da solo: niente altri PC, telefoni o prenotazioni dal sito. Per un'attività con una sola postazione." />
+        <Control Id="ServerText" Type="Text" X="37" Y="129" Width="310" Height="38" NoPrefix="yes"
+                 Text="Questo PC tiene i dati e resta acceso. Gli altri PC con la postazione, tablet e telefoni dell'ufficio e, se lo metti online, il sito si collegano a lui. Qui si usa anche il programma." />
+        <Control Id="PostazioneText" Type="Text" X="37" Y="189" Width="310" Height="38" NoPrefix="yes"
+                 Text="Solo la finestra del programma, per un PC che si collega a un server già installato in ufficio o a TD Booking Suite su Internet." />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)">
+          <Publish Event="NewDialog" Value="MaintenanceTypeDlg" Condition="Installed" />
+          <Publish Event="NewDialog" Value="LicenseAgreementDlg" Condition="NOT Installed" />
+        </Control>
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)">
+          <!-- the choice becomes the features: the server everywhere but on a workstation, the window everywhere -->
+          <Publish Event="AddLocal" Value="Server" Condition="MODALITA &lt;&gt; &quot;postazione&quot;" />
+          <Publish Event="Remove" Value="Server" Condition="MODALITA = &quot;postazione&quot;" />
+          <Publish Event="AddLocal" Value="Postazione" />
+          <Publish Event="NewDialog" Value="VerifyReadyDlg" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+      </Dialog>
+    </UI>
+    <UIRef Id="WixUI_Common" />
+  </Fragment>
+</Wix>

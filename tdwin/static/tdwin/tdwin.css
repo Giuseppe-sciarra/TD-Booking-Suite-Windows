@@ -4,3 +4,8 @@ form.inline{display:inline}
 .backup-dest small{color:var(--muted)}
 .usage-table td form{display:inline;margin:0}
 .steps-list{margin:0 0 12px;padding-left:20px;font-size:14px;line-height:1.55}.steps-list li{margin:0 0 8px}
+.guide-step h2{display:flex;align-items:center;gap:10px}
+.step-num{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;font-size:14px;font-weight:700;flex:none}
+.guide-step .actions form.inline{display:inline-flex}
+.owner-who{border:0;margin:18px 0 14px;padding:0}.owner-who legend{font-weight:600;margin-bottom:8px}
+.owner-choice:has(input[name=chi][value=io]:checked) .owner-fields{display:none}

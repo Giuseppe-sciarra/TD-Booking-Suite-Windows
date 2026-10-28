@@ -1,5 +1,5 @@
 """Windows edition, on every request: the first start, the registered workstations and the licence."""
-import time
+import re,time
 from urllib.parse import urlencode
 from django.http import HttpResponse
 from django.shortcuts import redirect
@@ -11,7 +11,7 @@ PUBLIC=("/book/","/action/","/brand/","/site/","/static/","/prezzi/","/privacy/"
 # needed before the administrator exists
 SETUP=("/static/","/site/","/primo-avvio/")
 # still open without a licence: sign in, the licence itself and the backups, so the data stays reachable
-UNLICENSED=SETUP+("/postazione/","/login/","/logout/","/verify/","/security/","/passkey/","/invite/","/platform/licenza/","/platform/backup/")
+UNLICENSED=SETUP+("/postazione/","/login/","/logout/","/verify/","/security/","/passkey/","/invite/","/platform/licenza/","/platform/backup/","/platform/inizia/")
 
 _local={"at":-1e9,"value":set()}
 def local_addresses():
@@ -33,6 +33,18 @@ class CsrfMiddleware(CsrfViewMiddleware):
     csrf_trusted_origins_hosts=property(CsrfViewMiddleware.csrf_trusted_origins_hosts.real_func)
     allowed_origins_exact=property(CsrfViewMiddleware.allowed_origins_exact.real_func)
     allowed_origin_subdomains=property(CsrfViewMiddleware.allowed_origin_subdomains.real_func)
+
+TAMPERED={"kind":"bloccato","attivita":1,"postazioni":0,"problema":"Il controllo della licenza di questo programma è stato modificato: reinstalla TD Booking Suite."}
+
+_allowed={"at":-1e9,"limit":None,"value":set()}
+def allowed_businesses(limit):
+    """None while the businesses fit the licence, otherwise the first ones created, as many as it allows.
+    Read again once a minute."""
+    if _allowed["limit"]!=limit or time.monotonic()-_allowed["at"]>60:
+        from core.models import Tenant
+        slugs=list(Tenant.objects.order_by("created","pk").values_list("slug",flat=True))
+        _allowed.update(at=time.monotonic(),limit=limit,value=set(slugs[:max(1,limit)]) if len(slugs)>max(1,limit) else None)
+    return _allowed["value"]
 
 _ready=[]
 def configured():
@@ -61,12 +73,28 @@ class WindowsMiddleware:
                 if request.method in ("GET","HEAD"):return redirect("/postazione/?"+urlencode({"next":request.get_full_path()}))
                 return HttpResponse("Questa postazione non è registrata: aprila e inserisci il codice dalla pagina Postazioni.",status=403,content_type="text/plain; charset=utf-8")
         state=licensing.apply()
+        # the installed program is compiled: a check swapped from Python (to crack the licence) is not, and stops here
+        if type(licensing.apply) is not type(is_local) or type(licensing.status) is not type(is_local):state=TAMPERED
         request.licenza=state
+        # businesses beyond the licence (the core's limit could be edited out): their pages stay closed, data kept
+        over=re.match(r"^/(t|book|action)/([a-zA-Z0-9_-]+)/",path)
+        allowed=allowed_businesses(state["attivita"]) if over else None
+        if allowed is not None and over[2] not in allowed:
+            return HttpResponse(f"Questa attività va oltre le {state['attivita']} della licenza: serve una licenza con più attività. I dati restano e sono nei backup.",status=402,content_type="text/plain; charset=utf-8")
         if state["kind"]=="bloccato" and not path.startswith(UNLICENSED):
             if path.startswith(PUBLIC) or path.startswith("/api/"):
                 return HttpResponse("Servizio non attivo.",status=503,content_type="text/plain; charset=utf-8")
-            return redirect("/platform/licenza/")
+            user=getattr(request,"user",None)
+            return redirect("/platform/inizia/" if user and user.is_authenticated and user.is_staff else "/platform/licenza/")
         request.extra_notices=notices(request,state)
+        # the program's administrator lands on the guided setup until a licence and a business exist
+        user=getattr(request,"user",None)
+        if path=="/" and request.method=="GET" and user and user.is_authenticated and user.is_staff and request.session.get("mfa"):
+            from core.models import Membership,Tenant
+            if state["kind"]=="bloccato" or not Tenant.objects.exists():return redirect("/platform/inizia/")
+            # the administrator who works with this account opens his business, like a titolare
+            mine=list(Membership.objects.filter(user=user).values_list("tenant__slug",flat=True)[:2])
+            if len(mine)==1:return redirect("dashboard",mine[0])
         response=self.get_response(request)
         if getattr(request,"renew_postazione",False):postazioni.set_cookie(response,request.COOKIES[postazioni.COOKIE])
         return response

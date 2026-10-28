@@ -9,7 +9,20 @@
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
     <Icon Id="app.ico" SourceFile="!(bindpath.postazione)\app.ico" />
     <Property Id="ARPPRODUCTICON" Value="app.ico" />
-    <!-- for a silent install:  msiexec /i TD-Booking-Suite.msi ADDLOCAL=Server,Postazione PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 /qn -->
+    <!-- for a silent install:  msiexec /i TD-Booking-Suite.msi ADDLOCAL=Server,Postazione MODALITA=server PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 /qn -->
+    <!-- MODALITA: standalone (un PC solo) or server (server con postazioni); a silent install of the window only is
+         ADDLOCAL=Postazione. Empty: what this PC has. Only the window installed (the MSI's own registry value): postazione;
+         otherwise what setup-server.ps1 remembered; a PC with the 2.8 server, or with its data left after uninstalling it,
+         or given an address: server; a new one starts as Un PC solo -->
+    <Property Id="MODALITA" Secure="yes" />
+    <Property Id="MODALITA_PRIMA"><RegistrySearch Id="RegModalita" Bitness="always64" Root="HKLM" Key="Software\TD Booking Suite" Name="Modalita" Type="raw" /></Property>
+    <Property Id="SERVER_PRIMA"><RegistrySearch Id="RegServer" Bitness="always64" Root="HKLM" Key="Software\TD Booking Suite" Name="Server" Type="raw" /></Property>
+    <Property Id="POSTAZIONE_PRIMA"><RegistrySearch Id="RegPostazione" Bitness="always64" Root="HKLM" Key="Software\TD Booking Suite" Name="Postazione" Type="raw" /></Property>
+    <Property Id="DATI_PRIMA"><DirectorySearch Id="CercaDati" Path="[CommonAppDataFolder]TD Booking Suite" Depth="0"><FileSearch Name="config.json" /></DirectorySearch></Property>
+    <SetProperty Id="MODALITA" Action="ModalitaSoloPostazione" Value="postazione" After="AppSearch" Sequence="both" Condition="NOT MODALITA AND POSTAZIONE_PRIMA AND NOT SERVER_PRIMA" />
+    <SetProperty Id="MODALITA" Action="ModalitaPrima" Value="[MODALITA_PRIMA]" After="ModalitaSoloPostazione" Sequence="both" Condition="NOT MODALITA AND MODALITA_PRIMA" />
+    <SetProperty Id="MODALITA" Action="ModalitaServer" Value="server" After="ModalitaPrima" Sequence="both" Condition="NOT MODALITA AND (SERVER_PRIMA OR DATI_PRIMA OR INDIRIZZO OR ALTRI_INDIRIZZI)" />
+    <SetProperty Id="MODALITA" Action="ModalitaNuova" Value="standalone" After="ModalitaServer" Sequence="both" Condition="NOT MODALITA" />
     <!-- empty: a new server gets 8443, an update keeps the port it has -->
     <Property Id="PORTA" Secure="yes" />
     <Property Id="INDIRIZZO" Secure="yes" />
@@ -41,7 +54,7 @@
       <Shortcut Id="RestoreShortcut" Name="Ripristina backup" Description="Rimette i dati di un backup di TD Booking Suite"
                 Target="[System64Folder]WindowsPowerShell\v1.0\powershell.exe" Icon="app.ico" WorkingDirectory="SERVERDIR"
                 Arguments="-NoProfile -ExecutionPolicy Bypass -File &quot;[SERVERDIR]script\ripristina-backup.ps1&quot;" />
-      <Shortcut Id="RecoverShortcut" Name="Recupera amministratore" Description="Nuova password per l'amministratore del programma"
+      <Shortcut Id="RecoverShortcut" Name="Recupera accesso" Description="Password dimenticata: amministratore del programma o titolare"
                 Target="[System64Folder]WindowsPowerShell\v1.0\powershell.exe" Icon="app.ico" WorkingDirectory="SERVERDIR"
                 Arguments="-NoProfile -ExecutionPolicy Bypass -File &quot;[SERVERDIR]script\recupera-admin.ps1&quot;" />
       <RemoveFolder Id="RemoveMenuServer" On="uninstall" />
@@ -57,7 +70,7 @@
 
     <!-- the server's configuration runs as Windows itself, after the files are in place; removal before they go -->
     <SetProperty Id="SetupServer" Sequence="execute" Before="SetupServer"
-                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[SERVERDIR]script\setup-server.ps1&quot; -Porta &quot;[PORTA]&quot; -Origine &quot;[INDIRIZZO]&quot; -Indirizzi &quot;[ALTRI_INDIRIZZI]&quot;" />
+                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[SERVERDIR]script\setup-server.ps1&quot; -Porta &quot;[PORTA]&quot; -Origine &quot;[INDIRIZZO]&quot; -Indirizzi &quot;[ALTRI_INDIRIZZI]&quot; -Modalita &quot;[MODALITA]&quot;" />
     <CustomAction Id="SetupServer" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred" Impersonate="no" Return="check" />
     <!-- removal: everything on uninstall; during an upgrade the services are only stopped -->
     <SetProperty Id="RemoveServer" Action="SetRemoveServer" Sequence="execute" Before="RemoveServer" Condition="NOT UPGRADINGPRODUCTCODE"
@@ -77,7 +90,8 @@
       <Custom Action="RestartServer" Before="RemoveServer" Condition="(!Server=3) AND (&amp;Server=2) AND UPGRADINGPRODUCTCODE" />
       <Custom Action="RemoveServer" Before="RemoveFiles" Condition="(!Server=3) AND (&amp;Server=2)" />
       <Custom Action="UndoSetupServer" Before="SetupServer" Condition="(&amp;Server=3) AND NOT (!Server=3) AND NOT WIX_UPGRADE_DETECTED" />
-      <Custom Action="SetupServer" Before="InstallFinalize" Condition="&amp;Server=3" />
+      <!-- also on Change and Repair while the server stays: a new MODALITA is applied there -->
+      <Custom Action="SetupServer" Before="InstallFinalize" Condition="(&amp;Server=3) OR ((!Server=3) AND NOT (&amp;Server=2) AND REMOVE&lt;&gt;&quot;ALL&quot;)" />
     </InstallExecuteSequence>
 
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Apri TD Booking Suite" />
@@ -86,7 +100,7 @@
     <CustomAction Id="LaunchApp" BinaryRef="Wix4UtilCA_X64" DllEntry="WixShellExec" Impersonate="yes" Return="ignore" />
     <WixVariable Id="WixUILicenseRtf" Value="$(sys.SOURCEFILEDIR)licenza.rtf" />
     <UI>
-      <ui:WixUI Id="WixUI_FeatureTree" />
+      <UIRef Id="TDBookingUI" />
       <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApp" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed AND &amp;Postazione=3" />
     </UI>
   </Package>

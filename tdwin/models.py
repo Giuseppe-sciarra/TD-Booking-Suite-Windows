@@ -11,6 +11,10 @@ class Prova(models.Model):
         from .licensing import TRIAL_DAYS
         return self.attivata+timedelta(days=TRIAL_DAYS)
 
+class Orologio(models.Model):
+    """One row: the latest time the program ran, so that a clock moved back is noticed (licensing.clock)."""
+    visto=models.DateTimeField()
+
 class Postazione(models.Model):
     """A PC with the client program, or a browser, allowed to open the program. The server PC itself needs none."""
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)

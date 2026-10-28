@@ -228,3 +228,28 @@ def test_another_server_clears_the_pin(admin,trial):
     d.refresh_from_db();assert d.impronta=="ssh-ed25519 VECCHIA"
     c.post(f"/platform/backup/?modifica={d.pk}",{**form,"host":"nuovo.example.com"})
     d.refresh_from_db();assert d.host=="nuovo.example.com" and d.impronta==""
+
+def test_ftps_recognised_once_is_never_pinned_later(monkeypatch):
+    import ssl
+    class Fake:
+        def __init__(self):self.sock=types.SimpleNamespace(getpeercert=lambda binary_form=True:b"certificato-falso")
+        def login(self,user,password):Fake.sent=password
+        def prot_p(self):pass
+        def cwd(self,part):pass
+    verified={"ok":True}
+    def ftps(d,verify):
+        if verify and not verified["ok"]:raise ssl.SSLCertVerificationError("non riconosciuto")
+        return Fake()
+    monkeypatch.setattr(backup,"ftps",ftps)
+    d=Destinazione.objects.create(nome="NAS",tipo="ftps",host="nas.example.invalid",percorso="/backup")
+    backup.seal_secret(d,"password-del-nas");d.save()
+    backup.FTP(d);d.refresh_from_db()
+    assert d.impronta==backup.VERIFIED
+    # later the certificate is no longer recognised: someone in between gets nothing
+    verified["ok"]=False;Fake.sent=None
+    with pytest.raises(ValueError,match="non è più riconosciuto"):backup.FTP(d)
+    assert Fake.sent is None
+    # a NAS with its own certificate from the start is pinned at the first connection, as before
+    other=Destinazione.objects.create(nome="NAS 2",tipo="ftps",host="nas2.example.invalid",percorso="/")
+    backup.FTP(other);other.refresh_from_db()
+    assert other.impronta.startswith("sha256 ")

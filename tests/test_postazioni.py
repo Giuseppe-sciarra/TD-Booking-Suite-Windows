@@ -14,13 +14,28 @@ def test_first_start_only_from_the_server_pc():
     assert Client().get("/platform/").url=="/primo-avvio/"
     far=remote().get("/platform/")
     assert far.status_code==503 and "dal PC server" in far.content.decode()
-    assert remote().post("/primo-avvio/",{"email":"a@example.invalid","password":PASSWORD,"password2":PASSWORD}).status_code==403
+    assert remote().post("/primo-avvio/",{"username":"admin","password":PASSWORD,"password2":PASSWORD}).status_code==403
     c=Client()
-    assert "almeno 12" in c.post("/primo-avvio/",{"email":"a@example.invalid","password":"corta","password2":"corta"}).content.decode()
-    assert "non coincidono" in c.post("/primo-avvio/",{"email":"a@example.invalid","password":PASSWORD,"password2":PASSWORD+"x"}).content.decode()
-    assert c.post("/primo-avvio/",{"email":"Admin@Example.invalid","password":PASSWORD,"password2":PASSWORD}).url=="/login/"
+    page=c.get("/primo-avvio/").content.decode()
+    from django.conf import settings
+    code=(settings.TDWIN_DATA/"licenza"/"primo-avvio.txt").read_text().strip()
+    assert "primo-avvio.txt" in page and code not in page  # the code is only in the admin-only data folder
+    assert "Codice del primo avvio sbagliato" in c.post("/primo-avvio/",{"codice":"AAAA-BBBB","username":"admin","password":PASSWORD,"password2":PASSWORD}).content.decode()
+    assert not User.objects.exists()
+    first=lambda **kw:c.post("/primo-avvio/",{"codice":code.lower().replace("-"," "),**kw})
+    assert "almeno 12" in first(username="admin",password="corta",password2="corta").content.decode()
+    assert "non coincidono" in first(username="admin",password=PASSWORD,password2=PASSWORD+"x").content.decode()
+    # the administrator is signed in at once and goes on with the guided setup
+    assert "Scegli lo username" in first(email="a@example.invalid",password=PASSWORD,password2=PASSWORD).content.decode()
+    assert "Username non valido" in first(username="a@b",password=PASSWORD,password2=PASSWORD).content.decode()
+    assert first(username="Admin",email="Admin@Example.invalid",password=PASSWORD,password2=PASSWORD,remember="1").url=="/platform/inizia/"
+    assert not (settings.TDWIN_DATA/"licenza"/"primo-avvio.txt").exists()  # used once
+    assert "Configurazione guidata" in c.get("/platform/inizia/").content.decode()
+    # Resta collegato: a cookie that outlives the program window, a year by default on this edition
+    cookie=c.cookies[settings.SESSION_COOKIE_NAME]
+    assert settings.SESSION_REMEMBER_DAYS==365 and int(cookie["max-age"])>360*86400
     admin=User.objects.get()
-    assert admin.is_staff and admin.is_superuser and admin.email=="admin@example.invalid"
+    assert admin.is_staff and admin.is_superuser and (admin.username,admin.email)==("admin","admin@example.invalid")
     from core.models import SiteSettings
     assert SiteSettings.current().name=="TD Booking Suite"
     assert Client().get("/primo-avvio/").url=="/login/" and User.objects.count()==1
@@ -55,9 +70,13 @@ def test_workstation_registers_with_a_code_and_can_be_revoked(admin,trial):
 def test_wrong_codes_burn_the_pending_ones(admin,trial):
     item,code=postazioni.new_code("Sala")
     wrong="000000" if code!="000000" else "111111"
-    for _ in range(postazioni.MAX_TRIES):
+    # one address: a few tries, then it waits; the others can still pair
+    for _ in range(postazioni.TRIES_PER_ADDRESS):
         assert "non valido" in remote().post("/postazione/",{"codice":wrong}).content.decode()
-    assert "non valido" in remote().post("/postazione/",{"codice":code}).content.decode()
+    assert remote().post("/postazione/",{"codice":code}).status_code==403
+    for n in range(postazioni.MAX_TRIES-postazioni.TRIES_PER_ADDRESS):
+        assert "non valido" in Client(REMOTE_ADDR=f"198.51.100.{n}").post("/postazione/",{"codice":wrong}).content.decode()
+    assert "non valido" in Client(REMOTE_ADDR="198.51.100.250").post("/postazione/",{"codice":code}).content.decode()
     item.refresh_from_db();assert item.token is None
     late,code2=postazioni.new_code("Ufficio")
     Postazione.objects.filter(pk=late.pk).update(scadenza_codice=timezone.now()-timedelta(seconds=1))

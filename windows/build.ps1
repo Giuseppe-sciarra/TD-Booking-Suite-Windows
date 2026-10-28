@@ -60,6 +60,11 @@ Copy-Item (Join-Path $root "tdwin") $app -Recurse
 Get-ChildItem $app -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
 Invoke-Native python @((Join-Path $root "windows\build_static.py"))
 Copy-Item (Join-Path $root "static-collected") $app -Recurse
+# the Windows edition's own code becomes native modules (.pyd) with the seller's licence key written inside:
+# no .py of tdwin, no key file and no test settings go in the MSI (windows/compile_tdwin.py)
+Invoke-Native python @("-m", "pip", "install", "--disable-pip-version-check", "--no-cache-dir", "cython>=3.1,<4", "setuptools")
+Invoke-Native python @((Join-Path $root "windows\compile_tdwin.py"), $app, (Join-Path $root "tdwin\licenza-chiave-pubblica.txt"))
+if (Get-ChildItem (Join-Path $app "tdwin") -Recurse -Filter "*.py" | Where-Object { $_.Name -ne "__init__.py" -and $_.FullName -notmatch "\\migrations\\" }) { throw "Restano sorgenti .py di tdwin nell'MSI" }
 Invoke-Native python @("-m", "compileall", "-q", "-j", "0", $app)
 New-Item -ItemType Directory -Force (Join-Path $server "script"), (Join-Path $server "servizi") | Out-Null
 Copy-Item (Join-Path $root "windows\script\*.ps1") (Join-Path $server "script")
@@ -94,13 +99,13 @@ Copy-Item (Join-Path $root "windows\client\app.ico") $postazione
 Invoke-Native dotnet @("tool", "update", "--global", "wix", "--version", $WixVersion)
 Invoke-Native wix @("extension", "add", "-g", "WixToolset.Util.wixext/$WixVersion", "WixToolset.UI.wixext/$WixVersion")
 $msi = Join-Path $dist "TD-Booking-Suite-$Version.msi"
-Invoke-Native wix @("build", (Join-Path $root "windows\wix\Package.wxs"), "-arch", "x64", "-culture", "it-IT",
+Invoke-Native wix @("build", (Join-Path $root "windows\wix\Package.wxs"), (Join-Path $root "windows\wix\Modalita.wxs"), "-arch", "x64", "-culture", "it-IT",
     "-ext", "WixToolset.Util.wixext", "-ext", "WixToolset.UI.wixext",
     "-bindpath", "server=$server", "-bindpath", "postazione=$postazione", "-d", "Version=$Version", "-o", $msi)
 Write-Host "Pronto: $msi ($([math]::Round((Get-Item $msi).Length / 1MB)) MB)"
 if ($env:GITHUB_ACTIONS) {
     # a second build of the same files has another product code: smoke-test.ps1 uses it as a real upgrade
-    Invoke-Native wix @("build", (Join-Path $root "windows\wix\Package.wxs"), "-arch", "x64", "-culture", "it-IT",
+    Invoke-Native wix @("build", (Join-Path $root "windows\wix\Package.wxs"), (Join-Path $root "windows\wix\Modalita.wxs"), "-arch", "x64", "-culture", "it-IT",
         "-ext", "WixToolset.Util.wixext", "-ext", "WixToolset.UI.wixext",
         "-bindpath", "server=$server", "-bindpath", "postazione=$postazione", "-d", "Version=$Version", "-o", (Join-Path $build "aggiornamento.msi"))
 }

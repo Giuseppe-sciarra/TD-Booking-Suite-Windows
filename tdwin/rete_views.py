@@ -39,5 +39,5 @@ def page(request):
     served=rete.describe(x509.load_pem_x509_certificates(cert.read_bytes())[0])
     served["scadenza"]=datetime.datetime.fromisoformat(served["scadenza"])
     return render(request,"tdwin/rete.html",{"row":r,"state":state,"served":served,"own_served":cert==rete.own_paths()[0],
-        "warnings":rete.warnings(state),"fingerprint":rete.fingerprint(),"office":settings.TDWIN_CONFIG["origine"],
+        "warnings":rete.warnings(state),"fingerprint":rete.fingerprint(),"office":settings.TDWIN_CONFIG["origine"],"standalone":settings.TDWIN_STANDALONE,
         "port":settings.TDWIN_CONFIG.get("porta",8443)})

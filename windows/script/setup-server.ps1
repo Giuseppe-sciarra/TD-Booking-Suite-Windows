@@ -1,21 +1,22 @@
 ﻿# Configura il server dopo l'installazione o l'aggiornamento. Lo lancia l'MSI come amministratore;
 # si può rilanciare a mano per cambiare indirizzo o porta:
 #   powershell -ExecutionPolicy Bypass -File setup-server.ps1 -Origine https://ufficio-pc:8443 -Porta 8443
+#   powershell -ExecutionPolicy Bypass -File setup-server.ps1 -Modalita standalone   (un PC solo, o server)
 # Non cancella e non sovrascrive mai dati, chiavi e password già esistenti.
-param([string]$Porta = "", [string]$Origine = "", [string]$Indirizzi = "")
+param([string]$Porta = "", [string]$Origine = "", [string]$Indirizzi = "", [string]$Modalita = "")
+# the server is never set up as a window only: the installation stops and Windows puts everything back
+if ($Modalita -eq "postazione") { throw "MODALITA=postazione installa solo la finestra: usa ADDLOCAL=Postazione (su un server: REMOVE=Server)." }
 . "$PSScriptRoot\comune.ps1"
-New-Item -ItemType Directory -Force $Data | Out-Null
+# always, before anything is read from it: a data folder a normal user prepared (with his own keys, a certificate
+# authority he controls, or a fake pgdata that makes it look installed) is set aside; a real installation stays
+Protect-Folder $Data
 $firstInstall = -not (Test-Path (Join-Path $Data "pgdata\PG_VERSION"))
 if ($firstInstall) {
-    # a folder made before the first installation may belong to a normal user, with his own key files:
-    # owner and rights are reset and any configuration found is set aside, new keys are made below
-    Invoke-Checked "icacls.exe" @($Data, "/setowner", "*S-1-5-32-544", "/T", "/C", "/Q")
-    Invoke-Checked "icacls.exe" @($Data, "/reset", "/T", "/C", "/Q")
+    # a new installation starts from clean rights; any configuration found is set aside, new keys are made below
+    Protect-Folder $Data -Reset
     $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
     foreach ($name in "config.json", "db-admin.json") { $file = Join-Path $Data $name; if (Test-Path $file) { Move-Item $file "$file.prima-$stamp" } }
 }
-# before any key is written: only Windows and its administrators read the data folder, the services come later
-Invoke-Checked "icacls.exe" @($Data, "/inheritance:r", "/grant:r", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F")
 New-Item -ItemType Directory -Force (Join-Path $Data "log") | Out-Null
 Start-Transcript -Path (Join-Path $Data "log\setup.log") -Append | Out-Null
 try {
@@ -26,6 +27,7 @@ try {
     if ($Porta) { $setup += @("--porta", $Porta) }
     if ($Origine) { $setup += @("--origine", $Origine) }
     if ($Indirizzi) { $setup += @("--indirizzi", $Indirizzi) }
+    if ($Modalita) { $setup += @("--modalita", $Modalita) }
     Invoke-Checked $Python $setup
     $config = Read-Json "config.json"
     $admin = Read-Json "db-admin.json"
@@ -89,9 +91,17 @@ try {
     foreach ($folder in "backup", "tmp") { Invoke-Checked $icacls @((Join-Path $Data $folder), "/grant", "NT SERVICE\TDBookingWorker:(OI)(CI)M") }
     Invoke-Checked $icacls @((Join-Path $Data "log"), "/grant", "NT SERVICE\TDBookingWeb:(OI)(CI)M", "NT SERVICE\TDBookingWorker:(OI)(CI)M")
 
-    # 6. the network: only private and company networks, see the guide for a server in the cloud
+    # 6. the network: Un PC solo listens on this PC only and opens nothing; a server opens its port to private
+    # and company networks only, see the guide for a server in the cloud
     Get-NetFirewallRule -DisplayName "TD Booking Suite" -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-    New-NetFirewallRule -DisplayName "TD Booking Suite" -Direction Inbound -Protocol TCP -LocalPort $config.porta -Action Allow -Profile Domain, Private | Out-Null
+    if ($config.modalita -ne "standalone") {
+        New-NetFirewallRule -DisplayName "TD Booking Suite" -Direction Inbound -Protocol TCP -LocalPort $config.porta -Action Allow -Profile Domain, Private | Out-Null
+    }
+    # the installer reads it back at the next update or change, to propose the same choice
+    # never New-Item -Force on a registry key: it would wipe the values the installer keeps there
+    $key = "HKLM:\Software\TD Booking Suite"
+    if (-not (Test-Path $key)) { New-Item -Path $key | Out-Null }
+    Set-ItemProperty -Path $key -Name "Modalita" -Value $config.modalita
 
     # 7. start, then this PC trusts the program's own certification authority
     Start-Program
@@ -102,10 +112,18 @@ try {
     $page = Invoke-WebRequest -Uri "https://localhost:$($config.porta)/primo-avvio/" -UseBasicParsing -TimeoutSec 30
     Write-Output "Il programma risponde su $($config.origine) (HTTP $($page.StatusCode))"
 
-    # 8. the workstation program on this PC opens this server without questions
+    # 8. the workstation program on this PC opens this server without questions: address and fingerprint of the
+    # authority, in a folder only administrators write to (otherwise anyone on this PC could point it elsewhere)
+    # a junction or a folder a normal user prepared is refused or set aside: otherwise he could point server.txt at
+    # his own server, or (as a junction to the data folder) have Users read the keys. Then Users get read only.
     $shared = Join-Path $env:ProgramData "TD Booking Suite Postazione"
-    New-Item -ItemType Directory -Force $shared | Out-Null
-    [IO.File]::WriteAllText((Join-Path $shared "server.txt"), "server=$($config.origine)`r`n")
+    Protect-Folder $shared -Reset
+    Invoke-Checked "icacls.exe" @($shared, "/grant:r", "*S-1-5-32-545:(OI)(CI)RX")
+    Remove-Item (Join-Path $shared "server.txt") -Force -ErrorAction SilentlyContinue
+    $der = [Convert]::FromBase64String(((Get-Content $ca -Raw) -replace "-----[^-]+-----", "" -replace "\s", ""))
+    $hash = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($der)).Replace("-", "")
+    $fingerprint = ($hash -split "(.{4})" | Where-Object { $_ }) -join " "
+    [IO.File]::WriteAllText((Join-Path $shared "server.txt"), "server=$($config.origine)`r`nca=$fingerprint`r`n")
     $menu = Join-Path $env:ProgramData "Microsoft\Windows\Start Menu\Programs\TD Booking Suite"
     New-Item -ItemType Directory -Force $menu | Out-Null
     [IO.File]::WriteAllText((Join-Path $menu "TD Booking Suite nel browser.url"), "[InternetShortcut]`r`nURL=$($config.origine)/`r`n")

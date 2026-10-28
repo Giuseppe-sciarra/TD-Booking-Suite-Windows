@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.Win32;
 
 namespace TDBookingSuite
 {
@@ -16,6 +17,10 @@ namespace TDBookingSuite
     {
         public string Server;
         public string Ca = "";
+        /// <summary>Chosen by hand with Cambia server: on the server PC it wins over the server installed there.</summary>
+        public bool Manual;
+        /// <summary>False for a file of 2.8, written before Manual existed.</summary>
+        public bool ManualKnown;
         /// <summary>Before a fingerprint: the server's own certificate is trusted, not an authority (self-signed).</summary>
         public const string CertPrefix = "cert:";
         public static string Shown(string ca) => ca.StartsWith(CertPrefix) ? ca.Substring(CertPrefix.Length) : ca;
@@ -27,7 +32,15 @@ namespace TDBookingSuite
         static string SharedPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "TD Booking Suite Postazione", "server.txt");
 
         public static Config Load() => Read(FilePath);
-        public static Config Default() => Read(SharedPath);
+        /// <summary>The server installed on this PC, only where the installer put it (its own registry value, which only
+        /// administrators write): elsewhere any user of the PC could plant the file and point the window to his server.</summary>
+        public static Config Default()
+        {
+            using (var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+            using (var key = machine.OpenSubKey(@"Software\TD Booking Suite"))
+                if (key?.GetValue("Server") == null) return null;
+            return Read(SharedPath);
+        }
 
         static Config Read(string path)
         {
@@ -41,6 +54,7 @@ namespace TDBookingSuite
                 var value = line.Substring(i + 1).Trim();
                 if (key == "server") config.Server = value;
                 else if (key == "ca") config.Ca = value;
+                else if (key == "manuale") { config.Manual = value == "1"; config.ManualKnown = true; }
             }
             return string.IsNullOrEmpty(config.Server) ? null : config;
         }
@@ -48,7 +62,8 @@ namespace TDBookingSuite
         public void Save()
         {
             Directory.CreateDirectory(Folder);
-            File.WriteAllText(FilePath, "server=" + Server + "\r\nca=" + Ca + "\r\n");
+            File.WriteAllText(FilePath, "server=" + Server + "\r\nca=" + Ca + "\r\nmanuale=" + (Manual ? "1" : "0") + "\r\n");
+            ManualKnown = true;
         }
 
         /// <summary>https://host[:port] from what the person typed, or null.</summary>

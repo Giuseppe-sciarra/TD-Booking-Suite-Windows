@@ -118,6 +118,7 @@ def describe(ex):
 def secret(d):return reveal(d.password,"backup-dest:"+str(d.pk)) if d.password else ""
 def seal_secret(d,password):d.password=protect(password,"backup-dest:"+str(d.pk)) if password else ""
 
+VERIFIED="verificato da Windows"
 def pin(d,seen):
     """The first connection records the server's key or certificate; later ones must show the same."""
     if not d.impronta:
@@ -175,10 +176,15 @@ class FTP:
         if tls:
             # a certificate Windows would trust (Let's Encrypt, renewed every few months) needs no pin;
             # a self-signed one, as on many NAS, is pinned at the first connection
+            # once recognised by Windows, never pinned later: a certificate that stops being recognised may be
+            # someone in between, who must not receive the password
             try:self.ftp=ftps(d,True)
             except ssl.SSLCertVerificationError:
+                if d.impronta==VERIFIED:raise ValueError("il certificato del server non è più riconosciuto da Windows, mentre prima lo era: qualcuno potrebbe essersi messo in mezzo. Se lo hai cambiato tu, azzera l'impronta della destinazione") from None
                 self.ftp=ftps(d,False)
                 pin(d,"sha256 "+hashlib.sha256(self.ftp.sock.getpeercert(binary_form=True)).hexdigest())
+            else:
+                if not d.impronta:pin(d,VERIFIED)
         else:
             self.ftp=ftplib.FTP();self.ftp.connect(d.host,d.porta or 21,timeout=60)
         self.ftp.login(d.utente or "anonymous",secret(d))

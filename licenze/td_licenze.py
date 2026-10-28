@@ -6,12 +6,14 @@ costruito da GitHub Actions (td_licenze_gui.py); da riga di comando serve Python
 
     python td_licenze.py            crea una licenza facendo le domande
     python td_licenze.py chiave     la prima volta: crea la chiave privata e stampa quella pubblica
-    python td_licenze.py crea --intestatario "Bar Roma" --attivita 1 --postazioni 3 --installazione ABCD-EFGH-IJKL-MNOP
+    python td_licenze.py crea --intestatario "Bar Roma" --tipo server --postazioni 3 --installazione ABCD-EFGH-IJKL-MNOP
+    python td_licenze.py crea --sostituisce TD-2026-0007 --postazioni 5     stessa installazione, postazioni cambiate
     python td_licenze.py verifica   controlla una licenza incollata e ne mostra i dati
     python td_licenze.py elenco     le licenze emesse, dal registro
 
-La chiave privata firma le licenze: chi la ha può crearne quante vuole. Resta solo in questa cartella
-(--cartella, di serie %APPDATA%\\TD Licenze o ~/.td-licenze), protetta da una password, con una copia su una chiavetta.
+La chiave privata firma le licenze: chi la ha può crearne quante vuole. Resta solo nella cartella del programma
+(--cartella, di serie quella di TD Licenze.exe o di questo file), protetta da una password: chiave, registro e
+licenze emesse si salvano lì e da nessun'altra parte, così la cartella intera va su una chiavetta.
 Il programma contiene solo la chiave pubblica: verifica le licenze ma non può crearle."""
 import argparse,base64,csv,getpass,json,os,re
 from datetime import date
@@ -20,11 +22,22 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey,Ed25519PublicKey
 
 PREFIX="TDBS1."
-FIELDS=["id","emessa","intestatario","attivita","postazioni","installazione","scadenza","licenza"]
+FIELDS=["id","emessa","intestatario","tipo","attivita","postazioni","installazione","scadenza","sostituisce","licenza"]
+# the three kinds of licence: Un PC solo has no workstations, a server one business, a portal more businesses
+TIPI={"pc":"Un PC solo","server":"Server con postazioni","portale":"Portale, più attività"}
+def tipo_of(data):
+    """The kind written in the licence, or the one its numbers say (licences made before kinds existed)."""
+    if data.get("tipo") in TIPI:return data["tipo"]
+    return "portale" if int(data["attivita"])>1 else "pc" if int(data["postazioni"])==0 else "server"
 
 def b64(raw):return base64.urlsafe_b64encode(raw).decode().rstrip("=")
 def unb64(text):return base64.urlsafe_b64decode(text+"="*(-len(text)%4))
 def default_folder():
+    """The program's own folder: TD Licenze.exe's, or this file's. Everything it saves stays there, on a USB stick too."""
+    import sys
+    return Path(sys.executable).resolve().parent if getattr(sys,"frozen",False) else Path(__file__).resolve().parent
+def legacy_folder():
+    """Where versions before 2.9 kept the key: only read, to bring an old key into the program's folder."""
     base=os.environ.get("APPDATA")
     return Path(base)/"TD Licenze" if base else Path.home()/".td-licenze"
 def normalize_code(code):
@@ -75,22 +88,53 @@ def registry(folder):
     with path.open(newline="",encoding="utf-8") as f:return list(csv.DictReader(f))
 def record(folder,row):
     path=Path(folder)/"registro-licenze.csv";new=not path.exists()
+    if not new:
+        with path.open(newline="",encoding="utf-8") as f:header=next(csv.reader(f),[])
+        if header!=FIELDS:
+            # a register from an earlier TD Licenze: rewritten once with the new columns, every licence kept
+            rows=registry(folder)
+            temporary=path.with_suffix(".tmp")
+            with temporary.open("w",newline="",encoding="utf-8") as f:
+                w=csv.DictWriter(f,fieldnames=FIELDS);w.writeheader()
+                for r in rows:w.writerow({k:r.get(k) or "" for k in FIELDS})
+            os.replace(temporary,path)
     with path.open("a",newline="",encoding="utf-8") as f:
         w=csv.DictWriter(f,fieldnames=FIELDS)
         if new:w.writeheader()
         w.writerow(row)
 
 def describe(data):
-    return (f"Attività: {data['attivita']}, postazioni in rete: {data['postazioni']}, "
+    return (f"{TIPI[tipo_of(data)]}. Attività: {data['attivita']}, postazioni in rete: {data['postazioni']}, "
             +(f"solo per l'installazione {data['installazione']}" if data["installazione"] else "valida su qualunque installazione")
             +(f", fino al {date.fromisoformat(data['scadenza']):%d/%m/%Y}" if data["scadenza"] else ", senza scadenza"))
 
-def create(folder,intestatario,attivita,postazioni,installazione,scadenza,out,password=None):
-    """A signed licence, written to its file and to the register: (licence, file, data)."""
+def find(folder,licence_id):
+    row=next((r for r in registry(folder) if r["id"]==licence_id),None)
+    if not row:raise ValueError(f"La licenza {licence_id} non è nel registro di questa cartella.")
+    return row
+
+def create(folder,intestatario,attivita,postazioni,installazione,scadenza,out,password=None,tipo="",sostituisce=""):
+    """A signed licence, written to its file and to the register: (licence, file, data).
+    sostituisce: the number of the licence it replaces, for the same installation (more or fewer workstations,
+    another expiry): the client pastes the new one over the old one."""
+    if sostituisce:
+        old=find(folder,sostituisce)
+        intestatario=intestatario or old["intestatario"];installazione=installazione or old["installazione"]
+        # what is not given (None) stays as in the licence it replaces; with new numbers and no kind, the numbers say it
+        if not tipo and attivita is None and postazioni is None:tipo=tipo_of(old)
+        attivita=old["attivita"] if attivita is None else attivita
+        postazioni=old["postazioni"] if postazioni is None else postazioni
+        scadenza=old["scadenza"] if scadenza is None else scadenza
+    attivita=1 if attivita is None else attivita;postazioni=2 if postazioni is None else postazioni
     intestatario=" ".join((intestatario or "").split())
     if not intestatario:raise ValueError("Serve l'intestatario.")
     attivita,postazioni=int(attivita),int(postazioni)
     if attivita<1 or postazioni<0:raise ValueError("Attività almeno 1, postazioni 0 o più.")
+    tipo=tipo or tipo_of({"attivita":attivita,"postazioni":postazioni})
+    if tipo not in TIPI:raise ValueError("Tipo di licenza: pc, server o portale.")
+    if tipo=="pc":attivita,postazioni=1,0
+    elif tipo=="server":attivita=1
+    elif attivita<2:raise ValueError("Una licenza Portale ha almeno 2 attività.")
     installazione=normalize_code(installazione or "")
     scadenza=(scadenza or "").strip()
     if scadenza:
@@ -99,15 +143,17 @@ def create(folder,intestatario,attivita,postazioni,installazione,scadenza,out,pa
     key=load_key(folder,password)
     today=date.today()
     number=1+sum(1 for r in registry(folder) if r["id"].startswith(f"TD-{today.year}-"))
-    data={"id":f"TD-{today.year}-{number:04d}","emessa":today.isoformat(),"intestatario":intestatario,"attivita":attivita,
+    data={"id":f"TD-{today.year}-{number:04d}","emessa":today.isoformat(),"intestatario":intestatario,"tipo":tipo,"attivita":attivita,
           "postazioni":postazioni,"installazione":installazione,"scadenza":scadenza}
+    if sostituisce:data["sostituisce"]=sostituisce
     licence=sign(key,data)
-    record(folder,{**data,"licenza":licence})
+    record(folder,{**data,"sostituisce":sostituisce,"licenza":licence})
     out=Path(out);out.mkdir(parents=True,exist_ok=True)
     slug=re.sub(r"[^a-z0-9]+","-",intestatario.lower()).strip("-")[:40] or "cliente"
     path=out/f"licenza-{data['id']}-{slug}.txt"
     path.write_text(f"Licenza TD Booking Suite per {intestatario}\n{describe(data)}"
-        "\n\nApri TD Booking Suite, Area agenzia, Licenza, e incolla tutta la riga qui sotto:\n\n"+licence+"\n",encoding="utf-8")
+        +(f"\nSostituisce la licenza {sostituisce}: incollala al posto di quella." if sostituisce else "")
+        +"\n\nApri TD Booking Suite, entra con l'amministratore del programma, menu Licenza, e incolla tutta la riga qui sotto:\n\n"+licence+"\n",encoding="utf-8")
     return licence,path,data
 
 # command line
@@ -121,8 +167,8 @@ def cli_make_key(folder):
     print(f"Chiave privata creata: {key_path(folder)}\nFanne subito una copia su una chiavetta: senza, non puoi più emettere licenze.\n")
     print("Chiave pubblica, da mettere nel programma (file tdwin/licenza-chiave-pubblica.txt della repo):\n"+public)
 
-def cli_create(folder,intestatario,attivita,postazioni,installazione,scadenza,out):
-    licence,path,data=create(folder,intestatario,attivita,postazioni,installazione,scadenza,out,password_for(folder))
+def cli_create(folder,intestatario,attivita,postazioni,installazione,scadenza,out,tipo="",sostituisce=""):
+    licence,path,data=create(folder,intestatario,attivita,postazioni,installazione,scadenza,out,password_for(folder),tipo,sostituisce)
     print(f"\nLicenza {data['id']} per {data['intestatario']}:\n\n{licence}\n\nSalvata anche in {path}")
 
 def ask(prompt,default=""):
@@ -132,20 +178,24 @@ def ask(prompt,default=""):
 def main(argv=None):
     p=argparse.ArgumentParser(description="Crea le licenze di TD Booking Suite per Windows.")
     p.add_argument("--cartella",type=Path,default=default_folder(),help="dove stanno chiave privata e registro")
-    p.add_argument("--uscita",type=Path,default=Path("licenze-emesse"),help="dove salvare i file delle licenze")
+    p.add_argument("--uscita",type=Path,default=None,help="dove salvare i file delle licenze, di serie licenze-emesse nella cartella")
     sub=p.add_subparsers(dest="cmd")
     sub.add_parser("chiave");sub.add_parser("elenco")
     v=sub.add_parser("verifica");v.add_argument("licenza",nargs="?")
     c=sub.add_parser("crea")
-    c.add_argument("--intestatario",required=True);c.add_argument("--attivita",type=int,default=1);c.add_argument("--postazioni",type=int,default=2)
-    c.add_argument("--installazione",default="");c.add_argument("--scadenza",default="")
+    # not given: 1 business, 2 workstations, no expiry; with --sostituisce, the values of the licence replaced
+    c.add_argument("--intestatario",default="");c.add_argument("--attivita",type=int,default=None);c.add_argument("--postazioni",type=int,default=None)
+    c.add_argument("--installazione",default="");c.add_argument("--scadenza",default=None,help='AAAA-MM-GG; "" per sempre')
+    c.add_argument("--tipo",choices=sorted(TIPI),default="",help="pc (Un PC solo), server (Server con postazioni), portale")
+    c.add_argument("--sostituisce",default="",help="numero della licenza da sostituire: stessa installazione e intestatario")
     a=p.parse_args(argv)
+    a.uscita=a.uscita or a.cartella/"licenze-emesse"
     try:
         if a.cmd=="chiave":cli_make_key(a.cartella)
-        elif a.cmd=="crea":cli_create(a.cartella,a.intestatario,a.attivita,a.postazioni,a.installazione,a.scadenza,a.uscita)
+        elif a.cmd=="crea":cli_create(a.cartella,a.intestatario,a.attivita,a.postazioni,a.installazione,a.scadenza,a.uscita,a.tipo,a.sostituisce)
         elif a.cmd=="elenco":
             for r in registry(a.cartella):
-                print(f"{r['id']}  {r['emessa']}  {r['intestatario']}  attività {r['attivita']}, postazioni {r['postazioni']}  "
+                print(f"{r['id']}  {r['emessa']}  {r['intestatario']}  {TIPI[tipo_of(r)]}, attività {r['attivita']}, postazioni {r['postazioni']}  "
                       f"{r['installazione'] or 'a stock'}  {('scade '+r['scadenza']) if r['scadenza'] else 'per sempre'}")
         elif a.cmd=="verifica":
             text=a.licenza or input("Incolla la licenza: ")
@@ -153,9 +203,10 @@ def main(argv=None):
             print(json.dumps(read(text,public),ensure_ascii=False,indent=2)+("\nFirma valida." if public else "\nFirma non controllata: manca la chiave pubblica."))
         else:
             print("Nuova licenza TD Booking Suite (Ctrl+C per uscire)\n")
+            tipo=ask("Tipo: pc (Un PC solo), server (Server con postazioni), portale","server")
             cli_create(a.cartella,ask("Intestatario, cioè il nome del cliente"),
-                ask("Quante attività (1 = versione singola, di più = portale)","1"),ask("Quante postazioni in rete oltre al PC server","2"),
-                ask("Codice installazione del cliente (invio = valida ovunque, a stock)"),ask("Scadenza AAAA-MM-GG (invio = per sempre)"),a.uscita)
+                ask("Quante attività","2") if tipo=="portale" else "1",ask("Quante postazioni in rete oltre al PC server","2") if tipo!="pc" else "0",
+                ask("Codice installazione del cliente (invio = valida ovunque, a stock)"),ask("Scadenza AAAA-MM-GG (invio = per sempre)"),a.uscita,tipo)
     except ValueError as ex:raise SystemExit(str(ex) if "invalid literal" not in str(ex) else "Attività e postazioni sono numeri.") from None
     except (KeyboardInterrupt,EOFError):print()
 

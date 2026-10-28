@@ -16,11 +16,11 @@ FILES=("chiave-privata.pem","chiave-pubblica.txt","registro-licenze.csv")
 
 def portable_folder():
     """TD Licenze.exe keeps everything next to itself; the script keeps td_licenze.py's folder."""
-    return Path(sys.executable).resolve().parent if getattr(sys,"frozen",False) else tool.default_folder()
+    return tool.default_folder()
 
 def adopt_old_key(folder):
     """A key made by an earlier TD Licenze in %APPDATA%\\TD Licenze moves into the program's folder, once."""
-    old=tool.default_folder()
+    old=tool.legacy_folder()
     if Path(folder).resolve()==old.resolve() or tool.has_key(folder) or not tool.has_key(old):return None
     folder=Path(folder)
     for name in FILES:
@@ -34,7 +34,7 @@ class App(tk.Tk):
     def __init__(self,folder=None):
         super().__init__()
         self.folder=Path(folder or tool.default_folder());self.out=self.folder/"licenze-emesse";self.password=None
-        self.title("TD Licenze");self.minsize(760,560)
+        self.title("TD Licenze");self.minsize(1000,620)
         if resource("app.ico").exists() and os.name=="nt":self.iconbitmap(resource("app.ico"))
         style=ttk.Style(self)
         if "vista" in style.theme_names():style.theme_use("vista")
@@ -48,30 +48,75 @@ class App(tk.Tk):
     # new licence
     def build_new(self):
         f=self.new_tab;f.columnconfigure(1,weight=1)
-        ttk.Label(f,text="Nuova licenza",style="Title.TLabel").grid(row=0,column=0,columnspan=3,sticky="w",pady=(0,12))
-        self.v={"intestatario":tk.StringVar(),"attivita":tk.StringVar(value="1"),"postazioni":tk.StringVar(value="2"),"installazione":tk.StringVar(),"scadenza":tk.StringVar()}
-        rows=[("Intestatario","intestatario","il nome del cliente"),("Attività","attivita","1 = versione singola, di più = portale"),
-              ("Postazioni in rete","postazioni","oltre al PC server"),("Codice installazione","installazione","dalla pagina Licenza del cliente; vuoto = vale ovunque, a stock"),
+        ttk.Label(f,text="Nuova licenza",style="Title.TLabel").grid(row=0,column=0,columnspan=3,sticky="w",pady=(0,4))
+        self.replacing=None
+        self.replace_info=ttk.Label(f,text="",style="Hint.TLabel",wraplength=640,justify="left");self.replace_info.grid(row=1,column=0,columnspan=2,sticky="w")
+        self.replace_reset=ttk.Button(f,text="Nuova da zero",command=self.reset_form)
+        self.v={"tipo":tk.StringVar(value=tool.TIPI["server"]),"intestatario":tk.StringVar(),"attivita":tk.StringVar(value="1"),"postazioni":tk.StringVar(value="2"),
+                "installazione":tk.StringVar(),"scadenza":tk.StringVar()}
+        ttk.Label(f,text="Tipo").grid(row=2,column=0,sticky="w",padx=(0,12),pady=(10,0))
+        self.tipo_box=ttk.Combobox(f,textvariable=self.v["tipo"],values=list(tool.TIPI.values()),state="readonly",width=28)
+        self.tipo_box.grid(row=2,column=1,sticky="w",pady=(10,0));self.tipo_box.bind("<<ComboboxSelected>>",lambda e:self.tipo_changed())
+        self.tipo_hint=ttk.Label(f,text="",style="Hint.TLabel");self.tipo_hint.grid(row=3,column=1,sticky="w")
+        rows=[("Intestatario","intestatario","il nome del cliente"),("Attività","attivita","quante attività può gestire"),
+              ("Postazioni in rete","postazioni","altri PC, tablet e telefoni oltre al PC server"),("Codice installazione","installazione","dalla pagina Licenza del cliente; vuoto = vale ovunque, a stock"),
               ("Scadenza","scadenza","AAAA-MM-GG; vuota = per sempre")]
-        for i,(label,name,hint) in enumerate(rows,start=1):
-            ttk.Label(f,text=label).grid(row=i*2-1,column=0,sticky="w",padx=(0,12),pady=(6,0))
+        self.fields={}
+        for i,(label,name,hint) in enumerate(rows,start=2):
+            ttk.Label(f,text=label).grid(row=i*2,column=0,sticky="w",padx=(0,12),pady=(6,0))
             if name in ("attivita","postazioni"):
                 field=ttk.Spinbox(f,from_=1 if name=="attivita" else 0,to=999,width=8,textvariable=self.v[name])
-                field.grid(row=i*2-1,column=1,sticky="w",pady=(6,0))
+                field.grid(row=i*2,column=1,sticky="w",pady=(6,0))
             else:
-                field=ttk.Entry(f,textvariable=self.v[name]);field.grid(row=i*2-1,column=1,sticky="we",pady=(6,0))
-            if name=="intestatario":self.first=field
-            ttk.Label(f,text=hint,style="Hint.TLabel").grid(row=i*2,column=1,sticky="w")
+                field=ttk.Entry(f,textvariable=self.v[name]);field.grid(row=i*2,column=1,sticky="we",pady=(6,0))
+            self.fields[name]=field
+            ttk.Label(f,text=hint,style="Hint.TLabel").grid(row=i*2+1,column=1,sticky="w")
+        self.first=self.fields["intestatario"]
         self.create_button=ttk.Button(f,text="Crea la licenza",command=self.create)
-        self.create_button.grid(row=11,column=1,sticky="w",pady=14)
-        ttk.Label(f,text="Licenza da mandare al cliente").grid(row=12,column=0,columnspan=2,sticky="w")
+        self.create_button.grid(row=14,column=1,sticky="w",pady=14)
+        ttk.Label(f,text="Licenza da mandare al cliente").grid(row=15,column=0,columnspan=2,sticky="w")
         self.result=tk.Text(f,height=5,wrap="char",font=("Consolas",10),state="disabled",relief="solid",borderwidth=1)
-        self.result.grid(row=13,column=0,columnspan=3,sticky="nsew",pady=(4,8));f.rowconfigure(13,weight=1)
-        self.result_info=ttk.Label(f,text="",style="Hint.TLabel");self.result_info.grid(row=14,column=0,columnspan=3,sticky="w")
-        buttons=ttk.Frame(f);buttons.grid(row=15,column=0,columnspan=3,sticky="w",pady=(8,0))
+        self.result.grid(row=16,column=0,columnspan=3,sticky="nsew",pady=(4,8));f.rowconfigure(16,weight=1)
+        self.result_info=ttk.Label(f,text="",style="Hint.TLabel",wraplength=700,justify="left");self.result_info.grid(row=17,column=0,columnspan=3,sticky="w")
+        buttons=ttk.Frame(f);buttons.grid(row=18,column=0,columnspan=3,sticky="w",pady=(8,0))
         ttk.Button(buttons,text="Copia la licenza",command=lambda:self.copy(self.result.get("1.0","end").strip())).pack(side="left")
         ttk.Button(buttons,text="Apri la cartella delle licenze",command=self.open_folder).pack(side="left",padx=8)
         self.bind("<Return>",lambda e:self.create() if self.tabs.select()==str(self.new_tab) else None)
+        self.tipo_changed()
+
+    def tipo(self):return next(k for k,v in tool.TIPI.items() if v==self.v["tipo"].get())
+
+    def tipo_changed(self):
+        """Un PC solo: one business, no workstations. Server: one business and its workstations. Portale: both."""
+        tipo=self.tipo()
+        hints={"pc":"si usa solo dal PC dove è installato: niente postazioni","server":"una attività, il PC server più le postazioni in rete",
+               "portale":"più attività sullo stesso server, con le loro postazioni"}
+        self.tipo_hint.configure(text=hints[tipo])
+        if tipo=="pc":self.v["attivita"].set("1");self.v["postazioni"].set("0")
+        if tipo=="server":
+            self.v["attivita"].set("1")
+            if self.v["postazioni"].get() in ("","0"):self.v["postazioni"].set("2")
+        if tipo=="portale" and self.v["attivita"].get() in ("","0","1"):self.v["attivita"].set("2")
+        self.fields["attivita"].configure(state="normal" if tipo=="portale" else "disabled")
+        self.fields["postazioni"].configure(state="disabled" if tipo=="pc" else "normal")
+
+    def change(self,row):
+        """Cambia postazioni o scadenza: the same client and installation in the form, a new licence that replaces the old."""
+        self.replacing=row["id"]
+        self.v["tipo"].set(tool.TIPI[tool.tipo_of(row)])
+        for k in ("intestatario","attivita","postazioni","installazione","scadenza"):self.v[k].set(row[k])
+        self.tipo_changed()
+        for k in ("attivita","postazioni"):self.v[k].set(row[k])
+        self.replace_info.configure(text=f"Sostituisce la licenza {row['id']}: cambia postazioni, scadenza o tipo e premi Crea la licenza. Il cliente la incolla al posto della vecchia.")
+        self.replace_reset.grid(row=1,column=2,sticky="e")
+        self.fields["installazione"].configure(state="disabled")
+        self.tabs.select(self.new_tab);self.fields["postazioni"].focus_set()
+
+    def reset_form(self):
+        self.replacing=None;self.replace_info.configure(text="");self.replace_reset.grid_remove()
+        self.fields["installazione"].configure(state="normal")
+        for k in ("intestatario","installazione","scadenza"):self.v[k].set("")
+        self.v["tipo"].set(tool.TIPI["server"]);self.v["postazioni"].set("2");self.tipo_changed()
 
     def ask_password(self):
         if self.password is not None or not tool.key_encrypted(self.folder):return True
@@ -88,39 +133,51 @@ class App(tk.Tk):
         if not self.ask_password():return
         try:
             licence,path,data=tool.create(self.folder,self.v["intestatario"].get(),self.v["attivita"].get() or 0,self.v["postazioni"].get() or 0,
-                self.v["installazione"].get(),self.v["scadenza"].get(),self.out,self.password)
+                self.v["installazione"].get(),self.v["scadenza"].get(),self.out,self.password,self.tipo(),self.replacing or "")
         except ValueError as ex:
             messagebox.showerror("TD Licenze","Attività e postazioni sono numeri." if "invalid literal" in str(ex) else str(ex),parent=self);return
         self.result.configure(state="normal");self.result.delete("1.0","end");self.result.insert("1.0",licence);self.result.configure(state="disabled")
-        self.result_info.configure(text=f"{data['id']} per {data['intestatario']}. {tool.describe(data)}. Salvata in {path.name}")
-        self.copy(licence,quiet=True);self.refresh()
+        self.result_info.configure(text=f"{data['id']} per {data['intestatario']}"+(f", sostituisce {self.replacing}" if self.replacing else "")+f". {tool.describe(data)}. Salvata in {path.name}, e già copiata.")
+        self.copy(licence,quiet=True)
+        if self.replacing:self.replacing=None;self.replace_info.configure(text="");self.replace_reset.grid_remove();self.fields["installazione"].configure(state="normal")
+        self.refresh()
 
     # issued licences
     def build_list(self):
         f=self.list_tab;f.columnconfigure(0,weight=1);f.rowconfigure(1,weight=1)
         ttk.Label(f,text="Licenze emesse",style="Title.TLabel").grid(row=0,column=0,sticky="w",pady=(0,12))
-        columns=("id","emessa","intestatario","attivita","postazioni","installazione","scadenza")
-        heads=("Numero","Emessa","Intestatario","Attività","Postazioni","Installazione","Scadenza")
+        columns=("id","emessa","intestatario","tipo","attivita","postazioni","installazione","scadenza","stato")
+        heads=("Numero","Emessa","Intestatario","Tipo","Attività","Postazioni","Installazione","Scadenza","Stato")
         self.tree=ttk.Treeview(f,columns=columns,show="headings",selectmode="browse")
-        for c,h,w in zip(columns,heads,(110,90,200,70,80,170,90)):self.tree.heading(c,text=h);self.tree.column(c,width=w,stretch=c=="intestatario")
+        for c,h,w in zip(columns,heads,(110,90,140,160,60,80,170,90,190)):self.tree.heading(c,text=h);self.tree.column(c,width=w,minwidth=50,stretch=c=="intestatario")
         self.tree.grid(row=1,column=0,sticky="nsew")
         bar=ttk.Scrollbar(f,orient="vertical",command=self.tree.yview);bar.grid(row=1,column=1,sticky="ns");self.tree.configure(yscrollcommand=bar.set)
         buttons=ttk.Frame(f);buttons.grid(row=2,column=0,sticky="w",pady=(10,0))
         ttk.Button(buttons,text="Copia la licenza selezionata",command=self.copy_selected).pack(side="left")
-        ttk.Button(buttons,text="Apri la cartella delle licenze",command=self.open_folder).pack(side="left",padx=8)
+        ttk.Button(buttons,text="Cambia postazioni o scadenza",command=self.change_selected).pack(side="left",padx=8)
+        ttk.Button(buttons,text="Apri la cartella delle licenze",command=self.open_folder).pack(side="left")
         self.tree.bind("<Double-1>",lambda e:self.copy_selected())
         self.refresh()
 
     def refresh(self):
         self.rows={}
         self.tree.delete(*self.tree.get_children())
-        for r in reversed(tool.registry(self.folder)):
-            item=self.tree.insert("","end",values=(r["id"],r["emessa"],r["intestatario"],r["attivita"],r["postazioni"],r["installazione"] or "a stock",r["scadenza"] or "per sempre"))
-            self.rows[item]=r["licenza"]
+        rows=tool.registry(self.folder)
+        replaced={r.get("sostituisce"):r["id"] for r in rows if r.get("sostituisce")}
+        for r in reversed(rows):
+            state=f"sostituita da {replaced[r['id']]}" if r["id"] in replaced else "in uso"
+            item=self.tree.insert("","end",values=(r["id"],r["emessa"],r["intestatario"],tool.TIPI[tool.tipo_of(r)],r["attivita"],r["postazioni"],
+                r["installazione"] or "a stock",r["scadenza"] or "per sempre",state))
+            self.rows[item]=r
 
     def copy_selected(self):
         selected=self.tree.selection()
-        if selected:self.copy(self.rows[selected[0]])
+        if selected:self.copy(self.rows[selected[0]]["licenza"])
+
+    def change_selected(self):
+        selected=self.tree.selection()
+        if not selected:messagebox.showinfo("TD Licenze","Seleziona la licenza da cambiare.",parent=self);return
+        self.change(self.rows[selected[0]])
 
     # the key
     def build_key(self):

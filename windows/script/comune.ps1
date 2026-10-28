@@ -35,6 +35,33 @@ function Invoke-Django([string[]]$Arguments, [switch]$Owner, [switch]$Interactiv
     finally { if ($Owner) { Remove-Item Env:DATABASE_URL, Env:APP_DB_PASSWORD -ErrorAction SilentlyContinue } }
 }
 
+# A folder the SYSTEM scripts will fill with keys and data must not be one a normal user prepared: a junction
+# (redirects icacls and writes elsewhere) is refused, and a real folder owned by someone other than SYSTEM or the
+# Administrators is set aside whole, so nothing planted inside it (a certificate authority, a config.json, a fake
+# pgdata that makes it look installed) is reused. A real installation is owned by the Administrators and stays.
+# -Reset, for a folder made now: owner Administrators and only SYSTEM and Administrators, before any key is written.
+function Protect-Folder([string]$Path, [switch]$Reset) {
+    if (Test-Path $Path) {
+        $item = Get-Item $Path -Force
+        if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "$Path è un collegamento (giunzione): rimuovilo e reinstalla." }
+        $owner = (Get-Acl $Path).Owner
+        $sid = try { ([Security.Principal.NTAccount]$owner).Translate([Security.Principal.SecurityIdentifier]).Value } catch { $owner }
+        if ($sid -notin @("S-1-5-18", "S-1-5-32-544")) {
+            $aside = "$Path.non-fidata-" + (Get-Date -Format "yyyyMMdd-HHmmss")
+            Move-Item -LiteralPath $Path -Destination $aside -Force
+            Write-Output "$Path era di $owner, non di un amministratore: spostata in $aside, se ne crea una nuova"
+            $Reset = $true
+        }
+    }
+    else { $Reset = $true }
+    New-Item -ItemType Directory -Force $Path | Out-Null
+    if ($Reset) {
+        Invoke-Checked "icacls.exe" @($Path, "/setowner", "*S-1-5-32-544", "/T", "/C", "/Q")
+        Invoke-Checked "icacls.exe" @($Path, "/reset", "/T", "/C", "/Q")
+    }
+    Invoke-Checked "icacls.exe" @($Path, "/inheritance:r", "/grant:r", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F")
+}
+
 function Request-Admin([string]$Script) {
     $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {

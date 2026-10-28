@@ -12,6 +12,8 @@ os.environ.setdefault("PUBLIC_ORIGIN",CONFIG["origine"])
 os.environ.setdefault("TDBS_EDITION","private")
 # sold under the seller's own licence: the footer shows the version without the AGPL source link
 os.environ.setdefault("TDBS_SOURCE_URL","")
+# a program on one's own PC: with Resta collegato it opens signed in until Esci, a year without use at most
+os.environ.setdefault("TDBS_SESSION_REMEMBER_DAYS","365")
 from tdbooking.settings import *  # noqa: F401,F403
 from tdbooking.settings import INSTALLED_APPS,MIDDLEWARE,ALLOWED_HOSTS,CSRF_TRUSTED_ORIGINS
 
@@ -31,9 +33,23 @@ _port=int(CONFIG.get("porta",8443))
 _hosts=[f"[{h}]" if ":" in h else h for h in _names(CONFIG.get("indirizzi",[]))]
 ALLOWED_HOSTS=ALLOWED_HOSTS+_hosts
 CSRF_TRUSTED_ORIGINS=CSRF_TRUSTED_ORIGINS+["https://"+h+("" if _port==443 else f":{_port}") for h in _hosts]
-EXTRA_NAV=[{"label":"Licenza","url":"/platform/licenza/"},{"label":"Postazioni","url":"/platform/postazioni/"},{"label":"Backup","url":"/platform/backup/"},{"label":"Rete e certificato","url":"/platform/rete/"}]
+# Un PC solo (standalone) or a server with workstations, chosen in the installer
+TDWIN_STANDALONE=CONFIG.get("modalita","server")=="standalone"
+EXTRA_NAV=[{"label":"Configurazione guidata","url":"/platform/inizia/"},{"label":"Licenza","url":"/platform/licenza/"}]+(
+    [] if TDWIN_STANDALONE else [{"label":"Postazioni","url":"/platform/postazioni/"}])+[{"label":"Backup","url":"/platform/backup/"}]+(
+    [] if TDWIN_STANDALONE else [{"label":"Rete e certificato","url":"/platform/rete/"}])
+# who is who: the program's administrator configures, the business's owner and people work
+AGENCY_NAMES={"area":"Configurazione del programma","admin":"Amministratore del programma","who":"amministratore del programma","access":"Accesso dell'amministratore"}
+ROLE_LABELS={"owner":"Titolare"}
+LOGIN_NOTE=({"title":"Amministratore del programma","text":"Configura licenza, "+("" if TDWIN_STANDALONE else "postazioni, ")+"backup e attività. Vede agenda e clienti solo se alla configurazione guidata ha scelto di lavorare lui nell'attività."},
+    {"title":"Titolare e persone dell'attività","text":"Agenda, prenotazioni, clienti, servizi e orari: il lavoro di ogni giorno. Il titolare aggiunge gli altri da Persone e permessi."})
 MORE_TENANTS_HINT="Per più attività serve una licenza Portale con più attività: la inserisci da Licenza."
 EDITION_LABEL="Windows"
+# accounts have a username, the email is optional; Un PC solo answers only on 127.0.0.1: password alone,
+# with workstations Authenticator and passkeys stay optional and only the program's administrator is reminded
+LOGIN_USERNAMES=True
+MFA_ENABLED=not TDWIN_STANDALONE
+MFA_REMINDER="staff"
 STATIC_ROOT=Path(__file__).resolve().parent.parent/"static-collected"  # made by windows/build.ps1
 # client import: the sealed file between the steps and the upload itself stay in a folder the web service may write
 IMPORT_DIR=str(DATA/"import")

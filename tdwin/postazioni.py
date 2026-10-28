@@ -18,7 +18,10 @@ from . import licensing
 
 COOKIE="tdbs_postazione" if settings.DEV else "__Host-tdbs_postazione"
 CODE_MINUTES=15
-MAX_TRIES=10  # wrong codes, counted on every pending code: then they all stop working
+# wrong codes, counted on every pending code: then they all stop working. With the limit per address below,
+# guessing one of a million codes stays out of reach and one PC alone cannot block the pairing of the others
+MAX_TRIES=50
+TRIES_PER_ADDRESS=10  # every 15 minutes
 
 def code_hash(code):return token_hash("postazione:"+code)
 def limit():return licensing.apply()["postazioni"]
@@ -80,6 +83,8 @@ def pair_view(request):
     if request.server_pc or current(request):return redirect(target)
     error="";over=registered(request) is not None
     if request.method=="POST":
+        from core.identity import throttle
+        throttle(request,"postazione",TRIES_PER_ADDRESS)
         try:token,item=pair(request.POST.get("codice",""))
         except ValueError as ex:error=str(ex)
         else:
@@ -109,7 +114,7 @@ def admin_view(request):
     items=list(paired().order_by("abbinata"))
     for p in items:p.attiva=p.pk in allowed
     return render(request,"tdwin/postazioni.html",{"items":items,"waiting":list(pending().order_by("creata")),"limit":limit(),"code":code,
-        "origin":settings.TDWIN_CONFIG["origine"],"public_origin":rete.apply()["origin"],"fingerprint":rete.fingerprint(),"minutes":CODE_MINUTES})
+        "origin":settings.TDWIN_CONFIG["origine"],"standalone":settings.TDWIN_STANDALONE,"public_origin":rete.apply()["origin"],"fingerprint":rete.fingerprint(),"minutes":CODE_MINUTES})
 
 def ca_view(request):
     """The local certification authority, for phones and browsers that should trust the program's address."""
