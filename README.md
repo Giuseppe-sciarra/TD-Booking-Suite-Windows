@@ -273,7 +273,7 @@ La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramDa
 | `C:\ProgramData\TD Booking Suite` | configurazione, database, licenza, certificati, backup, log |
 | `C:\ProgramData\TD Booking Suite Postazione\server.txt` | indirizzo e impronta del server di questo PC, per la finestra |
 | servizio **TDBookingDB** | PostgreSQL, solo su 127.0.0.1, porta 55432 |
-| servizio **TDBookingWeb** | il programma in HTTPS sulla porta 8443 (con Un PC solo solo su 127.0.0.1) |
+| servizio **TDBookingWeb** | il programma in HTTPS sulla porta 8443 (con Un PC solo solo su 127.0.0.1, finché *Online e sito* è spento) |
 | servizio **TDBookingWorker** | email, promemoria e backup |
 
 Ogni servizio gira con un suo account virtuale di Windows (`NT SERVICE\…`):
@@ -284,7 +284,7 @@ Ogni servizio gira con un suo account virtuale di Windows (`NT SERVICE\…`):
 
 Una cartella dati, o la cartella condivisa della postazione, creata prima dell'installazione da un utente normale (magari con una sua autorità di certificazione o un `config.json` suo dentro) non viene usata: l'installazione la mette da parte come `….non-fidata-<data>` e ne crea una nuova. Una giunzione al loro posto ferma l'installazione.
 
-Il firewall apre la porta solo con Server con postazioni, sulle reti private e di dominio.
+Il firewall apre la porta solo quando il programma risponde dalla rete: Server con postazioni, o Un PC solo con *Online e sito* acceso. Solo sulle reti private e di dominio.
 
 ## Costruire l'MSI
 
