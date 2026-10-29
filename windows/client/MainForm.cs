@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Net;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
@@ -17,6 +18,11 @@ namespace TDBookingSuite
     {
         readonly Config config;
         readonly WebView2 web = new WebView2 { Dock = DockStyle.Fill };
+        // 2.10.1: while the server starts (after the installation, at the PC's start) the window waits and tries again
+        readonly Timer retry = new Timer { Interval = 3000 };
+        string target;
+        int failures;
+        const int MaxFailures = 40;  // about two minutes
         const int WM_SYSCOMMAND = 0x112, MF_STRING = 0, MF_SEPARATOR = 0x800, ID_RELOAD = 0x1000, ID_SERVER = 0x1010;
 
         [DllImport("user32.dll")] static extern IntPtr GetSystemMenu(IntPtr hWnd, bool revert);
@@ -126,6 +132,10 @@ namespace TDBookingSuite
             core.DocumentTitleChanged += (s, e) => Text = string.IsNullOrEmpty(core.DocumentTitle) ? "TD Booking Suite" : core.DocumentTitle + " - TD Booking Suite";
             core.ProcessFailed += (s, e) => { if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited) Close(); else core.Reload(); };
             core.WebMessageReceived += Message;
+            core.NavigationStarting += (s, e) => { if (config.SameOrigin(e.Uri)) target = e.Uri; };
+            core.NavigationCompleted += Completed;
+            retry.Tick += (s, e) => { retry.Stop(); web.CoreWebView2?.Navigate(target ?? config.Server + "/"); };
+            FormClosed += (s, e) => retry.Dispose();
             core.Navigate(config.Server + "/");
         }
 
@@ -150,6 +160,47 @@ namespace TDBookingSuite
             // the services restart with the new setting: the page comes back when they answer
             await Task.Delay(6000);
             web.CoreWebView2?.Reload();
+        }
+
+        /// <summary>The server does not answer: our own page instead of the browser's, and a new try every few seconds.
+        /// On the server PC that is the program starting; elsewhere the server PC is off or out of the network.</summary>
+        void Completed(object sender, CoreWebView2NavigationCompletedEventArgs e)
+        {
+            var core = web.CoreWebView2;
+            if (e.IsSuccess) { if (config.SameOrigin(core.Source)) failures = 0; return; }
+            switch (e.WebErrorStatus)
+            {
+                case CoreWebView2WebErrorStatus.CannotConnect: case CoreWebView2WebErrorStatus.ConnectionAborted:
+                case CoreWebView2WebErrorStatus.ConnectionReset: case CoreWebView2WebErrorStatus.Disconnected:
+                case CoreWebView2WebErrorStatus.ServerUnreachable: case CoreWebView2WebErrorStatus.Timeout:
+                case CoreWebView2WebErrorStatus.HostNameNotResolved: break;
+                default: return;  // anything else keeps the browser's own explanation
+            }
+            failures++;
+            var local = string.Equals(Config.Default()?.Server, config.Server, StringComparison.OrdinalIgnoreCase);
+            var host = WebUtility.HtmlEncode(new Uri(config.Server).Authority);
+            string title, text;
+            if (failures <= MaxFailures)
+            {
+                title = local ? "Avvio di TD Booking Suite…" : "Il server non risponde";
+                text = local ? "Il programma su questo PC si sta avviando: la pagina si apre da sola tra pochi secondi."
+                             : $"Riprovo da solo ogni pochi secondi. Controlla che il PC server <strong>{host}</strong> sia acceso e collegato alla rete.";
+                retry.Start();
+            }
+            else
+            {
+                title = local ? "Il programma non risponde" : $"{host} non risponde";
+                text = local ? "Il servizio di TD Booking Suite su questo PC non è partito. Riavvia il PC; se succede ancora, apri <strong>Servizi</strong> di Windows e controlla <strong>TD Booking Suite Web</strong> e <strong>TD Booking Suite Database</strong>. I dettagli sono in <code>C:\\ProgramData\\TD Booking Suite\\log</code>."
+                             : "Il PC server è spento, fuori rete o il suo indirizzo è cambiato. Quando è di nuovo acceso premi Riprova; per un altro server: menu di sistema della finestra, <strong>Cambia server</strong>.";
+            }
+            bool dark = WindowsDark();
+            string ink = dark ? "#efeaf6" : "#2b2236", muted = dark ? "#b0a4c2" : "#6b6079", bg = dark ? "#16111d" : "#f6f3fa";
+            core.NavigateToString("<!doctype html><html lang=\"it\"><meta charset=\"utf-8\"><style>body{margin:0;height:100vh;display:grid;place-items:center;"
+                + $"background:{bg};color:{ink};font:15px/1.6 'Segoe UI',sans-serif}}main{{max-width:520px;padding:32px}}h1{{font-size:24px;margin:0 0 10px}}p{{color:{muted};margin:0 0 18px}}"
+                + "code{font-size:13px}a{display:inline-block;padding:9px 18px;border-radius:10px;background:#8b67b8;color:#fff;text-decoration:none;font-weight:600}"
+                + ".dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8b67b8;margin-right:10px;animation:p 1.2s infinite}@keyframes p{50%{opacity:.25}}</style>"
+                + $"<main><h1>{(failures <= MaxFailures ? "<span class=\"dot\"></span>" : "")}{title}</h1><p>{text}</p>"
+                + $"<a href=\"{WebUtility.HtmlEncode(target ?? config.Server + "/")}\">Riprova</a></main></html>");
         }
 
         void Reply(string error) => web.CoreWebView2?.PostWebMessageAsString("tdwin-online-error:" + error);
