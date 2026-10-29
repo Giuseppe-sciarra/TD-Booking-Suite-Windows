@@ -75,9 +75,9 @@
 <h2 id="github"><span class="num">4</span>Il registro su GitHub</h2>
 <p class="lead">Il registro delle licenze può stare anche in una repo privata di GitHub, solo per i dati. TD Licenze lo aggiorna da lì all'apertura e dopo ogni licenza: su qualunque PC hai tutte le licenze emesse, e il numero di una licenza nuova segue quelle fatte altrove.</p>
 <ol class="steps">
-  <li>Su GitHub crea una repo <strong>privata</strong> e vuota, per esempio <code>TD-Licenze-Dati</code>.</li>
-  <li>Crea un token: foto profilo → <strong>Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token</strong>. In <em>Repository access</em> scegli <em>Only select repositories</em> e solo <code>TD-Licenze-Dati</code>; in <em>Permissions</em> dai <strong>Contents: Read and write</strong>. Scegli una scadenza.</li>
-  <li>In TD Licenze, scheda <strong>Registro su GitHub</strong>: scrivi repo e token e premi <strong>Collega e sincronizza</strong>. Chiede la password della chiave: il token resta nella cartella, in <code>registro-github.json</code>, cifrato con quella password.</li>
+  <li>Su GitHub crea una repo <strong>privata</strong> e vuota, per esempio <code>TD-Licenze-Dati</code>, e una repo <strong>pubblica</strong> e vuota per lo stato delle licenze, <code>TD-Licenze-Stato</code> (vedi sotto, <a href="#online">Cambiare o revocare online</a>).</li>
+  <li>Crea un token: foto profilo → <strong>Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token</strong>. In <em>Repository access</em> scegli <em>Only select repositories</em> e solo <code>TD-Licenze-Dati</code> e <code>TD-Licenze-Stato</code>; in <em>Permissions</em> dai <strong>Contents: Read and write</strong>. Scegli una scadenza. Un token che hai già si modifica dalla stessa pagina, aggiungendo la seconda repo.</li>
+  <li>In TD Licenze, scheda <strong>Registro su GitHub</strong>: scrivi repo, token e repo pubblica e premi <strong>Collega e sincronizza</strong>. Chiede la password della chiave: il token resta nella cartella, in <code>registro-github.json</code>, cifrato con quella password.</li>
   <li>Per averlo anche in ogni TD Licenze scaricato: nella repo del programma crea il secret <code>TD_LICENZE_REGISTRO</code> con tutto il contenuto di <code>registro-github.json</code>. Dalla build dopo, un TD Licenze nuovo trova la repo da solo e chiede solo la password.</li>
 </ol>
 <figure><img src="img-licenze/tdl-github.png" alt=""><figcaption><strong>Registro su GitHub</strong>: la repo dei dati e il suo token.</figcaption></figure>
@@ -121,6 +121,23 @@
 <figure><img src="img-licenze/tdl-emesse-dopo.png" alt=""><figcaption>Nel registro: <strong>in uso</strong> e <strong>sostituita da</strong>.</figcaption></figure>
 <p><strong>Nuova da zero</strong> torna a una licenza nuova, senza legami con quella di prima.</p>
 
+<h3 id="online">Cambiare o revocare online</h3>
+<p>In <strong>Licenze emesse</strong>, sulla licenza selezionata:</p>
+<table class="plain">
+  <tr><td><strong>Rendi permanente</strong></td><td>una licenza nuova uguale, senza scadenza, che sostituisce quella</td></tr>
+  <tr><td><strong>Metti una scadenza</strong></td><td>chiede la data e fa la licenza nuova fino a quel giorno, anche partendo da una permanente</td></tr>
+  <tr><td><strong>Revoca</strong></td><td>la licenza smette di valere: il programma si ferma come a fine prova, restano aperte Licenza e Backup e i dati non si toccano</td></tr>
+</table>
+<p>Con il registro su GitHub collegato, dopo ognuna di queste, e dopo <strong>Cambia postazioni o scadenza</strong>, TD Licenze pubblica nella repo pubblica lo <strong>stato delle licenze</strong>, firmato con la tua chiave. Il programma di ogni cliente lo legge da solo una volta al giorno, quando è online (o subito, con <strong>Controlla ora</strong> nella sua pagina Licenza):</p>
+<ul>
+  <li>la licenza cambiata per la sua installazione arriva <strong>da sola</strong>: il cliente non incolla niente;</li>
+  <li>una licenza revocata, o sostituita da una nuova, <strong>smette di valere</strong>, anche se qualcuno la incolla di nuovo;</li>
+  <li><strong>senza Internet</strong> non cambia niente: resta la licenza in uso, finché il PC non si collega;</li>
+  <li>una licenza <em>a stock</em>, senza codice installazione, si revoca lo stesso; quella nuova invece la incolla il cliente, perché vale su qualunque PC.</li>
+</ul>
+<p>Il file è pubblico ma non dice niente: per ogni installazione la sua licenza è cifrata con il suo codice, che conosce solo lei, e le revocate sono solo impronte. Nessuno può falsificarlo senza la tua chiave, e uno stato vecchio rimandato non annulla una revoca. <strong>Pubblica lo stato delle licenze</strong>, nella scheda <strong>Registro su GitHub</strong>, lo rifà quando vuoi.</p>
+<figure><img src="img-licenze/tdl-permanente.png" alt=""><figcaption><strong>Rendi permanente</strong> sulla licenza di Studio Rossi: la nuova è già copiata.</figcaption></figure>
+
 <h2 id="credenziali"><span class="num">8</span>Le credenziali dei clienti</h2>
 <p>Gli accessi che crei installando il programma, per non perderli: l'<strong>amministratore del programma</strong>, i <strong>titolari</strong>, le persone dell'attività, la <strong>password dei backup</strong>, i <strong>codici di recupero</strong> e del primo avvio, l'invio email, Telegram, il sito, la rete. Ognuno con cliente, licenza, tipo, nome, username, email, password, indirizzo, codici e note.</p>
 <figure class="narrow"><img src="img-licenze/tdl-credenziali-chiuse.png" alt=""><figcaption><strong>Credenziali</strong>: si aprono con la password della chiave.</figcaption></figure>
@@ -147,6 +164,7 @@
   <tr><td>ha più attività di quelle della licenza nuova</td><td>il programma rifiuta la licenza e lo spiega</td></tr>
   <tr><td>ha più postazioni registrate</td><td>restano attive quelle registrate per prime, finché non ne revoca</td></tr>
   <tr><td>arriva alla scadenza</td><td>il programma si ferma come a fine prova: restano aperte Licenza e Backup</td></tr>
+  <tr><td>ha una licenza che hai revocato</td><td>quando il suo PC va online si ferma come a fine prova; offline continua finché non si collega</td></tr>
   <tr><td>sposta indietro la data del PC</td><td>prova e scadenza si contano dall'ultimo uso: non si allungano</td></tr>
   <tr><td>cancella la prova dal database</td><td>la prova resta usata: il segno sta anche nella cartella dei dati</td></tr>
 </table>

@@ -25,7 +25,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey,Ed25519PublicKey
 
 PREFIX="TDBS1."
-FIELDS=["id","emessa","intestatario","tipo","attivita","postazioni","installazione","scadenza","sostituisce","licenza"]
+FIELDS=["id","emessa","intestatario","tipo","attivita","postazioni","installazione","scadenza","sostituisce","licenza","revocata"]
 # the three kinds of licence: Un PC solo has no workstations, a server one business, a portal more businesses
 TIPI={"pc":"Un PC solo","server":"Server con postazioni","portale":"Portale, più attività"}
 def tipo_of(data):
@@ -138,13 +138,19 @@ def merge(local,remote):
     """Every licence of both, once each, oldest first: (rows, how many only in remote, how many only in local)."""
     key=lambda r:(r.get("id",""),r.get("licenza",""))
     here={key(r) for r in local};there={key(r) for r in remote}
-    rows={key(r):{k:r.get(k) or "" for k in FIELDS} for r in remote+local}
-    return sorted(rows.values(),key=lambda r:(r["emessa"],r["id"])),len(there-here),len(here-there)
+    rows={}
+    for r in remote+local:
+        r={k:r.get(k) or "" for k in FIELDS};old=rows.get(key(r))
+        # 2.13.0: a revocation made on any PC stays: the copy that has it wins
+        rows[key(r)]=old if old and old["revocata"] and not r["revocata"] else r
+    # a licence revoked here but not there, or there but not here, is news for the other side too
+    revoked_there={key(r) for r in remote if r.get("revocata")};revoked_here={key(r) for r in local if r.get("revocata")}
+    return sorted(rows.values(),key=lambda r:(r["emessa"],r["id"])),len(there-here)+len(revoked_there-revoked_here-(there-here)),len(here-there)+len(revoked_here-revoked_there-(here-there))
 
 def _seal_key(password,salt):
     from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
     return Scrypt(salt=salt,length=32,n=2**15,r=8,p=1).derive((password or "").encode())
-def save_sync(folder,repo,token,password):
+def save_sync(folder,repo,token,password,stato=""):
     """The repo and its token, the token sealed with the key's password: the folder alone does not give it away."""
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     repo=repo.strip().strip("/").removeprefix("https://github.com/")
@@ -152,8 +158,10 @@ def save_sync(folder,repo,token,password):
     if not token.strip():raise ValueError("Incolla il token di GitHub.")
     salt,nonce=os.urandom(16),os.urandom(12)
     sealed=AESGCM(_seal_key(password,salt)).encrypt(nonce,token.strip().encode(),repo.encode())
+    stato=stato.strip().strip("/").removeprefix("https://github.com/")
+    if stato and not re.fullmatch(r"[\w.-]+/[\w.-]+",stato):raise ValueError("Scrivi la repo pubblica come proprietario/nome, per esempio Giuseppe-sciarra/TD-Licenze-Stato.")
     target=Path(folder)/SYNC_FILE
-    target.write_text(json.dumps({"repo":repo,"sale":b64(salt),"nonce":b64(nonce),"token":b64(sealed)}),encoding="utf-8")
+    target.write_text(json.dumps({"repo":repo,"sale":b64(salt),"nonce":b64(nonce),"token":b64(sealed),**({"stato":stato} if stato else {})}),encoding="utf-8")
     return repo
 def builtin_sync():
     """registro-github.json from the secret TD_LICENZE_REGISTRO, written into the exe with the key: same sealed token."""
@@ -326,6 +334,73 @@ def new_password(length=16):
     alphabet="abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     groups=[ "".join(secrets.choice(alphabet) for _ in range(4)) for _ in range(max(3,length//4))]
     return "-".join(groups)
+
+# 2.13.0: the state of the licences, in the seller's public repo, that every program reads once a day when online.
+# For each bound installation its licence in use, sealed with a key from its code (only that installation reads it,
+# the names of the clients stay private), and the ids of the licences revoked or replaced. Signed with the key.
+STATE_PREFIX="TDST1."
+STATE_FILE="stato-licenze.json"
+def bare(code):return "".join(ch for ch in (code or "").upper() if ch.isalnum())
+def code_digest(code,purpose):
+    import hashlib
+    return hashlib.sha256(f"tdbs-{purpose}\n{bare(code)}".encode()).digest()
+def revoked_id(licence_id):
+    import hashlib
+    return hashlib.sha256(f"tdbs-revoca\n{licence_id}".encode()).hexdigest()
+def out_of_use(rows):
+    """The licences that no longer count: revoked, or replaced by a newer one."""
+    return {r["id"] for r in rows if r.get("revocata")}|{r["sostituisce"] for r in rows if r.get("sostituisce")}
+def state(rows,key,issued):
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    gone=out_of_use(rows);current={}
+    for r in rows:  # oldest first: the newest in use for an installation wins
+        if r.get("installazione") and r["id"] not in gone:current[bare(r["installazione"])]=r
+    sealed={}
+    for code,r in sorted(current.items()):
+        nonce=os.urandom(12)
+        sealed[code_digest(code,"installazione").hex()]={"nonce":b64(nonce),"licenza":b64(AESGCM(code_digest(code,"licenza")).encrypt(nonce,r["licenza"].encode(),b"tdbs-stato"))}
+    body=b64(json.dumps({"v":1,"emesso":issued,"installazioni":sealed,"revocate":sorted(revoked_id(i) for i in gone)},separators=(",",":"),sort_keys=True).encode())
+    return STATE_PREFIX+body+"."+b64(key.sign((STATE_PREFIX+body).encode()))
+def state_repo(cfg):
+    """The public repo of the state: the one chosen, else TD-Licenze-Stato of the owner of the register's repo."""
+    if not cfg or not cfg.get("repo"):return ""
+    return cfg.get("stato") or cfg["repo"].split("/")[0]+"/TD-Licenze-Stato"
+def publish_state(folder,password):
+    """The state of every licence in the public repo, now: (licences in use, out of use), or None without a repo.
+    A program that finds its licence changed installs the new one; one revoked or replaced stops."""
+    from datetime import datetime,timezone
+    cfg=sync_settings(folder)
+    if not cfg:return None
+    repo=state_repo(cfg);token=sync_token(folder,password);key=load_key(folder,password)
+    rows=registry(folder)
+    text=state(rows,key,datetime.now(timezone.utc).isoformat())  # to the microsecond: two states never tie
+    path=f"/repos/{repo}/contents/{STATE_FILE}"
+    for _ in range(3):
+        status,data=github("GET",path,token)
+        if status==200:sha=data["sha"]
+        elif status==404:
+            found,info=github("GET",f"/repos/{repo}",token)
+            if found!=200:raise SyncError(f"La repo pubblica {repo} non c'è, o il token non la vede: creala pubblica e aggiungila al token.")
+            if (info or {}).get("private"):raise SyncError(f"La repo {repo} è privata: deve essere pubblica, i programmi dei clienti la leggono senza token.")
+            sha=None
+        elif status in (401,403):raise SyncError("GitHub rifiuta il token: forse è scaduto. Fanne uno nuovo e collega di nuovo la repo.")
+        else:raise SyncError(f"GitHub risponde {status}: riprova più tardi.")
+        body={"message":"TD Licenze: stato delle licenze","content":base64.b64encode(text.encode()).decode()}
+        if sha:body["sha"]=sha
+        status,_=github("PUT",path,token,body)
+        if status in (200,201):
+            gone=out_of_use(rows);return len([r for r in rows if r["id"] not in gone]),len(gone)
+        if status in (401,403,404):raise SyncError(f"Il token non può scrivere in {repo}: aggiungila al token con il permesso Contents, Read and write.")
+        if status not in (409,422):raise SyncError(f"GitHub risponde {status}: riprova più tardi.")
+    raise SyncError("Lo stato delle licenze su GitHub cambia di continuo: riprova tra poco.")
+def revoke(folder,licence_id):
+    """A licence that stops counting: written in the register; the programs learn it from the state."""
+    rows=registry(folder)
+    row=next((r for r in rows if r["id"]==licence_id),None)
+    if not row:raise ValueError(f"Nessuna licenza {licence_id} nel registro.")
+    if row.get("revocata"):raise ValueError(f"La licenza {licence_id} è già revocata.")
+    row["revocata"]=date.today().isoformat();write_registry(folder,rows)
+    return row
 
 def describe(data):
     return (f"{TIPI[tipo_of(data)]}. Attività: {data['attivita']}, postazioni in rete: {data['postazioni']}, "

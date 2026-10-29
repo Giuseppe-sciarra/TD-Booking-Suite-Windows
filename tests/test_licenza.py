@@ -358,3 +358,74 @@ def test_the_credentials_of_the_clients_stay_sealed_and_follow_the_repo(tmp_path
     assert [e["username"] for e in tool.vault(folder,pw)]==["giulia"]  # deleted on the other PC, gone here too
     with pytest.raises(tool.SyncError,match="altra password"):
         tool.vault_write(third,"un-altra-password-9",[]);tool.save_sync(third,"Giuseppe-sciarra/TD-Licenze-Dati",hub.token,"un-altra-password-9");tool.vault_sync(third,"un-altra-password-9")
+
+def test_licences_changed_and_revoked_online(tmp_path,monkeypatch,settings,admin):
+    """2.13.0: TD Licenze publishes the state, signed; the program takes the licence changed for it (permanent,
+    with an expiry) by itself, and stops with one revoked or replaced. Offline nothing changes."""
+    import base64
+    tool=load_tool();folder=tmp_path/"vendor";pw="chiave-segreta-1"
+    tool.make_key(folder,pw);settings.TDWIN_LICENSE_KEY=tool.public_key_text(folder)
+    settings.TDWIN_STATO_LICENZE="https://raw.githubusercontent.com/Giuseppe-sciarra/TD-Licenze-Stato/main/stato-licenze.json"
+    class GitHub:
+        def __init__(self):self.files={};self.token="github_pat_prova"
+        def __call__(self,method,path,token,body=None):
+            if path=="/repos/Giuseppe-sciarra/TD-Licenze-Stato":return 200,{"private":False}
+            if path.startswith("/repos/Giuseppe-sciarra/TD-Licenze-Dati") and "/contents/" not in path:return 200,{}
+            name=path.rsplit("/",1)[-1]
+            if method=="GET":
+                if name not in self.files:return 404,{}
+                return 200,{"content":base64.b64encode(self.files[name][0].encode()).decode(),"sha":str(self.files[name][1])}
+            if name in self.files and body.get("sha")!=str(self.files[name][1]):return 409,{}
+            self.files[name]=(base64.b64decode(body["content"]).decode(),self.files.get(name,("",0))[1]+1);return 200,{}
+    hub=GitHub();monkeypatch.setattr(tool,"github",hub)
+    out=tmp_path/"emesse";code=licensing.install_code()
+    assert tool.publish_state(folder,pw) is None  # no repo connected: nothing to publish
+    tool.save_sync(folder,"Giuseppe-sciarra/TD-Licenze-Dati",hub.token,pw)
+    first,_,data=tool.create(folder,"Bar Roma",1,2,code,"2027-01-31",out,pw,tipo="server")
+    stock,_,stock_data=tool.create(folder,"Pizzeria",1,0,"","",out,pw,tipo="pc")
+    licensing.install(first)
+    online=lambda url:hub.files[tool.STATE_FILE][0]
+    assert tool.publish_state(folder,pw)==(2,0)
+    published=hub.files[tool.STATE_FILE][0]
+    assert "Bar Roma" not in base64.urlsafe_b64decode(published.split(".")[1]+"==").decode()  # names stay private
+    assert licensing.check_online(online)=="" and licensing.status()["scadenza"]==date(2027,1,31)
+    # made permanent in TD Licenze: the program takes it by itself
+    permanent,_,new=tool.create(folder,"",None,None,"","",out,pw,"",data["id"])
+    tool.publish_state(folder,pw)
+    said=licensing.check_online(online)
+    state=licensing.status()
+    assert "senza scadenza" in said and state["kind"]=="licenza" and state["id"]==new["id"] and state["scadenza"] is None
+    # the other way round: an expiry on the permanent one, and the permanent one pasted again no longer counts
+    dated,_,third=tool.create(folder,"",None,None,"","2026-12-31",out,pw,"",new["id"])
+    tool.publish_state(folder,pw);licensing.check_online(online)
+    assert licensing.status()["scadenza"]==date(2026,12,31)
+    licensing.install(permanent);licensing.check_online(online)
+    assert licensing.status()["id"]==third["id"]  # put back by the state
+    (licensing.path()).write_text(permanent+"\n",encoding="utf-8");licensing._file["stamp"]=None
+    state=licensing.status()
+    assert state["kind"]!="licenza" and "revocata o sostituita" in state["problema"]  # also before the next look online
+    # revoked: it stops; an older state served again does not bring it back
+    licensing.install(dated)
+    old=hub.files[tool.STATE_FILE][0]
+    tool.revoke(folder,third["id"]);tool.publish_state(folder,pw)
+    assert "revocata" in licensing.check_online(online)
+    assert licensing.status()["kind"]!="licenza" and licensing.apply(force=True)["kind"]!="licenza"
+    assert licensing.check_online(lambda url:old)=="" and licensing.status()["kind"]!="licenza"
+    with pytest.raises(ValueError,match="già revocata"):tool.revoke(folder,third["id"])
+    # a state not signed by the seller is refused
+    other=tmp_path/"altro";tool.make_key(other,pw)
+    forged=tool.state([],tool.load_key(other,pw),"2099-01-01T00:00:00+00:00")
+    with pytest.raises(ValueError,match="non è firmato"):licensing.check_online(lambda url:forged)
+    # a licence valid on any PC: revoked, it stops too
+    licensing.install(stock);assert licensing.status()["kind"]=="licenza"
+    tool.revoke(folder,stock_data["id"]);tool.publish_state(folder,pw);licensing.check_online(online)
+    assert licensing.status()["kind"]!="licenza"
+    # the register keeps the revocations on every PC
+    rows,arrived,sent=tool.merge([{**r,"revocata":""} for r in tool.registry(folder)],tool.registry(folder))
+    assert all(r["revocata"] for r in rows if r["id"] in (third["id"],stock_data["id"]))
+    # the licence page: the last look and the button, for the administrator
+    user,c=admin
+    page=c.get("/platform/licenza/").content.decode()
+    assert "Controllo online" in page and "Ultimo controllo il" in page and "Controlla ora" in page
+    monkeypatch.setattr(licensing,"download",lambda url:(_ for _ in ()).throw(OSError("offline")))
+    assert "Internet non raggiungibile" in c.post("/platform/licenza/",{"azione":"online"},follow=True).content.decode()

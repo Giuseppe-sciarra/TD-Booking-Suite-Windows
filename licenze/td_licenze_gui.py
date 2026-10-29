@@ -147,7 +147,8 @@ class App(tk.Tk):
         self.copy(licence,quiet=True)
         if tool.sync_settings(self.folder):
             sent=self.sync(quiet=True)
-            self.result_info.configure(text=self.result_info.cget("text")+(" Registro su GitHub aggiornato." if sent else " Non mandata a GitHub: la mando alla prossima sincronizzazione."))
+            self.result_info.configure(text=self.result_info.cget("text")+(" Registro su GitHub aggiornato." if sent else " Non mandata a GitHub: la mando alla prossima sincronizzazione.")
+                +(self.publish(bound=bool(data["installazione"])) if self.replacing else ""))
         if self.replacing:self.replacing=None;self.replace_info.configure(text="");self.replace_reset.grid_remove();self.fields["installazione"].configure(state="normal")
         self.refresh()
 
@@ -164,11 +165,15 @@ class App(tk.Tk):
         buttons=ttk.Frame(f);buttons.grid(row=2,column=0,sticky="w",pady=(10,0))
         ttk.Button(buttons,text="Copia la licenza selezionata",command=self.copy_selected).pack(side="left")
         ttk.Button(buttons,text="Cambia postazioni o scadenza",command=self.change_selected).pack(side="left",padx=8)
-        ttk.Button(buttons,text="Credenziali del cliente",command=self.credentials_selected).pack(side="left",padx=(0,8))
-        ttk.Button(buttons,text="Apri la cartella delle licenze",command=self.open_folder).pack(side="left")
-        self.sync_button=ttk.Button(buttons,text="Aggiorna da GitHub",command=lambda:self.sync())
-        if tool.sync_settings(self.folder):self.sync_button.pack(side="left",padx=8)
-        ttk.Label(f,textvariable=self.sync_status,style="Hint.TLabel").grid(row=3,column=0,sticky="w",pady=(8,0))
+        ttk.Button(buttons,text="Rendi permanente",command=lambda:self.replace_selected(True)).pack(side="left")
+        ttk.Button(buttons,text="Metti una scadenza",command=lambda:self.replace_selected(False)).pack(side="left",padx=8)
+        ttk.Button(buttons,text="Revoca",command=self.revoke_selected).pack(side="left")
+        more=ttk.Frame(f);more.grid(row=3,column=0,sticky="w",pady=(6,0))
+        ttk.Button(more,text="Credenziali del cliente",command=self.credentials_selected).pack(side="left")
+        ttk.Button(more,text="Apri la cartella delle licenze",command=self.open_folder).pack(side="left",padx=8)
+        self.sync_button=ttk.Button(more,text="Aggiorna da GitHub",command=lambda:self.sync())
+        if tool.sync_settings(self.folder):self.sync_button.pack(side="left")
+        ttk.Label(f,textvariable=self.sync_status,style="Hint.TLabel",wraplength=900,justify="left").grid(row=4,column=0,sticky="w",pady=(8,0))
         self.tree.bind("<Double-1>",lambda e:self.copy_selected())
         self.refresh()
 
@@ -178,7 +183,7 @@ class App(tk.Tk):
         rows=tool.registry(self.folder)
         replaced={r.get("sostituisce"):r["id"] for r in rows if r.get("sostituisce")}
         for r in reversed(rows):
-            state=f"sostituita da {replaced[r['id']]}" if r["id"] in replaced else "in uso"
+            state=f"sostituita da {replaced[r['id']]}" if r["id"] in replaced else f"revocata il {r['revocata']}" if r.get("revocata") else "in uso"
             item=self.tree.insert("","end",values=(r["id"],r["emessa"],r["intestatario"],tool.TIPI[tool.tipo_of(r)],r["attivita"],r["postazioni"],
                 r["installazione"] or "a stock",r["scadenza"] or "per sempre",state))
             self.rows[item]=r
@@ -334,6 +339,51 @@ class App(tk.Tk):
         self.vault_reload();self.vault_status.set(f"Importate {count} credenziali.")
         if tool.sync_settings(self.folder):self.vault_sync(quiet=True)
 
+    # 2.13.0: changed or revoked from here, and the programs learn it online by themselves
+    def selected_row(self):
+        selected=self.tree.selection()
+        if not selected:messagebox.showinfo("TD Licenze","Seleziona la licenza.",parent=self);return None
+        row=self.rows[selected[0]]
+        if row["id"] in tool.out_of_use(tool.registry(self.folder)):
+            messagebox.showinfo("TD Licenze",f"La licenza {row['id']} non è più in uso: scegli quella che la sostituisce.",parent=self);return None
+        return row
+
+    def replace_selected(self,permanent):
+        """Rendi permanente, Metti una scadenza: a licence that replaces the selected one, the rest as it was."""
+        row=self.selected_row()
+        if not row:return
+        if permanent and not row["scadenza"]:messagebox.showinfo("TD Licenze",f"La licenza {row['id']} è già senza scadenza.",parent=self);return
+        scadenza=""
+        if not permanent:
+            scadenza=simpledialog.askstring("TD Licenze",f"Fino a quando vale la licenza di {row['intestatario']}? AAAA-MM-GG, per esempio 2027-06-30",parent=self)
+            if not scadenza:return
+        if not self.ask_password():return
+        self.sync(quiet=True)
+        try:licence,path,data=tool.create(self.folder,"",None,None,"",scadenza.strip(),self.out,self.password,"",row["id"])
+        except ValueError as ex:messagebox.showerror("TD Licenze",str(ex),parent=self);return
+        self.copy(licence,quiet=True)
+        self.sync_status.set(f"{data['id']} sostituisce {row['id']}, "+(f"fino al {data['scadenza']}" if data["scadenza"] else "senza scadenza")+", ed è già copiata."+self.publish(bound=bool(data["installazione"])))
+        self.refresh()
+
+    def revoke_selected(self):
+        row=self.selected_row()
+        if not row:return
+        if not messagebox.askyesno("TD Licenze",f"Revoco la licenza {row['id']} di {row['intestatario']}? Quando il suo programma va online smette di funzionare: "
+            "restano aperte solo Licenza e Backup, e prenotazioni e clienti restano salvati.",parent=self):return
+        if not self.ask_password():return
+        self.sync(quiet=True)
+        try:tool.revoke(self.folder,row["id"])
+        except ValueError as ex:messagebox.showerror("TD Licenze",str(ex),parent=self);return
+        self.sync_status.set(f"Licenza {row['id']} revocata."+self.publish(bound=True));self.refresh()
+
+    def publish(self,bound=True):
+        """The register to GitHub and the state to the public repo: the sentence that says what the client gets."""
+        if not tool.sync_settings(self.folder):return " Senza registro su GitHub i programmi non lo sanno: manda la licenza nuova al cliente, o collega la repo nella scheda Registro su GitHub."
+        self.sync(quiet=True)
+        try:tool.publish_state(self.folder,self.password)
+        except tool.SyncError as ex:return f" Lo stato online non è aggiornato: {ex}"
+        return " Il programma del cliente lo sa da solo entro un giorno, quando è online."+("" if bound else " Questa licenza vale su qualunque PC: la nuova la incolla il cliente, la vecchia smette di valere online.")
+
     def credentials_selected(self):
         """From a licence to its client's credentials: found, and a new one already with client and licence."""
         selected=self.tree.selection()
@@ -383,27 +433,35 @@ class App(tk.Tk):
         cfg=tool.sync_settings(self.folder)
         if cfg:
             ttk.Label(f,wraplength=680,justify="left",text=f"Il registro delle licenze va anche nella repo privata {cfg['repo']}: all'apertura e dopo ogni licenza "
-                "TD Licenze lo aggiorna da lì e ci manda le licenze nuove. Senza Internet lavora sulla copia della cartella.").grid(row=1,column=0,columnspan=2,sticky="w")
+                "TD Licenze lo aggiorna da lì e ci manda le licenze nuove. Senza Internet lavora sulla copia della cartella. "
+                f"Lo stato delle licenze, firmato, va nella repo pubblica {tool.state_repo(cfg)}: i programmi dei clienti lo leggono una volta al giorno, "
+                "prendono da soli la licenza cambiata e si fermano se è revocata. Il token deve poter scrivere anche lì.").grid(row=1,column=0,columnspan=2,sticky="w")
             buttons=ttk.Frame(f);buttons.grid(row=2,column=0,columnspan=2,sticky="w",pady=12)
             ttk.Button(buttons,text="Sincronizza ora",command=lambda:self.sync()).pack(side="left")
+            ttk.Button(buttons,text="Pubblica lo stato delle licenze",command=self.publish_now).pack(side="left",padx=8)
             ttk.Button(buttons,text="Scollega",command=self.disconnect).pack(side="left",padx=8)
             ttk.Label(f,textvariable=self.sync_status,style="Hint.TLabel").grid(row=3,column=0,columnspan=2,sticky="w")
             return
         ttk.Label(f,wraplength=680,justify="left",text="Collega una repo privata di GitHub, solo per i dati delle licenze: il registro va lì e lo ritrovi "
-            "con TD Licenze su qualunque PC. Serve un token fine-grained con accesso solo a quella repo e il permesso Contents, Read and write. "
+            "con TD Licenze su qualunque PC. Serve un token fine-grained con accesso solo a quella repo e alla repo pubblica dello stato delle licenze, "
+            "con il permesso Contents, Read and write. "
             "Il token resta nella cartella, cifrato con la password della chiave.").grid(row=1,column=0,columnspan=2,sticky="w")
         self.repo_var=tk.StringVar(value="Giuseppe-sciarra/TD-Licenze-Dati");self.token_var=tk.StringVar()
         ttk.Label(f,text="Repo").grid(row=2,column=0,sticky="w",pady=(14,0),padx=(0,12))
         ttk.Entry(f,textvariable=self.repo_var).grid(row=2,column=1,sticky="we",pady=(14,0))
         ttk.Label(f,text="Token").grid(row=3,column=0,sticky="w",pady=(6,0),padx=(0,12))
         ttk.Entry(f,textvariable=self.token_var,show="*").grid(row=3,column=1,sticky="we",pady=(6,0))
-        ttk.Button(f,text="Collega e sincronizza",command=self.connect).grid(row=4,column=1,sticky="w",pady=14)
-        ttk.Label(f,textvariable=self.sync_status,style="Hint.TLabel").grid(row=5,column=0,columnspan=2,sticky="w")
+        self.state_var=tk.StringVar(value="Giuseppe-sciarra/TD-Licenze-Stato")
+        ttk.Label(f,text="Repo pubblica").grid(row=4,column=0,sticky="w",pady=(6,0),padx=(0,12))
+        ttk.Entry(f,textvariable=self.state_var).grid(row=4,column=1,sticky="we",pady=(6,0))
+        ttk.Label(f,text="lo stato delle licenze, firmato, che i programmi dei clienti leggono: pubblica, e anche lei nel token",style="Hint.TLabel").grid(row=5,column=1,sticky="w")
+        ttk.Button(f,text="Collega e sincronizza",command=self.connect).grid(row=6,column=1,sticky="w",pady=14)
+        ttk.Label(f,textvariable=self.sync_status,style="Hint.TLabel").grid(row=7,column=0,columnspan=2,sticky="w")
 
     def connect(self):
         if not tool.has_key(self.folder):messagebox.showinfo("TD Licenze","Prima serve la chiave delle licenze, nella scheda Chiave.",parent=self);return
         if not self.ask_password("Password della chiave: chiude anche il token"):return
-        try:repo=tool.save_sync(self.folder,self.repo_var.get(),self.token_var.get(),self.password)
+        try:repo=tool.save_sync(self.folder,self.repo_var.get(),self.token_var.get(),self.password,self.state_var.get())
         except ValueError as ex:messagebox.showerror("TD Licenze",str(ex),parent=self);return
         self.token_var.set("")
         if self.sync() is None:
@@ -411,6 +469,12 @@ class App(tk.Tk):
             (self.folder/tool.SYNC_FILE).unlink(missing_ok=True)
         else:self.sync_button.pack(side="left",padx=8)
         self.build_sync()
+
+    def publish_now(self):
+        if not self.ask_password():return
+        try:result=tool.publish_state(self.folder,self.password)
+        except tool.SyncError as ex:messagebox.showwarning("TD Licenze",str(ex),parent=self);return
+        if result:self.sync_status.set(f"Stato pubblicato: {result[0]} licenze in uso, {result[1]} revocate o sostituite.")
 
     def disconnect(self):
         if not messagebox.askyesno("TD Licenze","Scollego la repo? Il registro resta nella cartella e su GitHub, solo non si aggiorna più da qui.",parent=self):return

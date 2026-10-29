@@ -11,3 +11,4 @@ from .settings import *  # noqa: F401,F403
 from .settings import STORAGES
 STORAGES["staticfiles"]={"BACKEND":"django.contrib.staticfiles.storage.StaticFilesStorage"}
 TDWIN_LICENSE_KEY=""  # each test signs with its own key pair
+TDWIN_STATO_LICENZE=""  # the tests hand the state over themselves

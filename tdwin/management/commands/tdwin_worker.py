@@ -10,4 +10,5 @@ class Command(BaseCommand):
         rete.apply(force=True)
         threading.Thread(target=rete.keep,daemon=True,name="rete").start()
         threading.Thread(target=backup.loop,daemon=True,name="backup").start()
+        threading.Thread(target=licensing.keep_online,daemon=True,name="licenze").start()  # 2.13.0
         call_command("mail_worker")

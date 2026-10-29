@@ -44,24 +44,34 @@ def verifier(key):
     public=Ed25519PublicKey.from_public_bytes(unb64(key))
     try:public.verify(b"\x00"*64,b"tdbs-controllo")
     except InvalidSignature:return public
-    raise ValueError("La verifica delle licenze di questo programma è stata modificata: reinstalla TD Booking Suite.")
+    raise Tampered("La verifica delle licenze di questo programma è stata modificata: reinstalla TD Booking Suite.")
+
+class MissingKey(Exception):pass
+class Tampered(ValueError):pass
+def signed(text,prefix):
+    """The JSON a text carries when the seller signed it with his key: a licence (TDBS1.) or, 2.13.0, the state of
+    the licences TD Licenze publishes (TDST1.). The prefix is part of what is signed: one never passes for the other.
+    InvalidSignature for a forgery, ValueError or binascii.Error for a text cut or broken."""
+    key=public_key()  # compile_tdwin.py: the seller's key
+    if not key:raise MissingKey()
+    public=verifier(key)
+    body,signature=text[len(prefix):].split(".")
+    signature=unb64(signature)
+    if len(signature)!=64:raise ValueError("cut")  # a paste cut short, not a forgery
+    public.verify(signature,(prefix+body).encode())
+    return json.loads(unb64(body))
 
 def parse(text):
     """The licence's data when the seller signed it; ValueError with the reason otherwise."""
     text="".join((text or "").split())
     if not text.startswith(PREFIX):raise ValueError("Non è una licenza di TD Booking Suite: deve iniziare con TDBS1.")
-    key=public_key()  # compile_tdwin.py: the seller's key
-    if not key:raise ValueError("Questa installazione non ha la chiave per verificare le licenze: aggiorna il programma.")
-    public=verifier(key)
     try:
-        body,signature=text[len(PREFIX):].split(".")
-        signature=unb64(signature)
-        if len(signature)!=64:raise ValueError("cut")  # a paste cut short, not a forgery
-        public.verify(signature,(PREFIX+body).encode())
-        raw=json.loads(unb64(body))
+        raw=signed(text,PREFIX)
         data={"id":str(raw["id"]),"intestatario":str(raw["intestatario"]),"attivita":int(raw["attivita"]),"postazioni":int(raw["postazioni"]),
               "installazione":str(raw.get("installazione") or ""),"emessa":str(raw.get("emessa") or ""),
               "scadenza":date.fromisoformat(raw["scadenza"]) if raw.get("scadenza") else None}
+    except MissingKey:raise ValueError("Questa installazione non ha la chiave per verificare le licenze: aggiorna il programma.") from None
+    except Tampered:raise
     except InvalidSignature:raise ValueError("Licenza non valida: la firma non corrisponde, forse è stata modificata.") from None
     except (ValueError,KeyError,TypeError,binascii.Error):raise ValueError("Licenza incompleta: copiala di nuovo per intero.") from None
     if data["attivita"]<1 or data["postazioni"]<0:raise ValueError("Licenza non valida.")
@@ -139,6 +149,8 @@ def status(now=None):
     data,reason=installed()
     if data:
         reason=problem(data,today)
+        # 2.13.0: revoked by the seller, or replaced by a newer one, as the online state said
+        if not reason and revoked_id(data["id"]) in revoked():reason=f"La licenza {data['id']} non vale più: è stata revocata o sostituita da chi te l'ha venduta. Chiedigli quella nuova."
         if not reason:return {**data,"kind":"licenza","giorni":(data["scadenza"]-today).days if data["scadenza"] else None}
     start=trial_start()
     end=start+timedelta(days=TRIAL_DAYS) if start else None
@@ -162,6 +174,78 @@ def apply(force=False):
     settings.EDITION_LABEL="Windows Portale" if portal else "Windows"
     _applied.update(at=time.monotonic(),value=state)
     return state
+
+# 2.13.0: the state of the licences, online. TD Licenze publishes it signed with the seller's key: for each bound
+# installation its current licence, sealed with a key only that installation knows (its code), and the ids of the
+# licences revoked or replaced. Read once a day where there is Internet; offline nothing changes.
+STATE_PREFIX="TDST1."
+def code_digest(code,purpose):return hashlib.sha256(f"tdbs-{purpose}\n{normalize(code)}".encode()).digest()
+def revoked_id(licence_id):return hashlib.sha256(f"tdbs-revoca\n{licence_id}".encode()).hexdigest()
+def revoked():
+    try:return set(json.loads(marker("revocate.json").read_text("utf-8")))
+    except (OSError,ValueError):return set()
+def download(url):
+    import urllib.request
+    request=urllib.request.Request(url,headers={"User-Agent":"TD-Booking-Suite","Cache-Control":"no-cache"})
+    with urllib.request.urlopen(request,timeout=20) as answer:return answer.read(2_000_000).decode("utf-8")
+
+def check_online(fetch=None):
+    """The published state applied here: the licence changed for this installation (permanent, with an expiry,
+    other numbers) is installed by itself, a revoked or replaced one stops. Returns what happened, in words, or ""
+    when nothing changed; OSError offline, ValueError for a file that is not the seller's."""
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    url=getattr(settings,"TDWIN_STATO_LICENZE","")
+    if not url:return ""
+    text="".join((fetch or download)(url).split())
+    if not text.startswith(STATE_PREFIX):raise ValueError("Lo stato delle licenze online non è leggibile.")
+    try:raw=signed(text,STATE_PREFIX)
+    except MissingKey:return ""
+    except Tampered:raise
+    except (InvalidSignature,ValueError,binascii.Error):raise ValueError("Lo stato delle licenze online non è firmato da chi vende il programma: lo ignoro.") from None
+    try:issued=datetime.fromisoformat(str(raw["emesso"]))
+    except (KeyError,ValueError):raise ValueError("Lo stato delle licenze online non è leggibile.") from None
+    last=read_time("stato-licenze.txt")
+    # an older state, served again, never undoes a newer one
+    if last and issued<last:return ""
+    said=""
+    code=install_code();data,_=installed()
+    entry=(raw.get("installazioni") or {}).get(code_digest(code,"installazione").hex())
+    if entry and entry.get("licenza"):
+        try:
+            licence=AESGCM(code_digest(code,"licenza")).decrypt(unb64(entry["nonce"]),unb64(entry["licenza"]),b"tdbs-stato").decode()
+            new=parse(licence)
+        except Exception:new=None
+        if new and normalize(new["installazione"])==normalize(code) and (not data or new["id"]!=data["id"]):
+            target=path();target.parent.mkdir(parents=True,exist_ok=True)
+            temporary=target.with_suffix(".tmp");temporary.write_text(licence+"\n",encoding="utf-8");os.replace(temporary,target)
+            said=f"Arrivata da chi vende il programma la licenza {new['id']}"+(f", fino al {new['scadenza']:%d/%m/%Y}" if new["scadenza"] else ", senza scadenza")+"."
+    ids=sorted(str(x) for x in raw.get("revocate") or [])
+    before=revoked()
+    try:
+        marker("revocate.json").parent.mkdir(parents=True,exist_ok=True)
+        temporary=marker("revocate.tmp");temporary.write_text(json.dumps(ids),encoding="utf-8");os.replace(temporary,marker("revocate.json"))
+    except OSError:pass
+    data,_=installed()
+    if data and revoked_id(data["id"]) in set(ids)-before and not said:said=f"La licenza {data['id']} è stata revocata da chi vende il programma."
+    write_time("stato-licenze.txt",issued)
+    write_time("controllo-online.txt",timezone.now())
+    apply(force=True)
+    return said
+
+def last_check():return read_time("controllo-online.txt")
+
+def keep_online():
+    """The worker's thread: a first look a few minutes after start, then once a day, every hour while offline."""
+    import logging
+    wait=180
+    while True:
+        time.sleep(wait)
+        try:
+            said=check_online()
+            if said:logging.getLogger("tdwin").warning(said)
+            wait=86400
+        except (OSError,ValueError) as ex:
+            logging.getLogger("tdwin").info("Controllo online delle licenze: %s",ex);wait=3600
 
 def install(text):
     """Check a pasted licence against this installation and make it the active one."""

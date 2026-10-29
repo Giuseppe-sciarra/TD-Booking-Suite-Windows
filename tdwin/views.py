@@ -72,6 +72,12 @@ def licence_view(request):
             if created:messages.success(request,f"Prova attivata fino al {timezone.localtime(start+timedelta(days=licensing.TRIAL_DAYS)):%d/%m/%Y alle %H:%M}.")
             else:messages.error(request,"La prova si attiva una volta sola: per continuare serve la licenza.")
             licensing.apply(force=True)
+        elif request.POST.get("azione")=="online":
+            # 2.13.0: the state of the licences now, instead of waiting for the daily look
+            try:said=licensing.check_online()
+            except OSError:messages.error(request,"Internet non raggiungibile da questo PC: la licenza in uso resta valida, riprovo più tardi.")
+            except ValueError as ex:messages.error(request,str(ex))
+            else:messages.success(request,said or "Controllato: la licenza è aggiornata.")
         else:
             try:data,over=licensing.install(request.POST.get("licenza",""))
             except ValueError as ex:messages.error(request,str(ex))
@@ -81,7 +87,7 @@ def licence_view(request):
         return redirect("/platform/inizia/" if request.POST.get("next")=="/platform/inizia/" else "/platform/licenza/")
     return render(request,"tdwin/licenza.html",{"state":state,"code":licensing.install_code(),
         "trial_available":not licensing.trial_start() and state["kind"]!="licenza","staff":request.user.is_staff,"standalone":settings.TDWIN_STANDALONE,
-        "tipo_label":licensing.TIPI.get(state.get("tipo",""),"")})
+        "tipo_label":licensing.TIPI.get(state.get("tipo",""),""),"online":bool(settings.TDWIN_STATO_LICENZE),"last_check":licensing.last_check()})
 
 # ---------- guided setup: licence, the business and its owner, backups, workstations, then work as the owner
 def create_business(name,preset,email,password,actor,owner=None,username=""):

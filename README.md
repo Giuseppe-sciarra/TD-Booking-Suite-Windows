@@ -172,9 +172,9 @@ L'artefatto è privato come la repo e non va mai dato ai clienti.
 |---|---|
 | **Chiave** | La prima volta crea la chiave delle licenze, con una password, e mostra la chiave pubblica da copiare |
 | **Nuova licenza** | Tipo, intestatario, attività, postazioni, codice installazione e scadenza: **Crea la licenza**, e la licenza è già pronta da copiare |
-| **Licenze emesse** | Tutte quelle fatte, con lo stato (in uso o sostituita): doppio clic per copiarne di nuovo una, **Cambia postazioni o scadenza** per farne una che la sostituisce, **Aggiorna da GitHub** per le licenze fatte sugli altri PC |
+| **Licenze emesse** | Tutte quelle fatte, con lo stato (in uso, sostituita o revocata): doppio clic per copiarne di nuovo una, **Cambia postazioni o scadenza** per farne una che la sostituisce, **Rendi permanente**, **Metti una scadenza** e **Revoca**, **Aggiorna da GitHub** per le licenze fatte sugli altri PC. Il programma del cliente lo sa da solo entro un giorno, quando è online: la licenza nuova arriva senza incollarla, la vecchia o la revocata smette di valere |
 | **Credenziali** | Gli accessi creati per ogni cliente (amministratore del programma, titolari, persone, password dei backup, codici di recupero e del primo avvio, email, Telegram, sito, rete), cifrati con la password della chiave in `credenziali.tdc` e, con il registro collegato, anche su GitHub: se un cliente perde una password la ritrovi. Cerca, copia (negli appunti 30 secondi), genera, esporta e importa CSV; da **Licenze emesse**, **Credenziali del cliente** |
-| **Registro su GitHub** | Collega la repo privata dove tenere il registro: lo ritrovi con TD Licenze su qualunque PC |
+| **Registro su GitHub** | Collega la repo privata dove tenere il registro: lo ritrovi con TD Licenze su qualunque PC. Con la repo pubblica `TD-Licenze-Stato` (anche lei nel token) pubblica lo stato delle licenze, firmato |
 
 | Tipo | Attività | Postazioni in rete |
 |---|---|---|
