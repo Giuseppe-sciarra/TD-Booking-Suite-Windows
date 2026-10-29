@@ -25,7 +25,7 @@ def default_origin(config):
     host="localhost" if config.get("modalita")=="standalone" else socket.gethostname().lower()
     return f"https://{host}"+("" if config["porta"]==443 else f":{config['porta']}")
 
-def prepare(data,origine=None,porta=None,indirizzi=None,pg_bin=None,pg_port=55432,modalita=None,online=None):
+def prepare(data,origine=None,porta=None,indirizzi=None,pg_bin=None,pg_port=55432,modalita=None,online=None,keep=None):
     data=Path(data);data.mkdir(parents=True,exist_ok=True)
     for folder in ("licenza","backup","certs","log","tmp"):(data/folder).mkdir(exist_ok=True)
     admin_path=data/"db-admin.json";config_path=data/"config.json"
@@ -38,6 +38,11 @@ def prepare(data,origine=None,porta=None,indirizzi=None,pg_bin=None,pg_port=5543
         config={"origine":"","indirizzi":[],"porta":8443,"install_id":secrets.token_hex(16),"pg_bin":"",
                 "env":{"DJANGO_SECRET_KEY":secrets.token_urlsafe(64),"TDBS_KEYS":json.dumps({"v1":key(),"index":key()},separators=(",",":")),"TDBS_ACTIVE_KEY":"v1",
                        "DATABASE_URL":f"postgresql://tdbooking_app:{admin['app_password']}@127.0.0.1:{pg_port}/tdbooking","TDBS_DEV":"0","TRUST_PROXY":"0"}}
+        # Ricomincia da zero: new keys and database, the technical settings of before, the installation code included
+        # (the licence stays valid). What the installer says now (type, port) applies over them, as on a change.
+        if keep:
+            before=json.loads(Path(keep).read_text("utf-8"))
+            config.update({k:before[k] for k in ("origine","indirizzi","porta","install_id","modalita","online") if k in before})
     automatic=not config["origine"] or config["origine"]==default_origin(config)
     if porta:config["porta"]=int(porta)
     # Un PC solo listens on this PC only; a server on the network. Not given: as before (a 2.8 server is a server)
@@ -68,8 +73,9 @@ def main(argv=None):
     p.add_argument("--indirizzi",help="altri nomi o indirizzi, separati da virgola");p.add_argument("--pg-bin");p.add_argument("--pg-port",type=int,default=55432)
     p.add_argument("--modalita",help="standalone (un PC solo) o server (con postazioni)")
     p.add_argument("--online",choices=["on","off"],help="Un PC solo: pagina prenotazioni e sito accesi (risponde dalla rete) o spenti")
+    p.add_argument("--tieni",help="il config.json di prima: ricominciando da zero restano indirizzi, porta, tipo e codice installazione")
     a=p.parse_args(argv)
-    config,admin=prepare(a.data,a.origine,a.porta,a.indirizzi,a.pg_bin,a.pg_port,a.modalita,a.online)
+    config,admin=prepare(a.data,a.origine,a.porta,a.indirizzi,a.pg_bin,a.pg_port,a.modalita,a.online,a.tieni)
     print(json.dumps({"origine":config["origine"],"porta":config["porta"],"modalita":config["modalita"],"online":config["online"]}))
 
 if __name__=="__main__":main(sys.argv[1:])

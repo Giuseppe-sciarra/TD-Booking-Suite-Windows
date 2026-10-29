@@ -64,6 +64,8 @@ Durante l'installazione il programma chiede **Come userai TD Booking Suite su qu
 
 La scelta si cambia dopo, aprendo di nuovo l'installazione: i dati restano.
 
+Se lo reinstalli dopo averlo tolto, l'installer trova i dati di prima e chiede: **Usa i dati di prima**, e riparte da dove era, oppure **Ricomincia da zero**, con un programma vuoto e un nuovo primo avvio. I dati di prima non si cancellano: vanno da parte, interi, in `C:\ProgramData`. Licenza e prova restano.
+
 ### Il primo avvio e la configurazione guidata
 
 1. Alla fine dell'installazione si apre TD Booking Suite con il **Primo avvio**. Il codice che chiede lo trovi nel menu Start, **TD Booking Suite**, **Codice del primo avvio** (serve il permesso di amministratore di Windows). Scegli lo **username** e la password dell'**amministratore del programma**; l'email è facoltativa.

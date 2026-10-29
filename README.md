@@ -264,6 +264,13 @@ Per **cambiare tipo** apri di nuovo l'MSI (o Impostazioni › App › TD Booking
 
 La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramData\TD Booking Suite`. Per cancellarli davvero, elimina quella cartella.
 
+**Reinstallare dopo averlo tolto.** Se l'installer trova i dati di un'installazione di prima, dopo il tipo chiede cosa farne:
+
+- **Usa i dati di prima**, già scelto: il programma riparte da dove era, con le stesse attività, clienti e prenotazioni, e si entra con l'amministratore di allora;
+- **Ricomincia da zero**: un programma vuoto e al primo avvio si crea l'amministratore. I dati di prima non si cancellano: vanno, interi, in `C:\ProgramData\TD Booking Suite (dati del <giorno e ora>)`. Restano licenza, prova, codice installazione, indirizzi, porta e certificato, così la licenza vale ancora e le postazioni aprono il server come prima.
+
+Da riga di comando: `msiexec /i TD-Booking-Suite-2.10.1.msi MODALITA=standalone RICOMINCIA=1 /qn`. Senza `RICOMINCIA` usa i dati di prima. Un aggiornamento non lo chiede: i dati restano sempre.
+
 ## Cosa c'è sul PC server
 
 | | |

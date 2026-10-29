@@ -3,14 +3,34 @@
 #   powershell -ExecutionPolicy Bypass -File setup-server.ps1 -Origine https://ufficio-pc:8443 -Porta 8443
 #   powershell -ExecutionPolicy Bypass -File setup-server.ps1 -Modalita standalone   (un PC solo, o server)
 #   powershell -ExecutionPolicy Bypass -File setup-server.ps1 -Online on   (un PC solo: pagina prenotazioni e sito da Internet; off per spegnerli)
+#   powershell -ExecutionPolicy Bypass -File setup-server.ps1 -Ricomincia 1   (da zero: i dati di prima vanno da parte, interi; licenza, prova e porta restano)
 # Non cancella e non sovrascrive mai dati, chiavi e password già esistenti.
-param([string]$Porta = "", [string]$Origine = "", [string]$Indirizzi = "", [string]$Modalita = "", [ValidateSet("", "on", "off")][string]$Online = "")
+param([string]$Porta = "", [string]$Origine = "", [string]$Indirizzi = "", [string]$Modalita = "", [ValidateSet("", "on", "off")][string]$Online = "", [string]$Ricomincia = "")
 # the server is never set up as a window only: the installation stops and Windows puts everything back
 if ($Modalita -eq "postazione") { throw "MODALITA=postazione installa solo la finestra: usa ADDLOCAL=Postazione (su un server: REMOVE=Server)." }
 . "$PSScriptRoot\comune.ps1"
 # always, before anything is read from it: a data folder a normal user prepared (with his own keys, a certificate
 # authority he controls, or a fake pgdata that makes it look installed) is set aside; a real installation stays
 Protect-Folder $Data
+# 2.10.1, after the check of the folder, so a planted one is never carried over: Ricomincia da zero, chosen in the
+# installer when it found the data of a previous installation. The whole data folder goes aside, next to it, and is
+# never deleted. What stays: the licence folder (licence, trial, clock) and the installation code, so the licence
+# keeps working and the trial does not start again; addresses, port, type and certificates, so the workstations of
+# a server keep opening it. Not the code of the first start: the new one asks its own.
+$keep = ""
+if ($Ricomincia -eq "1" -and (Test-Path (Join-Path $Data "config.json"))) {
+    Stop-Program
+    # the database holds its files open: the folder moves only with it stopped
+    if (Get-Service TDBookingDB -ErrorAction SilentlyContinue) { Stop-Service TDBookingDB -Force }
+    $aside = "$Data (dati del $(Get-Date -Format 'yyyy-MM-dd HH.mm.ss'))"
+    Move-Item -LiteralPath $Data -Destination $aside
+    $keep = Join-Path $aside "config.json"
+    New-Item -ItemType Directory -Force (Join-Path $Data "licenza") | Out-Null
+    Get-ChildItem -LiteralPath (Join-Path $aside "licenza") -File -ErrorAction SilentlyContinue | Where-Object Name -ne "primo-avvio.txt" |
+        Copy-Item -Destination (Join-Path $Data "licenza")
+    if (Test-Path (Join-Path $aside "certs")) { Copy-Item -LiteralPath (Join-Path $aside "certs") -Destination $Data -Recurse }
+    Write-Output "Dati di prima spostati in $aside"
+}
 $firstInstall = -not (Test-Path (Join-Path $Data "pgdata\PG_VERSION"))
 if ($firstInstall) {
     # a new installation starts from clean rights; any configuration found is set aside, new keys are made below
@@ -31,6 +51,7 @@ try {
     if ($Indirizzi) { $setup += @("--indirizzi", $Indirizzi) }
     if ($Modalita) { $setup += @("--modalita", $Modalita) }
     if ($Online) { $setup += @("--online", $Online) }
+    if ($keep) { $setup += @("--tieni", $keep) }
     Invoke-Checked $Python $setup
     $config = Read-Json "config.json"
     $admin = Read-Json "db-admin.json"

@@ -26,6 +26,8 @@
     <!-- empty: a new server gets 8443, an update keeps the port it has -->
     <Property Id="PORTA" Secure="yes" />
     <Property Id="INDIRIZZO" Secure="yes" />
+    <!-- 2.10.1: 1 = start from zero over the data of a previous installation (they go aside, not deleted) -->
+    <Property Id="RICOMINCIA" Value="0" Secure="yes" />
     <Property Id="ALTRI_INDIRIZZI" Secure="yes" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
@@ -73,7 +75,7 @@
 
     <!-- the server's configuration runs as Windows itself, after the files are in place; removal before they go -->
     <SetProperty Id="SetupServer" Sequence="execute" Before="SetupServer"
-                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[SERVERDIR]script\setup-server.ps1&quot; -Porta &quot;[PORTA]&quot; -Origine &quot;[INDIRIZZO]&quot; -Indirizzi &quot;[ALTRI_INDIRIZZI]&quot; -Modalita &quot;[MODALITA]&quot;" />
+                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[SERVERDIR]script\setup-server.ps1&quot; -Porta &quot;[PORTA]&quot; -Origine &quot;[INDIRIZZO]&quot; -Indirizzi &quot;[ALTRI_INDIRIZZI]&quot; -Modalita &quot;[MODALITA]&quot; -Ricomincia &quot;[RICOMINCIA]&quot;" />
     <CustomAction Id="SetupServer" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred" Impersonate="no" Return="check" />
     <!-- removal: everything on uninstall; during an upgrade the services are only stopped -->
     <SetProperty Id="RemoveServer" Action="SetRemoveServer" Sequence="execute" Before="RemoveServer" Condition="NOT UPGRADINGPRODUCTCODE"

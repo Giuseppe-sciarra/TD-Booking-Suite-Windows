@@ -12,6 +12,17 @@ from tdwin import rete
 from tdwin.models import Postazione
 from tests.conftest import login
 
+def test_starting_from_zero_keeps_addresses_port_type_and_installation_code(tmp_path):
+    from tdwin import setup_files
+    before,_=setup_files.prepare(tmp_path/"prima",origine="https://ufficio.test:9443",porta=9443,indirizzi="192.168.1.10",modalita="server")
+    after,_=setup_files.prepare(tmp_path/"nuova",keep=tmp_path/"prima"/"config.json")
+    kept=("origine","indirizzi","porta","install_id","modalita","online")
+    assert {k:after[k] for k in kept}=={k:before[k] for k in kept}  # the licence, bound to the installation code, stays valid
+    assert after["env"]["DJANGO_SECRET_KEY"]!=before["env"]["DJANGO_SECRET_KEY"]  # but new keys: a new program
+    # what the installer says now applies over them, as on a change of type
+    changed,_=setup_files.prepare(tmp_path/"cambio",keep=tmp_path/"prima"/"config.json",modalita="standalone")
+    assert changed["modalita"]=="standalone" and changed["ascolto"]=="127.0.0.1" and changed["install_id"]==before["install_id"]
+
 def certificate(name="booking.example.com",days=90,key=None,start=-1):
     key=key or rsa.generate_private_key(public_exponent=65537,key_size=2048)
     now=datetime.datetime.now(datetime.timezone.utc)

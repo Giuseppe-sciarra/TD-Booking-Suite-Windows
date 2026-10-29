@@ -87,4 +87,27 @@ Write-Host "Disinstallo"
 Install-Msi @("/x", "`"$Upgrade`"") "uninstall.log"
 foreach ($name in "TDBookingDB", "TDBookingWeb", "TDBookingWorker") { if (Get-Service $name -ErrorAction SilentlyContinue) { throw "$name è rimasto dopo la disinstallazione" } }
 if (-not (Test-Path (Join-Path $data "config.json"))) { throw "La disinstallazione ha cancellato i dati" }
+
+Write-Host "Reinstallo come Un PC solo da zero sopra i dati rimasti: vanno da parte, licenza e codice installazione restano"
+$before = Get-Content (Join-Path $data "config.json") -Raw | ConvertFrom-Json
+Set-Content (Join-Path $data "licenza\segno-di-prova.txt") "resta"
+$caBefore = (Get-FileHash (Join-Path $data "certs\ca.crt")).Hash
+Install-Msi @("/i", "`"$Upgrade`"", "MODALITA=standalone", "RICOMINCIA=1") "da-zero.log"
+try {
+    $aside = @(Get-ChildItem $env:ProgramData -Directory | Where-Object Name -like "TD Booking Suite (dati del *")
+    if ($aside.Count -ne 1) { throw "I dati di prima non sono stati messi da parte: $($aside.Count) cartelle" }
+    if (-not (Test-Path (Join-Path $aside[0].FullName "pgdata\PG_VERSION"))) { throw "Nella cartella messa da parte manca il database di prima" }
+    $after = Get-Content (Join-Path $data "config.json") -Raw | ConvertFrom-Json
+    if ($after.install_id -ne $before.install_id) { throw "Il codice installazione è cambiato: la licenza non varrebbe più" }
+    if ($after.porta -ne $before.porta) { throw "La porta è cambiata: $($before.porta) prima, $($after.porta) ora" }
+    if (-not (Test-Path (Join-Path $data "licenza\segno-di-prova.txt"))) { throw "La cartella della licenza non è stata tenuta" }
+    if ($after.env.DJANGO_SECRET_KEY -eq $before.env.DJANGO_SECRET_KEY) { throw "Da zero ma con le chiavi di prima" }
+    if ((Get-FileHash (Join-Path $data "certs\ca.crt")).Hash -ne $caBefore) { throw "Il certificato è cambiato: le postazioni non aprirebbero più il server" }
+    Test-Mode "standalone"
+    # an empty program: the first start asks for its administrator
+    $page = Invoke-WebRequest "https://localhost:$($after.porta)/" -UseBasicParsing
+    if ($page.Content -notmatch "Primo avvio") { throw "Da zero non compare il primo avvio" }
+}
+catch { Show-Logs; throw }
+Install-Msi @("/x", "`"$Upgrade`"") "uninstall-2.log"
 Write-Host "Prova completa riuscita"
