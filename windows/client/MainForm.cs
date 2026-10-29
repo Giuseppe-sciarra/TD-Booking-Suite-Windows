@@ -83,7 +83,8 @@ namespace TDBookingSuite
             var menu = GetSystemMenu(Handle, false);
             AppendMenu(menu, MF_SEPARATOR, 0, null);
             AppendMenu(menu, MF_STRING, ID_RELOAD, "Ricarica\tF5");
-            AppendMenu(menu, MF_STRING, ID_SERVER, "Cambia server...");
+            // Un PC solo opens only its own program: there is no other server to choose
+            if (!config.Standalone) AppendMenu(menu, MF_STRING, ID_SERVER, "Cambia server...");
             ApplyTheme();
         }
 
@@ -115,6 +116,18 @@ namespace TDBookingSuite
             core.Settings.IsStatusBarEnabled = false;
             core.Settings.AreDevToolsEnabled = false;
             core.Settings.IsGeneralAutofillEnabled = false;
+            // 2.10.1: a program, not a browser: never the browser's error pages, no swipe back and forth,
+            // and the right click offers only cut, copy and paste where there is something to cut, copy or paste
+            core.Settings.IsBuiltInErrorPageEnabled = false;
+            core.Settings.IsSwipeNavigationEnabled = false;
+            core.ContextMenuRequested += (s, e) =>
+            {
+                var keep = new[] { "cut", "copy", "paste", "selectAll" };
+                for (int i = e.MenuItems.Count - 1; i >= 0; i--)
+                    if (Array.IndexOf(keep, e.MenuItems[i].Name) < 0) e.MenuItems.RemoveAt(i);
+                while (e.MenuItems.Count > 0 && e.MenuItems[e.MenuItems.Count - 1].Kind == CoreWebView2ContextMenuItemKind.Separator) e.MenuItems.RemoveAt(e.MenuItems.Count - 1);
+                if (e.MenuItems.Count == 0) e.Handled = true;
+            };
             // Automatico in the program's theme menu follows Windows, light or dark
             core.Profile.PreferredColorScheme = CoreWebView2PreferredColorScheme.Auto;
             core.ServerCertificateErrorDetected += CertificateError;
@@ -174,7 +187,11 @@ namespace TDBookingSuite
                 case CoreWebView2WebErrorStatus.ConnectionReset: case CoreWebView2WebErrorStatus.Disconnected:
                 case CoreWebView2WebErrorStatus.ServerUnreachable: case CoreWebView2WebErrorStatus.Timeout:
                 case CoreWebView2WebErrorStatus.HostNameNotResolved: break;
-                default: return;  // anything else keeps the browser's own explanation
+                case CoreWebView2WebErrorStatus.OperationCanceled: return;  // a click on another page meanwhile
+                default:
+                    // the browser's own error pages are off: our page, with what went wrong and Riprova
+                    Page("La pagina non si apre", "Errore " + e.WebErrorStatus + ". Premi Riprova; se succede ancora, riavvia il programma.", false);
+                    return;
             }
             failures++;
             var local = string.Equals(Config.Default()?.Server, config.Server, StringComparison.OrdinalIgnoreCase);
@@ -193,13 +210,19 @@ namespace TDBookingSuite
                 text = local ? "Il servizio di TD Booking Suite su questo PC non è partito. Riavvia il PC; se succede ancora, apri <strong>Servizi</strong> di Windows e controlla <strong>TD Booking Suite Web</strong> e <strong>TD Booking Suite Database</strong>. I dettagli sono in <code>C:\\ProgramData\\TD Booking Suite\\log</code>."
                              : "Il PC server è spento, fuori rete o il suo indirizzo è cambiato. Quando è di nuovo acceso premi Riprova; per un altro server: menu di sistema della finestra, <strong>Cambia server</strong>.";
             }
+            Page(title, text, failures <= MaxFailures);
+        }
+
+        /// <summary>A page of the window itself, light or dark like Windows, with Riprova to the page that was asked.</summary>
+        void Page(string title, string text, bool waiting)
+        {
             bool dark = WindowsDark();
             string ink = dark ? "#efeaf6" : "#2b2236", muted = dark ? "#b0a4c2" : "#6b6079", bg = dark ? "#16111d" : "#f6f3fa";
-            core.NavigateToString("<!doctype html><html lang=\"it\"><meta charset=\"utf-8\"><style>body{margin:0;height:100vh;display:grid;place-items:center;"
+            web.CoreWebView2?.NavigateToString("<!doctype html><html lang=\"it\"><meta charset=\"utf-8\"><style>body{margin:0;height:100vh;display:grid;place-items:center;"
                 + $"background:{bg};color:{ink};font:15px/1.6 'Segoe UI',sans-serif}}main{{max-width:520px;padding:32px}}h1{{font-size:24px;margin:0 0 10px}}p{{color:{muted};margin:0 0 18px}}"
                 + "code{font-size:13px}a{display:inline-block;padding:9px 18px;border-radius:10px;background:#8b67b8;color:#fff;text-decoration:none;font-weight:600}"
                 + ".dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8b67b8;margin-right:10px;animation:p 1.2s infinite}@keyframes p{50%{opacity:.25}}</style>"
-                + $"<main><h1>{(failures <= MaxFailures ? "<span class=\"dot\"></span>" : "")}{title}</h1><p>{text}</p>"
+                + $"<main><h1>{(waiting ? "<span class=\"dot\"></span>" : "")}{title}</h1><p>{text}</p>"
                 + $"<a href=\"{WebUtility.HtmlEncode(target ?? config.Server + "/")}\">Riprova</a></main></html>");
         }
 

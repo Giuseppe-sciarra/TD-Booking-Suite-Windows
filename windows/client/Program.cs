@@ -20,8 +20,17 @@ namespace TDBookingSuite
                 config.Manual = !string.Equals(config.Server, installed.Server, StringComparison.OrdinalIgnoreCase);
                 config.Save();
             }
-            if (installed != null && installed.Ca != "" && (config == null || !config.Manual)) config = installed;
-            if (config == null || Array.IndexOf(args, "--configura") >= 0)
+            // 2.10.1: on Un PC solo nothing else is ever opened; and an address "chosen by hand" that is this very PC
+            // (from before, when it was a server or a workstation of itself) follows the server installed here
+            if (installed != null && installed.Ca != "" && (config == null || !config.Manual || installed.Standalone || config.ThisPc))
+            {
+                if (config != null && config.Manual && !string.Equals(config.Server, installed.Server, StringComparison.OrdinalIgnoreCase))
+                {
+                    config.Server = installed.Server; config.Ca = installed.Ca; config.Manual = false; config.Save();
+                }
+                config = installed;
+            }
+            if (config == null || Array.IndexOf(args, "--configura") >= 0 && !(installed != null && installed.Standalone))
             {
                 using (var setup = new SetupForm(config ?? installed))
                 {

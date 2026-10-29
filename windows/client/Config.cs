@@ -17,6 +17,13 @@ namespace TDBookingSuite
     {
         public string Server;
         public string Ca = "";
+        /// <summary>2.10.1: from server.txt, how the server on this PC is installed: "standalone" is Un PC solo.</summary>
+        public string Mode = "";
+        /// <summary>Un PC solo: the program answers this PC only, so its window opens nothing but the server installed here.</summary>
+        public bool Standalone => Mode == "standalone" || Uri.TryCreate(Server, UriKind.Absolute, out var uri) && (uri.IsLoopback || uri.Host == "localhost");
+        /// <summary>The address is this PC itself (its name, localhost, a loopback address): the server installed here.</summary>
+        public bool ThisPc => Uri.TryCreate(Server, UriKind.Absolute, out var uri)
+            && (uri.IsLoopback || uri.Host == "localhost" || string.Equals(uri.Host.Split('.')[0], Environment.MachineName, StringComparison.OrdinalIgnoreCase));
         /// <summary>Chosen by hand with Cambia server: on the server PC it wins over the server installed there.</summary>
         public bool Manual;
         /// <summary>False for a file of 2.8, written before Manual existed.</summary>
@@ -54,6 +61,7 @@ namespace TDBookingSuite
                 var value = line.Substring(i + 1).Trim();
                 if (key == "server") config.Server = value;
                 else if (key == "ca") config.Ca = value;
+                else if (key == "modalita") config.Mode = value;
                 else if (key == "manuale") { config.Manual = value == "1"; config.ManualKnown = true; }
             }
             return string.IsNullOrEmpty(config.Server) ? null : config;

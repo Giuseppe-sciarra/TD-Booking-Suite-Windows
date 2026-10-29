@@ -74,18 +74,18 @@ Per togliere gli avvisi serve un certificato di firma del codice, che costa qual
 - Ogni account nuovo ha uno **username**; l'email è facoltativa e, se c'è, si entra anche con quella. Uno username già usato da chi lavora in un'altra attività non aggancia il suo account: con l'email giusta sì.
 - **Resta collegato** (spuntato di serie): il programma si riapre già collegato fino a un anno senza usarlo. **Esci** in alto a destra cambia account.
 - **Il menu** è a gruppi, ognuno nella sua cornice, con un'icona per voce: il lavoro di ogni giorno in alto, la configurazione del programma richiudibile sotto. Finita la configurazione guidata (licenza o prova e almeno un'attività) la sua voce sparisce; la pagina resta all'indirizzo `/platform/inizia/`.
-- **La finestra** si apre al 90% dello schermo, ingrandita sugli schermi Full HD al 125% e più piccoli; le pagine sono compatte per stare in un Full HD.
+- **La finestra** si apre al 90% dello schermo, ingrandita sugli schermi Full HD al 125% e più piccoli; le pagine sono compatte per stare in un Full HD. Con **Un PC solo** apre sempre il programma di quel PC (`https://localhost:porta`), anche se prima il PC era un server o una postazione: niente *Cambia server*. Mentre il programma si avvia mostra *Avvio di TD Booking Suite…* e riprova da sola; non mostra mai le pagine di errore del browser, e il tasto destro offre solo taglia, copia e incolla.
 - **Secondo fattore**: con Un PC solo non c'è, si entra con username e password. Con Server con postazioni Authenticator e passkey sono facoltativi, e l'avviso *Proteggi il tuo account* lo vede solo l'amministratore del programma.
 
 ### Installazione da riga di comando
 
 ```bat
 rem Un PC solo
-msiexec /i TD-Booking-Suite-2.10.0.msi MODALITA=standalone /qn
+msiexec /i TD-Booking-Suite-2.10.1.msi MODALITA=standalone /qn
 rem Server con postazioni, con porta e indirizzi
-msiexec /i TD-Booking-Suite-2.10.0.msi MODALITA=server PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 ALTRI_INDIRIZZI=192.168.1.10 /qn
+msiexec /i TD-Booking-Suite-2.10.1.msi MODALITA=server PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 ALTRI_INDIRIZZI=192.168.1.10 /qn
 rem Solo postazione
-msiexec /i TD-Booking-Suite-2.10.0.msi ADDLOCAL=Postazione /qn
+msiexec /i TD-Booking-Suite-2.10.1.msi ADDLOCAL=Postazione /qn
 ```
 
 Senza `MODALITA` l'installazione tiene il tipo che il PC aveva: solo la finestra se c'è solo la postazione, altrimenti quello ricordato nel registro. Un server della 2.8, o i dati di un server rimasti dopo averlo disinstallato, o un `INDIRIZZO` dato, fanno Server con postazioni; un PC nuovo parte come Un PC solo. `MODALITA=postazione` da sola non si usa: ferma l'installazione e dice di usare `ADDLOCAL=Postazione`.
@@ -234,7 +234,7 @@ Il codice resta in questa repo privata. Quello che vedono tutti sta in **[TD-Boo
 - istruzioni;
 - gli MSI da scaricare, con la prova di 7 giorni.
 
-Per pubblicare una versione apri **Actions → Windows → Run workflow**, spunta **Pubblica il rilascio** e premi **Run workflow**. Va bene anche un tag, per esempio `git tag v2.10.0 && git push origin v2.10.0`. La build fa i test, l'MSI e la prova di installazione. Poi copia nella vetrina `vetrina/README.md` e `docs/screenshots/`, e pubblica lì una Release con l'MSI. Per scrivere nella vetrina usa il secret `VETRINA_TOKEN`: un token fine-grained con *Contents: Read and write* solo su quella repo. Il testo della vetrina si cambia in `vetrina/README.md`. Le immagini di TD Licenze stanno in `docs/manuali/img-licenze`, mai in `docs/screenshots`, che va in pubblico.
+Per pubblicare una versione apri **Actions → Windows → Run workflow**, spunta **Pubblica il rilascio** e premi **Run workflow**. Va bene anche un tag, per esempio `git tag v2.10.1 && git push origin v2.10.1`. La build fa i test, l'MSI e la prova di installazione. Poi copia nella vetrina `vetrina/README.md` e `docs/screenshots/`, e pubblica lì una Release con l'MSI. Per scrivere nella vetrina usa il secret `VETRINA_TOKEN`: un token fine-grained con *Contents: Read and write* solo su quella repo. Il testo della vetrina si cambia in `vetrina/README.md`. Le immagini di TD Licenze stanno in `docs/manuali/img-licenze`, mai in `docs/screenshots`, che va in pubblico.
 
 ## Backup e ripristino
 
@@ -260,7 +260,7 @@ Ogni destinazione ha il pulsante **Prova**, e lo **storico** dice com'è andato 
 
 Per aggiornare, apri l'MSI nuovo sopra quello vecchio: tipo, servizi, porta, database e dati restano. Prima di applicare la versione nuova, l'installer salva una copia del database in `backup\prima-dell-aggiornamento.dump`. Se l'aggiornamento non riesce, Windows rimette la versione di prima e la fa ripartire.
 
-Per **cambiare tipo** apri di nuovo l'MSI (o Impostazioni › App › TD Booking Suite › Modifica), scegli di cambiare l'installazione e il tipo nuovo. Da riga di comando: `msiexec /i TD-Booking-Suite-2.10.0.msi MODALITA=standalone /qn`. I dati restano.
+Per **cambiare tipo** apri di nuovo l'MSI (o Impostazioni › App › TD Booking Suite › Modifica), scegli di cambiare l'installazione e il tipo nuovo. Da riga di comando: `msiexec /i TD-Booking-Suite-2.10.1.msi MODALITA=standalone /qn`. I dati restano.
 
 La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramData\TD Booking Suite`. Per cancellarli davvero, elimina quella cartella.
 
@@ -295,7 +295,7 @@ GitHub Actions (`.github/workflows/windows.yml`) gira a ogni push su `main`:
 3. lo installa davvero su Windows (`windows/smoke-test.ps1`): un server con i servizi e i loro account, HTTPS con il certificato, un backup fatto dal worker; poi l'aggiornamento di un server come quelli della 2.8, senza il tipo nel registro, che resta server con porta, dati e backup; poi la modifica verso Un PC solo (solo su 127.0.0.1, niente firewall); infine la disinstallazione che lascia i dati;
 4. lo mette tra gli *Artifacts* dell'esecuzione, per 30 giorni.
 
-Con un tag `v2.10.0` crea anche una **Release** con l'MSI allegato.
+Con un tag `v2.10.1` crea anche una **Release** con l'MSI allegato.
 
 Per costruirlo a mano su Windows servono Python 3.14, .NET SDK 8, PowerShell 7 e i Visual Studio Build Tools con il compilatore C++ (per Cython):
 

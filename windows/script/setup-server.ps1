@@ -129,7 +129,9 @@ try {
     $der = [Convert]::FromBase64String(((Get-Content $ca -Raw) -replace "-----[^-]+-----", "" -replace "\s", ""))
     $hash = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($der)).Replace("-", "")
     $fingerprint = ($hash -split "(.{4})" | Where-Object { $_ }) -join " "
-    [IO.File]::WriteAllText((Join-Path $shared "server.txt"), "server=$($config.origine)`r`nca=$fingerprint`r`n")
+    # Un PC solo answers this PC only: its window opens the program here, whatever address the program has
+    $window = if ($config.modalita -eq "standalone") { "https://localhost:$($config.porta)" } else { $config.origine }
+    [IO.File]::WriteAllText((Join-Path $shared "server.txt"), "server=$window`r`nca=$fingerprint`r`nmodalita=$($config.modalita)`r`n")
     $menu = Join-Path $env:ProgramData "Microsoft\Windows\Start Menu\Programs\TD Booking Suite"
     New-Item -ItemType Directory -Force $menu | Out-Null
     [IO.File]::WriteAllText((Join-Path $menu "TD Booking Suite nel browser.url"), "[InternetShortcut]`r`nURL=$($config.origine)/`r`n")

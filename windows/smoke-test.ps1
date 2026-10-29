@@ -27,6 +27,7 @@ function Test-Mode([string]$Expected) {
         if ($rule) { throw "Un PC solo non deve aprire il firewall" }
         if (-not $listen -or ($listen | Where-Object { $_ -ne "127.0.0.1" })) { throw "Un PC solo deve ascoltare solo su 127.0.0.1" }
         if ($shared -notmatch "server=https://localhost:9443") { throw "La postazione di questo PC non punta a localhost: $shared" }
+        if ($shared -notmatch "modalita=standalone") { throw "server.txt non dice che è Un PC solo: la finestra potrebbe aprire un altro server" }
     }
     else {
         if (-not $rule) { throw "Il server deve aprire la sua porta nel firewall" }
