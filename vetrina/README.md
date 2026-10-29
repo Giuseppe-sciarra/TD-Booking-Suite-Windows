@@ -9,7 +9,7 @@ TD Booking Suite gestisce appuntamenti, tavoli, camere, lezioni ed eventi. Si in
 | | |
 |---|---|
 | ![Agenda per operatore](screenshots/agenda.png) | ![Operatore](screenshots/operatore.png) |
-| **Agenda del giorno**: una colonna per operatore, un clic su uno spazio libero e la prenotazione parte con operatore, giorno e ora | **Operatori**: i trattamenti che fanno, i loro giorni e orari, le ferie |
+| **Agenda del giorno**: una colonna per operatore con la sua foto, per tutti o per uno solo; un clic su uno spazio libero e la prenotazione parte con operatore, giorno e ora | **Operatori**: la foto, i trattamenti che fanno con durata e prezzo loro, i giorni e orari, le ferie |
 | ![Settimana](screenshots/settimana.png) | ![Mese](screenshots/mese.png) |
 | **Settimana**: i sette giorni ora per ora, un colore per operatore | **Mese**: quanti appuntamenti ha ogni giorno, un clic apre il giorno |
 | ![Scheda cliente](screenshots/cliente.png) | ![Al lavoro](screenshots/al-lavoro.png) |
@@ -29,7 +29,7 @@ TD Booking Suite gestisce appuntamenti, tavoli, camere, lezioni ed eventi. Si in
 
 - **Agenda e prenotazioni** per parrucchieri, centri estetici, SPA, ristoranti, studi, autoscuole, officine, hotel, case vacanza, noleggi, tour ed eventi. Ci sono gli orari, le risorse e gli operatori, e le domande giuste per ogni tipo di attività.
 - **Agenda del giorno, della settimana e del mese** per parrucchieri, estetica, studi e campi: nel giorno una colonna per ogni operatore che lavora, nella settimana i sette giorni ora per ora, nel mese quanti appuntamenti ha ogni giorno. Ogni operatore ha il suo colore. Un clic su uno spazio libero e la prenotazione parte con operatore, giorno e ora già messi.
-- **Operatori con i loro trattamenti, orari e ferie**: ognuno fa i servizi che spunti e, se serve, ha i suoi giorni di lavoro.
+- **Operatori con foto, trattamenti, orari e ferie**: ognuno fa i servizi che spunti, ognuno con la sua durata e il suo prezzo se diversi, e, se serve, ha i suoi giorni di lavoro. Il cliente sceglie con chi prenotare dalla foto.
 - **Prenotazioni online** dalla pagina dell'attività, quando il server è raggiungibile da Internet, con conferme e promemoria per email. Con Un PC solo si accendono da *Online e sito*.
 - **Clienti**: scheda con i recapiti sempre in vista, quanto ha speso, cosa ha in programma, lo storico con i prezzi, le note, i trattamenti, le intolleranze e i consensi marketing.
 - **Listino e sconti**: il titolare tiene servizi, varianti e prezzi; a un cliente dai uno sconto in percentuale o fisso, che vale da subito sulle sue prenotazioni.
