@@ -218,6 +218,115 @@ def sync_message(result):
     parts=[f"{licences} licenze nel registro"]+([f"{arrived} arrivate da GitHub"] if arrived else [])+([f"{sent} mandate a GitHub"] if sent else [])
     return ", ".join(parts)+"."
 
+# 2.13.0: the credentials made for the clients (the program's administrator, owners, people, backup passwords, codes),
+# in one file sealed with the key's password, and in the private repo with the register: lost passwords are found here
+VAULT_FILE="credenziali.tdc"
+VAULT_FIELDS=["id","cliente","licenza","tipo","nome","username","email","password","indirizzo","codici","note","creata","modificata","eliminata"]
+TIPI_CREDENZIALI=["Amministratore del programma","Titolare","Persona dell'attività","Password dei backup","Codici di recupero",
+    "Codice del primo avvio","Email e SMTP","Telegram","Sito e hosting","Rete e Wi-Fi","Altro"]
+def _vault_seal(password,entries):
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    salt,nonce=os.urandom(16),os.urandom(12)
+    sealed=AESGCM(_seal_key(password,salt)).encrypt(nonce,json.dumps(entries,ensure_ascii=False).encode(),b"td-credenziali")
+    return json.dumps({"v":1,"sale":b64(salt),"nonce":b64(nonce),"dati":b64(sealed)})
+def _vault_open(password,text):
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    try:
+        box=json.loads(text)
+        return json.loads(AESGCM(_seal_key(password,unb64(box["sale"]))).decrypt(unb64(box["nonce"]),unb64(box["dati"]),b"td-credenziali"))
+    except Exception:raise ValueError("Non riesco ad aprire le credenziali con questa password.") from None
+def vault_all(folder,password):
+    """Every entry, the deleted ones too (they keep their place for the other PCs); [] before the first one."""
+    path=Path(folder)/VAULT_FILE
+    return _vault_open(password,path.read_text(encoding="utf-8")) if path.exists() else []
+def vault(folder,password):
+    """The entries to show: not deleted, by client and kind."""
+    return sorted((e for e in vault_all(folder,password) if not e.get("eliminata")),key=lambda e:(e.get("cliente","").casefold(),e.get("tipo",""),e.get("nome","").casefold()))
+def vault_write(folder,password,entries):
+    path=Path(folder)/VAULT_FILE;temporary=path.with_suffix(".tmp")
+    temporary.write_text(_vault_seal(password,entries),encoding="utf-8");os.replace(temporary,path)
+def vault_put(folder,password,entry):
+    """A new entry (no id) or a changed one: saved at once, with the moment it changed. Returns it."""
+    import uuid
+    from datetime import datetime,timezone
+    entry={k:str(entry.get(k) or "").strip() if k not in ("password","codici","note") else str(entry.get(k) or "") for k in VAULT_FIELDS if k!="eliminata"}
+    if not entry["cliente"]:raise ValueError("Scrivi il cliente, per esempio il nome dell'attività.")
+    if not (entry["username"] or entry["email"] or entry["password"] or entry["codici"]):raise ValueError("Scrivi almeno username, email, password o codici.")
+    now=datetime.now(timezone.utc).isoformat(timespec="seconds")
+    entries=vault_all(folder,password)
+    old=next((e for e in entries if e["id"]==entry["id"]),None) if entry["id"] else None
+    entry.update(id=entry["id"] or str(uuid.uuid4()),creata=old["creata"] if old else now,modificata=now,eliminata="")
+    vault_write(folder,password,[e for e in entries if e["id"]!=entry["id"]]+[entry])
+    return entry
+def vault_delete(folder,password,entry_id):
+    """Emptied and marked, not dropped: the other PCs learn it was deleted instead of bringing it back."""
+    from datetime import datetime,timezone
+    now=datetime.now(timezone.utc).isoformat(timespec="seconds")
+    entries=[{"id":e["id"],"eliminata":now,"modificata":now} if e["id"]==entry_id else e for e in vault_all(folder,password)]
+    vault_write(folder,password,entries)
+def vault_merge(local,remote):
+    """Each entry once, the version changed last: (entries, how many came from remote, how many only here)."""
+    mine={e["id"]:e for e in local};theirs={e["id"]:e for e in remote}
+    out={**theirs}
+    for k,e in mine.items():
+        if k not in out or e.get("modificata","")>=out[k].get("modificata",""):out[k]=e
+    arrived=sum(1 for k,e in theirs.items() if out[k] is e and mine.get(k)!=e)
+    sent=sum(1 for k,e in mine.items() if out[k] is e and theirs.get(k)!=e)
+    return list(out.values()),arrived,sent
+def vault_sync(folder,password):
+    """The credentials merged both ways with the private repo of the register: (entries, arrived, sent), or None
+    without a repo. GitHub keeps the same sealed file: the repo alone does not give them away."""
+    cfg=sync_settings(folder)
+    if not cfg:return None
+    token=sync_token(folder,password)
+    path=f"/repos/{cfg['repo']}/contents/{VAULT_FILE}"
+    for _ in range(3):
+        status,data=github("GET",path,token)
+        if status==200:
+            remote_text,sha=base64.b64decode(data["content"]).decode("utf-8"),data["sha"]
+            try:remote=_vault_open(password,remote_text)
+            except ValueError:raise SyncError("Le credenziali su GitHub sono cifrate con un'altra password: non le tocco.") from None
+        elif status==404:remote,sha=[],None
+        elif status in (401,403):raise SyncError("GitHub rifiuta il token: forse è scaduto. Fanne uno nuovo e collega di nuovo la repo.")
+        else:raise SyncError(f"GitHub risponde {status}: riprova più tardi.")
+        entries,arrived,sent=vault_merge(vault_all(folder,password),remote)
+        vault_write(folder,password,entries)
+        if not sent and sha:return len([e for e in entries if not e.get("eliminata")]),arrived,0
+        if not entries:return 0,0,0
+        body={"message":"TD Licenze: credenziali","content":base64.b64encode(_vault_seal(password,entries).encode("utf-8")).decode()}
+        if sha:body["sha"]=sha
+        status,data=github("PUT",path,token,body)
+        if status in (200,201):return len([e for e in entries if not e.get("eliminata")]),arrived,sent
+        if status in (401,403):raise SyncError("Il token può leggere la repo ma non scriverci: dagli il permesso Contents, Read and write.")
+        if status not in (409,422):raise SyncError(f"GitHub risponde {status}: riprova più tardi.")
+    raise SyncError("Le credenziali su GitHub cambiano di continuo: riprova tra poco.")
+EXPORT_FIELDS=[("cliente","Cliente"),("licenza","Licenza"),("tipo","Tipo"),("nome","Nome"),("username","Username"),("email","Email"),
+    ("password","Password"),("indirizzo","Indirizzo"),("codici","Codici"),("note","Note"),("modificata","Modificata")]
+def vault_csv(entries):
+    """Every entry in plain text, for a printout or another password manager: the file is not sealed."""
+    out=io.StringIO();w=csv.writer(out,lineterminator="\n");w.writerow([h for _,h in EXPORT_FIELDS])
+    for e in entries:w.writerow([e.get(k,"") for k,_ in EXPORT_FIELDS])
+    return "\ufeff"+out.getvalue()
+def vault_import(folder,password,text):
+    """Rows of a CSV with the export's columns (or the English ones of a password manager): how many came in."""
+    names={h.casefold():k for k,h in EXPORT_FIELDS}|{k:k for k,_ in EXPORT_FIELDS}|{"url":"indirizzo","login":"username","notes":"note","name":"nome","title":"nome"}
+    rows=list(csv.reader(io.StringIO(text.lstrip("\ufeff"))))
+    if not rows:return 0
+    columns=[names.get(h.strip().casefold(),"") for h in rows[0]]
+    count=0
+    for row in rows[1:]:
+        entry={c:v for c,v in zip(columns,row) if c and c!="modificata"}
+        if not entry.get("cliente"):entry["cliente"]=entry.get("nome") or "Senza cliente"
+        try:vault_put(folder,password,entry);count+=1
+        except ValueError:continue
+    return count
+def new_password(length=16):
+    """Easy to read aloud and to type: no 0/O, 1/l/I."""
+    import secrets
+    alphabet="abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    groups=[ "".join(secrets.choice(alphabet) for _ in range(4)) for _ in range(max(3,length//4))]
+    return "-".join(groups)
+
 def describe(data):
     return (f"{TIPI[tipo_of(data)]}. Attività: {data['attivita']}, postazioni in rete: {data['postazioni']}, "
             +(f"solo per l'installazione {data['installazione']}" if data["installazione"] else "valida su qualunque installazione")

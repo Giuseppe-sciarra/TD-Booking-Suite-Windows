@@ -310,3 +310,51 @@ def test_the_build_puts_key_and_register_into_td_licenze(tmp_path,monkeypatch):
     with pytest.raises(SystemExit,match="cifrata"):build.main()
     monkeypatch.setenv("TD_LICENZE_CHIAVE","");build.main()
     assert not build.TARGET.exists()
+
+def test_the_credentials_of_the_clients_stay_sealed_and_follow_the_repo(tmp_path,monkeypatch):
+    """2.13.0: TD Licenze keeps the accesses made for the clients, sealed with the key's password, on every PC."""
+    import base64
+    tool=load_tool();folder=tmp_path/"chiavetta";other=tmp_path/"altro-pc";other.mkdir()
+    tool.make_key(folder,"password-lunga-1")
+    for name in ("chiave-privata.pem","chiave-pubblica.txt"):(other/name).write_bytes((folder/name).read_bytes())
+    pw="password-lunga-1"
+    assert tool.vault(folder,pw)==[]
+    with pytest.raises(ValueError,match="cliente"):tool.vault_put(folder,pw,{"username":"giulia"})
+    with pytest.raises(ValueError,match="almeno"):tool.vault_put(folder,pw,{"cliente":"Salone Bella"})
+    admin=tool.vault_put(folder,pw,{"cliente":"Salone Bella","licenza":"TD-2026-0001","tipo":"Amministratore del programma","username":"mario","password":"Segreta-2026!"})
+    owner=tool.vault_put(folder,pw,{"cliente":"Salone Bella","tipo":"Titolare","username":"giulia","email":"giulia@salonebella.it","password":"Titolare-2026!","codici":"abc\ndef"})
+    raw=(folder/tool.VAULT_FILE).read_text()
+    assert "Segreta-2026" not in raw and "giulia" not in raw  # sealed
+    with pytest.raises(ValueError,match="password"):tool.vault(folder,"sbagliata")
+    assert [e["username"] for e in tool.vault(folder,pw)]==["mario","giulia"]
+    changed=tool.vault_put(folder,pw,{**owner,"password":"Nuova-2026!"})
+    assert changed["id"]==owner["id"] and changed["creata"]==owner["creata"] and len(tool.vault(folder,pw))==2
+    # the CSV in plain text, and back into another folder
+    text=tool.vault_csv(tool.vault(folder,pw))
+    assert "Nuova-2026!" in text and text.splitlines()[0].lstrip("﻿").startswith("Cliente,Licenza,Tipo")
+    third=tmp_path/"terzo";third.mkdir()
+    assert tool.vault_import(third,pw,text+"Bar Roma,,Altro,,,,,,,,\n")==2  # an empty row does not come in
+    assert tool.new_password().count("-")==3 and len(tool.new_password())==19
+    # the private repo: the same sealed file, merged entry by entry, deletions included
+    class GitHub:
+        def __init__(self):self.files={};self.token="github_pat_prova"
+        def __call__(self,method,path,token,body=None):
+            if token!=self.token:return 401,{}
+            if path=="/repos/Giuseppe-sciarra/TD-Licenze-Dati":return 200,{}
+            name=path.rsplit("/",1)[-1]
+            if method=="GET":
+                if name not in self.files:return 404,{}
+                return 200,{"content":body_b64(self.files[name][0]),"sha":str(self.files[name][1])}
+            if name in self.files and body.get("sha")!=str(self.files[name][1]):return 409,{}
+            self.files[name]=(base64.b64decode(body["content"]).decode(),self.files.get(name,("",0))[1]+1);return 200,{}
+    body_b64=lambda text:base64.b64encode(text.encode()).decode()
+    hub=GitHub();monkeypatch.setattr(tool,"github",hub)
+    for f in (folder,other):tool.save_sync(f,"Giuseppe-sciarra/TD-Licenze-Dati",hub.token,pw)
+    assert tool.vault_sync(folder,pw)==(2,0,2) and "Nuova-2026" not in hub.files[tool.VAULT_FILE][0]
+    assert tool.vault_sync(other,pw)==(2,2,0) and [e["username"] for e in tool.vault(other,pw)]==["mario","giulia"]
+    tool.vault_delete(other,pw,admin["id"])
+    assert tool.vault_sync(other,pw)[2]==1
+    tool.vault_sync(folder,pw)
+    assert [e["username"] for e in tool.vault(folder,pw)]==["giulia"]  # deleted on the other PC, gone here too
+    with pytest.raises(tool.SyncError,match="altra password"):
+        tool.vault_write(third,"un-altra-password-9",[]);tool.save_sync(third,"Giuseppe-sciarra/TD-Licenze-Dati",hub.token,"un-altra-password-9");tool.vault_sync(third,"un-altra-password-9")

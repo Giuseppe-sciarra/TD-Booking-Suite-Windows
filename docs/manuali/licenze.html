@@ -25,9 +25,10 @@
     <li><span>5</span><a href="#nuova">Una licenza nuova</a></li>
     <li><span>6</span><a href="#emesse">Licenze emesse</a></li>
     <li><span>7</span><a href="#cambia">Cambiare postazioni o scadenza</a></li>
-    <li><span>8</span><a href="#casi">Cosa succede se il cliente…</a></li>
-    <li><span>9</span><a href="#protezione">Come il programma protegge la licenza</a></li>
-    <li><span>10</span><a href="#riga">Da riga di comando</a></li>
+    <li><span>8</span><a href="#credenziali">Le credenziali dei clienti</a><small>password ritrovate, cifrate</small></li>
+    <li><span>9</span><a href="#casi">Cosa succede se il cliente…</a></li>
+    <li><span>10</span><a href="#protezione">Come il programma protegge la licenza</a></li>
+    <li><span>11</span><a href="#riga">Da riga di comando</a></li>
   </ol>
 </section>
 
@@ -44,6 +45,7 @@
 <p>TD Licenze è <strong>portatile</strong>: salva tutto nella sua cartella, accanto a <code>TD Licenze.exe</code>, e da nessun'altra parte. Se la cartella sta su una chiavetta, sul PC del cliente non resta nessun file del programma.</p>
 <table class="plain">
   <tr><td><code>registro-licenze.csv</code></td><td>tutte le licenze emesse, con numero, cliente, tipo, postazioni, installazione, scadenza e quella che sostituiscono. Con il registro su GitHub è la copia completa anche senza Internet</td></tr>
+  <tr><td><code>credenziali.tdc</code></td><td>gli accessi dei clienti, scheda <strong>Credenziali</strong>, cifrati con la password della chiave. Con il registro su GitHub anche lì, sempre cifrati</td></tr>
   <tr><td><code>registro-github.json</code></td><td>la repo del registro e il suo token, cifrato con la password della chiave</td></tr>
   <tr><td><code>chiave-privata.pem</code>, <code>chiave-pubblica.txt</code></td><td>solo in un TD Licenze senza la chiave dentro (scheda <strong>Chiave</strong>): la chiave che firma, protetta dalla password, e quella che va nel programma</td></tr>
   <tr><td><code>licenze-emesse\</code></td><td>un file per licenza, da mandare al cliente</td></tr>
@@ -119,7 +121,24 @@
 <figure><img src="img-licenze/tdl-emesse-dopo.png" alt=""><figcaption>Nel registro: <strong>in uso</strong> e <strong>sostituita da</strong>.</figcaption></figure>
 <p><strong>Nuova da zero</strong> torna a una licenza nuova, senza legami con quella di prima.</p>
 
-<h2 id="casi"><span class="num">8</span>Cosa succede se il cliente…</h2>
+<h2 id="credenziali"><span class="num">8</span>Le credenziali dei clienti</h2>
+<p>Gli accessi che crei installando il programma, per non perderli: l'<strong>amministratore del programma</strong>, i <strong>titolari</strong>, le persone dell'attività, la <strong>password dei backup</strong>, i <strong>codici di recupero</strong> e del primo avvio, l'invio email, Telegram, il sito, la rete. Ognuno con cliente, licenza, tipo, nome, username, email, password, indirizzo, codici e note.</p>
+<figure class="narrow"><img src="img-licenze/tdl-credenziali-chiuse.png" alt=""><figcaption><strong>Credenziali</strong>: si aprono con la password della chiave.</figcaption></figure>
+<ol class="steps">
+  <li>Scheda <strong>Credenziali</strong>, <strong>Apri le credenziali</strong>: la password è quella della chiave, la stessa delle licenze.</li>
+  <li><strong>Nuova credenziale</strong>: scegli il cliente (quelli del registro sono già nell'elenco), la licenza e il tipo, scrivi gli accessi e premi <strong>Salva</strong>. <strong>Genera</strong> propone una password facile da dettare, a gruppi di quattro, senza 0 e O né 1 e l.</li>
+  <li>Da <strong>Licenze emesse</strong>, <strong>Credenziali del cliente</strong> apre quelle del cliente selezionato e ne prepara una nuova con cliente e licenza già scritti.</li>
+</ol>
+<figure><img src="img-licenze/tdl-credenziali.png" alt=""><figcaption>Le credenziali di tre clienti: la password resta nascosta finché non premi <strong>Mostra</strong>.</figcaption></figure>
+<figure><img src="img-licenze/tdl-credenziali-cliente.png" alt=""><figcaption>Da <strong>Licenze emesse</strong>: quelle di Salone Bella, e una nuova già intestata.</figcaption></figure>
+<ul>
+  <li><strong>Cerca</strong> trova per cliente, licenza, tipo, nome, username, email, indirizzo o note.</li>
+  <li><strong>Copia la password</strong> la lascia negli appunti 30 secondi, poi li svuota se non hai copiato altro.</li>
+  <li>Tutto sta in <code>credenziali.tdc</code>, cifrato con la password della chiave: senza quella il file non si legge. Con il <strong>registro su GitHub</strong> collegato le credenziali vanno anche nella repo privata, sempre cifrate, e arrivano su ogni PC con TD Licenze; una credenziale eliminata sparisce anche dagli altri PC.</li>
+  <li><strong>Esporta CSV</strong> scrive tutto in chiaro, per stamparlo o portarlo in un gestore di password: tienilo al sicuro e cancellalo dopo l'uso. <strong>Importa CSV</strong> legge quel file, o quello di un gestore di password con colonne come <em>url</em>, <em>login</em>, <em>notes</em>.</li>
+</ul>
+
+<h2 id="casi"><span class="num">9</span>Cosa succede se il cliente…</h2>
 <table>
   <tr><th>Il cliente…</th><th>Cosa succede</th></tr>
   <tr><td>reinstalla il programma sullo stesso PC e ripristina un backup</td><td>il codice installazione torna quello di prima e la licenza vale ancora</td></tr>
@@ -132,7 +151,7 @@
   <tr><td>cancella la prova dal database</td><td>la prova resta usata: il segno sta anche nella cartella dei dati</td></tr>
 </table>
 
-<h2 id="protezione"><span class="num">9</span>Come il programma protegge la licenza</h2>
+<h2 id="protezione"><span class="num">10</span>Come il programma protegge la licenza</h2>
 <ul>
   <li>Le licenze sono firmate con <strong>Ed25519</strong>: chi non ha la chiave privata non può crearne, né cambiarne una (attività, postazioni, scadenza).</li>
   <li>La <strong>chiave pubblica è scritta nel codice compilato</strong>: nell'MSI non c'è un file da sostituire con una chiave propria.</li>
@@ -144,7 +163,7 @@
 </ul>
 <div class="note"><strong>Il limite</strong>Su un PC dove il cliente è amministratore nessuna protezione è assoluta. Questa serve a rendere necessario un lavoro di reverse engineering vero, non una modifica a un file.</div>
 
-<h2 id="riga"><span class="num">10</span>Da riga di comando</h2>
+<h2 id="riga"><span class="num">11</span>Da riga di comando</h2>
 <p>Per chi preferisce: <code>licenze/td_licenze.py</code> fa le stesse cose. Servono Python 3 e <code>pip install cryptography</code>. Di serie lavora nella sua cartella; con <code>--cartella</code> sceglie un'altra cartella, per esempio quella di TD Licenze sulla chiavetta.</p>
 <pre>python td_licenze.py chiave                       la prima volta
 python td_licenze.py                              fa le domande

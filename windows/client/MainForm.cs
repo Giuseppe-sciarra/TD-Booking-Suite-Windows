@@ -22,6 +22,10 @@ namespace TDBookingSuite
         readonly Timer retry = new Timer { Interval = 3000 };
         string target;
         int failures;
+        // 2.13.0: a link that downloads a file (an export in CSV) ends its navigation without a page: that is not the
+        // server down, so no retry (which downloaded the file again and again) and the page stays the one shown
+        string shown;
+        bool downloading;
         const int MaxFailures = 40;  // about two minutes
         const int WM_SYSCOMMAND = 0x112, MF_STRING = 0, MF_SEPARATOR = 0x800, ID_RELOAD = 0x1000, ID_SERVER = 0x1010;
 
@@ -145,7 +149,8 @@ namespace TDBookingSuite
             core.DocumentTitleChanged += (s, e) => Text = string.IsNullOrEmpty(core.DocumentTitle) ? "TD Booking Suite" : core.DocumentTitle + " - TD Booking Suite";
             core.ProcessFailed += (s, e) => { if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited) Close(); else core.Reload(); };
             core.WebMessageReceived += Message;
-            core.NavigationStarting += (s, e) => { if (config.SameOrigin(e.Uri)) target = e.Uri; };
+            core.NavigationStarting += (s, e) => { downloading = false; if (config.SameOrigin(e.Uri)) target = e.Uri; };
+            core.DownloadStarting += (s, e) => { downloading = true; };
             core.NavigationCompleted += Completed;
             retry.Tick += (s, e) => { retry.Stop(); web.CoreWebView2?.Navigate(target ?? config.Server + "/"); };
             FormClosed += (s, e) => retry.Dispose();
@@ -180,7 +185,8 @@ namespace TDBookingSuite
         void Completed(object sender, CoreWebView2NavigationCompletedEventArgs e)
         {
             var core = web.CoreWebView2;
-            if (e.IsSuccess) { if (config.SameOrigin(core.Source)) failures = 0; return; }
+            if (e.IsSuccess) { if (config.SameOrigin(core.Source)) { failures = 0; shown = core.Source; } return; }
+            if (downloading) { downloading = false; target = shown; return; }
             switch (e.WebErrorStatus)
             {
                 case CoreWebView2WebErrorStatus.CannotConnect: case CoreWebView2WebErrorStatus.ConnectionAborted:

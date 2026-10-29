@@ -12,3 +12,7 @@ windows/client/obj/
 dist-licenze/
 licenze/chiave-pubblica.txt
 licenze/chiave_incorporata.py
+# 2.13.0: the credentials of TD Licenze, sealed, and their plain-text exports
+credenziali.tdc
+credenziali.tmp
+credenziali*.csv

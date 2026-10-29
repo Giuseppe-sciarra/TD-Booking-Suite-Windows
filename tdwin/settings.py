@@ -12,12 +12,13 @@ os.environ.setdefault("PUBLIC_ORIGIN",CONFIG["origine"])
 os.environ.setdefault("TDBS_EDITION","private")
 # sold under the seller's own licence: the footer shows the version without the AGPL source link
 os.environ.setdefault("TDBS_SOURCE_URL","")
-# a program on one's own PC: with Resta collegato it opens signed in until Esci, a year without use at most
-os.environ.setdefault("TDBS_SESSION_REMEMBER_DAYS","365")
+# a program on one's own PC: with Resta collegato it opens signed in until Esci (2.13.0: the core's default, 0)
 from tdbooking.settings import *  # noqa: F401,F403
 from tdbooking.settings import INSTALLED_APPS,MIDDLEWARE,ALLOWED_HOSTS,CSRF_TRUSTED_ORIGINS
 
 TDWIN_DATA=DATA
+# 2.13.0: the devices from which an owner the administrator allows enters without password
+TRUSTED_DEVICE="tdwin.middleware.trusted_device"
 TDWIN_CONFIG=CONFIG
 _key=Path(__file__).with_name("licenza-chiave-pubblica.txt")
 TDWIN_LICENSE_KEY=_key.read_text().strip() if _key.exists() else ""
@@ -51,7 +52,7 @@ EXTRA_CSS=["tdwin/tdwin.css"]
 AGENCY_NAMES={"area":"Configurazione del programma","admin":"Amministratore del programma","who":"amministratore del programma","access":"Accesso dell'amministratore"}
 ROLE_LABELS={"owner":"Titolare"}
 LOGIN_NOTE=({"title":"Amministratore del programma","text":"Configura licenza, "+("" if TDWIN_STANDALONE else "postazioni, ")+"backup e attività. Vede agenda e clienti solo se alla configurazione guidata ha scelto di lavorare lui nell'attività."},
-    {"title":"Titolare e persone dell'attività","text":"Agenda, prenotazioni, clienti, servizi e orari: il lavoro di ogni giorno. Il titolare aggiunge gli altri da Persone e permessi."})
+    {"title":"Titolare e persone dell'attività","text":"Agenda, prenotazioni, clienti, servizi e orari: il lavoro di ogni giorno. Le persone con accesso le aggiunge l'amministratore del programma."})
 MORE_TENANTS_HINT="Per più attività serve una licenza Portale con più attività: la inserisci da Licenza."
 EDITION_LABEL="Windows"
 # accounts have a username, the email is optional; Un PC solo answers only on 127.0.0.1: password alone,

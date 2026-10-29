@@ -28,15 +28,21 @@ Il nucleo web è [TD Booking Suite](https://github.com/Giuseppe-sciarra/TD-Booki
 | ![Scheda cliente](docs/screenshots/cliente.png) | ![Al lavoro](docs/screenshots/al-lavoro.png) |
 | **Scheda cliente**: chi è sempre in vista, con lo sconto; speso, appuntamenti in programma e ultimo trattamento | **Al lavoro**: il menu a gruppi con un'icona per voce, il lavoro di ogni giorno in alto |
 | ![Accesso](docs/screenshots/accesso.png) | ![Licenza](docs/screenshots/licenza.png) |
-| **Accesso** con username o email, e il promemoria dei due account | **Licenza**: tipo, cosa consente, il codice installazione da mandare a chi vende, il campo per incollarla |
+| **Accesso** con username o email, *Entra come …* senza password per i titolari dal PC del programma e dalle postazioni, e il promemoria dei due account | **Licenza**: tipo, cosa consente, il codice installazione da mandare a chi vende, il campo per incollarla |
 | ![Postazioni](docs/screenshots/postazioni.png) | ![Tema scuro](docs/screenshots/dashboard-scuro.png) |
 | **Postazioni**: il codice di 6 cifre per registrare un PC, l'elenco con ultimo accesso e revoca | **Tema scuro**, e il colore principale a scelta |
 | ![Backup](docs/screenshots/backup.png) | ![Rete e certificato](docs/screenshots/rete.png) |
 | **Backup** cifrati, ogni notte, su disco esterno, NAS, FTP, FTPS o SFTP, con lo storico | **Rete e certificato**: indirizzo pubblico, proxy fidati e certificato, solo per l'amministratore |
 | ![Importa clienti](docs/screenshots/import.png) | ![Anteprima dell'import](docs/screenshots/import-anteprima.png) |
 | **Importa clienti** (Clienti › Importa): anagrafica e storico da Excel o CSV, colonna per colonna | **Anteprima**: le prime righe, cosa succede, le righe che non entrano e perché |
-| ![Aspetto](docs/screenshots/aspetto.png) | |
-| **Impostazioni generali**: nome, loghi chiaro e scuro, icona, colore e tema di partenza | |
+| ![Prossimi 7 giorni](docs/screenshots/dashboard-7giorni.png) | ![Logo e aspetto](docs/screenshots/logo-aspetto.png) |
+| **Dashboard**: *Oggi* e *Prossimi 7 giorni* mostrano chi viene e a che ora, giorno per giorno; una colonna del grafico porta a quel giorno | **Logo e aspetto** (Configura l'attività): il titolare carica il logo, che va in alto nel menu al posto di "TD", sceglie colore e frase, con l'anteprima |
+| ![Email ai clienti](docs/screenshots/notifiche.png) | ![Email delle prenotazioni del cliente](docs/screenshots/cliente-avvisi.png) |
+| **Email ai clienti** (Notifiche, se l'amministratore le attiva): quali partono, il promemoria, i testi con i campi e l'anteprima | **Il cliente sceglie**: dalla sua scheda le email delle prenotazioni si accendono o si spengono |
+| ![Aspetto](docs/screenshots/aspetto.png) | ![Titolare](docs/screenshots/titolare.png) |
+| **Impostazioni generali**: nome, loghi chiaro e scuro, icona, colore e tema di partenza | **Il titolare** vede il lavoro dell'attività: niente Persone e permessi, marketing solo se attivato |
+| ![Persone e permessi](docs/screenshots/persone.png) | |
+| **Persone e permessi**, solo per l'amministratore del programma: ruoli, password, *Entra senza password* per un titolare | |
 
 ## Installare
 
@@ -72,11 +78,15 @@ Per togliere gli avvisi serve un certificato di firma del codice, che costa qual
 | Account | Cosa fa |
 |---|---|
 | **Amministratore del programma** | Configura tutto: licenza, backup, configurazione guidata, impostazioni generali; tipo di attività, sedi, tipo di prenotazione dei servizi, domande del modulo e sito; sul server postazioni e rete, su Un PC solo *Online e sito*. Agenda e clienti solo se lavora nell'attività (*Io, con questo account*) |
-| **Titolare** | Lavora: agenda, prenotazioni, clienti, marketing e notifiche. Tiene aggiornati orari, chiusure e ferie, il personale (operatori e persone con accesso) e il listino: servizi, varianti, prezzi e sconti dei clienti. Tipo di attività e sedi non li cambia |
-| **Persone dell'attività** | Quello che il loro ruolo consente, le aggiunge il titolare da *Persone e permessi* |
+| **Titolare** | Lavora: agenda, prenotazioni, clienti, notifiche ed email ai clienti, marketing se l'amministratore lo attiva. Tiene aggiornati orari, chiusure e ferie, gli operatori, il listino (servizi, varianti, prezzi e sconti dei clienti) e il suo logo. Tipo di attività, sedi e persone con accesso non li cambia: *Persone e permessi* non la vede |
+| **Persone dell'attività** | Quello che il loro ruolo consente, le aggiunge l'amministratore del programma da *Persone e permessi* |
 
 - Ogni account nuovo ha uno **username**; l'email è facoltativa e, se c'è, si entra anche con quella. Uno username già usato da chi lavora in un'altra attività non aggancia il suo account: con l'email giusta sì.
-- **Resta collegato** (spuntato di serie): il programma si riapre già collegato fino a un anno senza usarlo. **Esci** in alto a destra cambia account.
+- **Email ai clienti**: conferma, modifica e annullamento partono da sole. Se l'amministratore lo attiva in *Impostazioni e sito*, il titolare in *Notifiche* sceglie quali partono, aggiunge il **promemoria** (da 2 ore a 3 giorni prima) e scrive i testi, con l'anteprima. Il cliente sceglie nel modulo se riceverle; dalla sua scheda si cambiano.
+- **Marketing** lo accende l'amministratore in *Impostazioni e sito*: le campagne email, il CSV degli iscritti o tutti e due. Spento, la voce non compare nel menu. Il CSV si scarica una volta sola, senza che la finestra lo ripeta.
+- **Logo e aspetto**: in *Configura l'attività* il titolare carica il logo, che compare in alto nel menu al posto di "TD", e sceglie colore e frase sotto il nome.
+- **Entra senza password**: in *Persone e permessi* l'amministratore del programma lo accende per un titolare. Dal PC del programma e dalle postazioni registrate la pagina di accesso mostra *Entra come …*: un clic e si è dentro, collegati finché non si preme *Esci*. Da un dispositivo non registrato serve la password.
+- **Resta collegato** (spuntato di serie): il programma si riapre già collegato, sempre, finché non premi **Esci**. **Esci** in alto a destra cambia account.
 - **Il menu** è a gruppi, ognuno nella sua cornice, con un'icona per voce: il lavoro di ogni giorno in alto, la configurazione del programma richiudibile sotto. Finita la configurazione guidata (licenza o prova e almeno un'attività) la sua voce sparisce; la pagina resta all'indirizzo `/platform/inizia/`.
 - **La finestra** si apre al 90% dello schermo, ingrandita sugli schermi Full HD al 125% e più piccoli; le pagine sono compatte per stare in un Full HD. Con **Un PC solo** apre sempre il programma di quel PC (`https://localhost:porta`), anche se prima il PC era un server o una postazione: niente *Cambia server*. Mentre il programma si avvia mostra *Avvio di TD Booking Suite…* e riprova da sola; non mostra mai le pagine di errore del browser, e il tasto destro offre solo taglia, copia e incolla.
 - **Secondo fattore**: con Un PC solo non c'è, si entra con username e password. Con Server con postazioni Authenticator e passkey sono facoltativi, e l'avviso *Proteggi il tuo account* lo vede solo l'amministratore del programma.
@@ -85,11 +95,11 @@ Per togliere gli avvisi serve un certificato di firma del codice, che costa qual
 
 ```bat
 rem Un PC solo
-msiexec /i TD-Booking-Suite-2.12.0.msi MODALITA=standalone /qn
+msiexec /i TD-Booking-Suite-2.13.0.msi MODALITA=standalone /qn
 rem Server con postazioni, con porta e indirizzi
-msiexec /i TD-Booking-Suite-2.12.0.msi MODALITA=server PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 ALTRI_INDIRIZZI=192.168.1.10 /qn
+msiexec /i TD-Booking-Suite-2.13.0.msi MODALITA=server PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 ALTRI_INDIRIZZI=192.168.1.10 /qn
 rem Solo postazione
-msiexec /i TD-Booking-Suite-2.12.0.msi ADDLOCAL=Postazione /qn
+msiexec /i TD-Booking-Suite-2.13.0.msi ADDLOCAL=Postazione /qn
 ```
 
 Senza `MODALITA` l'installazione tiene il tipo che il PC aveva: solo la finestra se c'è solo la postazione, altrimenti quello ricordato nel registro. Un server della 2.8, o i dati di un server rimasti dopo averlo disinstallato, o un `INDIRIZZO` dato, fanno Server con postazioni; un PC nuovo parte come Un PC solo. `MODALITA=postazione` da sola non si usa: ferma l'installazione e dice di usare `ADDLOCAL=Postazione`.
@@ -163,6 +173,7 @@ L'artefatto è privato come la repo e non va mai dato ai clienti.
 | **Chiave** | La prima volta crea la chiave delle licenze, con una password, e mostra la chiave pubblica da copiare |
 | **Nuova licenza** | Tipo, intestatario, attività, postazioni, codice installazione e scadenza: **Crea la licenza**, e la licenza è già pronta da copiare |
 | **Licenze emesse** | Tutte quelle fatte, con lo stato (in uso o sostituita): doppio clic per copiarne di nuovo una, **Cambia postazioni o scadenza** per farne una che la sostituisce, **Aggiorna da GitHub** per le licenze fatte sugli altri PC |
+| **Credenziali** | Gli accessi creati per ogni cliente (amministratore del programma, titolari, persone, password dei backup, codici di recupero e del primo avvio, email, Telegram, sito, rete), cifrati con la password della chiave in `credenziali.tdc` e, con il registro collegato, anche su GitHub: se un cliente perde una password la ritrovi. Cerca, copia (negli appunti 30 secondi), genera, esporta e importa CSV; da **Licenze emesse**, **Credenziali del cliente** |
 | **Registro su GitHub** | Collega la repo privata dove tenere il registro: lo ritrovi con TD Licenze su qualunque PC |
 
 | Tipo | Attività | Postazioni in rete |
@@ -238,7 +249,7 @@ Il codice resta in questa repo privata. Quello che vedono tutti sta in **[TD-Boo
 - istruzioni;
 - gli MSI da scaricare, con la prova di 7 giorni.
 
-Per pubblicare una versione apri **Actions → Windows → Run workflow**, spunta **Pubblica il rilascio** e premi **Run workflow**. Va bene anche un tag, per esempio `git tag v2.12.0 && git push origin v2.12.0`. La build fa i test, l'MSI e la prova di installazione. Poi copia nella vetrina `vetrina/README.md` e `docs/screenshots/`, e pubblica lì una Release con l'MSI. Per scrivere nella vetrina usa il secret `VETRINA_TOKEN`: un token fine-grained con *Contents: Read and write* solo su quella repo. Il testo della vetrina si cambia in `vetrina/README.md`. Le immagini di TD Licenze stanno in `docs/manuali/img-licenze`, mai in `docs/screenshots`, che va in pubblico.
+Per pubblicare una versione apri **Actions → Windows → Run workflow**, spunta **Pubblica il rilascio** e premi **Run workflow**. Va bene anche un tag, per esempio `git tag v2.13.0 && git push origin v2.13.0`. La build fa i test, l'MSI e la prova di installazione. Poi copia nella vetrina `vetrina/README.md` e `docs/screenshots/`, e pubblica lì una Release con l'MSI. Per scrivere nella vetrina usa il secret `VETRINA_TOKEN`: un token fine-grained con *Contents: Read and write* solo su quella repo. Il testo della vetrina si cambia in `vetrina/README.md`. Le immagini di TD Licenze stanno in `docs/manuali/img-licenze`, mai in `docs/screenshots`, che va in pubblico.
 
 ## Backup e ripristino
 
@@ -264,7 +275,7 @@ Ogni destinazione ha il pulsante **Prova**, e lo **storico** dice com'è andato 
 
 Per aggiornare, apri l'MSI nuovo sopra quello vecchio: tipo, servizi, porta, database e dati restano. Prima di applicare la versione nuova, l'installer salva una copia del database in `backup\prima-dell-aggiornamento.dump`. Se l'aggiornamento non riesce, Windows rimette la versione di prima e la fa ripartire.
 
-Per **cambiare tipo** apri di nuovo l'MSI (o Impostazioni › App › TD Booking Suite › Modifica), scegli di cambiare l'installazione e il tipo nuovo. Da riga di comando: `msiexec /i TD-Booking-Suite-2.12.0.msi MODALITA=standalone /qn`. I dati restano.
+Per **cambiare tipo** apri di nuovo l'MSI (o Impostazioni › App › TD Booking Suite › Modifica), scegli di cambiare l'installazione e il tipo nuovo. Da riga di comando: `msiexec /i TD-Booking-Suite-2.13.0.msi MODALITA=standalone /qn`. I dati restano.
 
 La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramData\TD Booking Suite`. Per cancellarli davvero, elimina quella cartella.
 
@@ -273,7 +284,7 @@ La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramDa
 - **Usa i dati di prima**, già scelto: il programma riparte da dove era, con le stesse attività, clienti e prenotazioni, e si entra con l'amministratore di allora;
 - **Ricomincia da zero**: un programma vuoto e al primo avvio si crea l'amministratore. I dati di prima non si cancellano: vanno, interi, in `C:\ProgramData\TD Booking Suite (dati del <giorno e ora>)`. Restano licenza, prova, codice installazione, indirizzi, porta e certificato, così la licenza vale ancora e le postazioni aprono il server come prima.
 
-Da riga di comando: `msiexec /i TD-Booking-Suite-2.12.0.msi MODALITA=standalone RICOMINCIA=1 /qn`. Senza `RICOMINCIA` usa i dati di prima. Un aggiornamento non lo chiede: i dati restano sempre.
+Da riga di comando: `msiexec /i TD-Booking-Suite-2.13.0.msi MODALITA=standalone RICOMINCIA=1 /qn`. Senza `RICOMINCIA` usa i dati di prima. Un aggiornamento non lo chiede: i dati restano sempre.
 
 Da zero anche senza disinstallare, da PowerShell come amministratore:
 
@@ -314,7 +325,7 @@ GitHub Actions (`.github/workflows/windows.yml`) gira a ogni push su `main`:
 3. lo installa davvero su Windows (`windows/smoke-test.ps1`): un server con i servizi e i loro account, HTTPS con il certificato, un backup fatto dal worker; poi l'aggiornamento di un server come quelli della 2.8, senza il tipo nel registro, che resta server con porta, dati e backup; poi la modifica verso Un PC solo (solo su 127.0.0.1, niente firewall); infine la disinstallazione che lascia i dati;
 4. lo mette tra gli *Artifacts* dell'esecuzione, per 30 giorni.
 
-Con un tag `v2.12.0` crea anche una **Release** con l'MSI allegato.
+Con un tag `v2.13.0` crea anche una **Release** con l'MSI allegato.
 
 Per costruirlo a mano su Windows servono Python 3.14, .NET SDK 8, PowerShell 7 e i Visual Studio Build Tools con il compilatore C++ (per Cython):
 

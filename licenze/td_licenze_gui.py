@@ -5,7 +5,7 @@ GitHub Actions la costruisce come TD Licenze.exe (artefatto TD-Licenze), solo pe
 su una chiavetta. Lanciata come script usa la cartella di td_licenze.py da riga di comando."""
 import os,shutil,subprocess,sys,tkinter as tk
 from pathlib import Path
-from tkinter import ttk,messagebox,simpledialog
+from tkinter import ttk,messagebox,simpledialog,filedialog
 import td_licenze as tool
 
 def resource(name):
@@ -41,11 +41,11 @@ class App(tk.Tk):
         style.configure("Title.TLabel",font=("Segoe UI",14,"bold"));style.configure("Hint.TLabel",foreground="#6b6079")
         self.tabs=ttk.Notebook(self);self.tabs.pack(fill="both",expand=True,padx=12,pady=12)
         self.new_tab=ttk.Frame(self.tabs,padding=16);self.list_tab=ttk.Frame(self.tabs,padding=16);self.key_tab=ttk.Frame(self.tabs,padding=16)
-        self.sync_tab=ttk.Frame(self.tabs,padding=16)
-        self.tabs.add(self.new_tab,text="Nuova licenza");self.tabs.add(self.list_tab,text="Licenze emesse");self.tabs.add(self.key_tab,text="Chiave")
-        self.tabs.add(self.sync_tab,text="Registro su GitHub")
-        self.sync_status=tk.StringVar(value="")
-        self.build_new();self.build_list();self.build_key();self.build_sync()
+        self.sync_tab=ttk.Frame(self.tabs,padding=16);self.vault_tab=ttk.Frame(self.tabs,padding=16)
+        self.tabs.add(self.new_tab,text="Nuova licenza");self.tabs.add(self.list_tab,text="Licenze emesse");self.tabs.add(self.vault_tab,text="Credenziali")
+        self.tabs.add(self.key_tab,text="Chiave");self.tabs.add(self.sync_tab,text="Registro su GitHub")
+        self.sync_status=tk.StringVar(value="");self.vault_open=False
+        self.build_new();self.build_list();self.build_key();self.build_sync();self.build_vault()
         if not tool.has_key(self.folder):self.tabs.select(self.key_tab)
         # with a repo connected, the register of every PC is brought here at once (the password opens the token)
         elif tool.sync_settings(self.folder):self.after(300,lambda:self.sync(ask=True))
@@ -164,6 +164,7 @@ class App(tk.Tk):
         buttons=ttk.Frame(f);buttons.grid(row=2,column=0,sticky="w",pady=(10,0))
         ttk.Button(buttons,text="Copia la licenza selezionata",command=self.copy_selected).pack(side="left")
         ttk.Button(buttons,text="Cambia postazioni o scadenza",command=self.change_selected).pack(side="left",padx=8)
+        ttk.Button(buttons,text="Credenziali del cliente",command=self.credentials_selected).pack(side="left",padx=(0,8))
         ttk.Button(buttons,text="Apri la cartella delle licenze",command=self.open_folder).pack(side="left")
         self.sync_button=ttk.Button(buttons,text="Aggiorna da GitHub",command=lambda:self.sync())
         if tool.sync_settings(self.folder):self.sync_button.pack(side="left",padx=8)
@@ -190,6 +191,159 @@ class App(tk.Tk):
         selected=self.tree.selection()
         if not selected:messagebox.showinfo("TD Licenze","Seleziona la licenza da cambiare.",parent=self);return
         self.change(self.rows[selected[0]])
+
+    # 2.13.0: the credentials of the clients, sealed with the key's password
+    def build_vault(self):
+        for child in self.vault_tab.winfo_children():child.destroy()
+        f=self.vault_tab;f.columnconfigure(0,weight=3);f.columnconfigure(2,weight=2);f.rowconfigure(2,weight=1)
+        ttk.Label(f,text="Credenziali dei clienti",style="Title.TLabel").grid(row=0,column=0,columnspan=3,sticky="w",pady=(0,4))
+        if not self.vault_open:
+            ttk.Label(f,wraplength=700,justify="left",text="Gli accessi che crei per i clienti: amministratore del programma, titolari, persone, password dei backup, "
+                "codici di recupero e del primo avvio, email, Telegram, sito. Restano in "+tool.VAULT_FILE+" nella cartella del programma, cifrati con la "
+                "password della chiave, e con una repo collegata anche su GitHub, sempre cifrati: se un cliente perde una password la ritrovi qui.").grid(row=1,column=0,columnspan=3,sticky="w")
+            ttk.Button(f,text="Apri le credenziali",command=self.open_vault).grid(row=2,column=0,sticky="nw",pady=14)
+            return
+        top=ttk.Frame(f);top.grid(row=1,column=0,sticky="we",pady=(6,8));top.columnconfigure(1,weight=1)
+        ttk.Label(top,text="Cerca").grid(row=0,column=0,padx=(0,8))
+        self.vault_search=tk.StringVar();self.vault_search.trace_add("write",lambda *a:self.vault_refresh())
+        ttk.Entry(top,textvariable=self.vault_search).grid(row=0,column=1,sticky="we")
+        columns=("cliente","tipo","nome","username","email");heads=("Cliente","Tipo","Nome","Username","Email")
+        self.vtree=ttk.Treeview(f,columns=columns,show="headings",selectmode="browse")
+        for c,h,w in zip(columns,heads,(120,150,80,90,120)):self.vtree.heading(c,text=h);self.vtree.column(c,width=w,minwidth=60,stretch=c in ("cliente","email"))
+        self.vtree.grid(row=2,column=0,sticky="nsew")
+        bar=ttk.Scrollbar(f,orient="vertical",command=self.vtree.yview);bar.grid(row=2,column=1,sticky="ns");self.vtree.configure(yscrollcommand=bar.set)
+        self.vtree.bind("<<TreeviewSelect>>",lambda e:self.vault_pick())
+        lower=ttk.Frame(f);lower.grid(row=3,column=0,columnspan=2,sticky="w",pady=(10,0))
+        ttk.Button(lower,text="Nuova credenziale",command=self.vault_new).pack(side="left")
+        ttk.Button(lower,text="Esporta CSV",command=self.vault_export).pack(side="left",padx=8)
+        ttk.Button(lower,text="Importa CSV",command=self.vault_import).pack(side="left")
+        if tool.sync_settings(self.folder):ttk.Button(lower,text="Aggiorna da GitHub",command=lambda:self.vault_sync()).pack(side="left",padx=8)
+        self.vault_status=tk.StringVar(value="");ttk.Label(f,textvariable=self.vault_status,style="Hint.TLabel",wraplength=900,justify="left").grid(row=4,column=0,columnspan=3,sticky="w",pady=(8,0))
+        # the form of the chosen entry
+        form=ttk.Frame(f,padding=(16,0,0,0));form.grid(row=1,column=2,rowspan=3,sticky="nsew");form.columnconfigure(1,weight=1)
+        self.vv={k:tk.StringVar() for k in ("id","cliente","licenza","tipo","nome","username","email","password","indirizzo")}
+        clients=sorted({r["intestatario"] for r in tool.registry(self.folder)}|{e["cliente"] for e in self.vault_rows},key=str.casefold)
+        rows=[("Cliente","cliente",clients),("Licenza","licenza",[r["id"] for r in reversed(tool.registry(self.folder))]),("Tipo","tipo",tool.TIPI_CREDENZIALI),
+              ("Nome","nome",None),("Username","username",None),("Email","email",None),("Password","password",None),("Indirizzo","indirizzo",None)]
+        for i,(label,name,values) in enumerate(rows):
+            ttk.Label(form,text=label).grid(row=i,column=0,sticky="w",padx=(0,10),pady=3)
+            if values is not None:field=ttk.Combobox(form,textvariable=self.vv[name],values=values,state="readonly" if name=="tipo" else "normal")
+            else:field=ttk.Entry(form,textvariable=self.vv[name],show="•" if name=="password" else "")
+            field.grid(row=i,column=1,sticky="we",pady=3)
+            if name=="password":
+                self.password_field=field;side=ttk.Frame(form);side.grid(row=i,column=2,sticky="w",padx=(6,0))
+                ttk.Button(side,text="Mostra",width=7,command=self.vault_toggle).pack(side="left")
+                ttk.Button(side,text="Genera",width=7,command=lambda:self.vv["password"].set(tool.new_password())).pack(side="left",padx=(4,0))
+        ttk.Label(form,text="Codici").grid(row=len(rows),column=0,sticky="nw",padx=(0,10),pady=3)
+        self.codes=tk.Text(form,height=3,wrap="word",font=("Consolas",10),relief="solid",borderwidth=1);self.codes.grid(row=len(rows),column=1,columnspan=2,sticky="we",pady=3)
+        ttk.Label(form,text="Codici di recupero, del primo avvio o della postazione, uno per riga",style="Hint.TLabel").grid(row=len(rows)+1,column=1,columnspan=2,sticky="w")
+        ttk.Label(form,text="Note").grid(row=len(rows)+2,column=0,sticky="nw",padx=(0,10),pady=3)
+        self.notes=tk.Text(form,height=4,wrap="word",relief="solid",borderwidth=1);self.notes.grid(row=len(rows)+2,column=1,columnspan=2,sticky="we",pady=3)
+        actions=ttk.Frame(form);actions.grid(row=len(rows)+3,column=1,columnspan=2,sticky="w",pady=(10,0))
+        ttk.Button(actions,text="Salva",command=self.vault_save).pack(side="left")
+        ttk.Button(actions,text="Copia la password",command=lambda:self.vault_copy(self.vv["password"].get())).pack(side="left",padx=6)
+        ttk.Button(actions,text="Copia username",command=lambda:self.vault_copy(self.vv["username"].get() or self.vv["email"].get(),secret=False)).pack(side="left")
+        ttk.Button(actions,text="Elimina",command=self.vault_delete).pack(side="left",padx=6)
+        self.vault_new();self.vault_refresh()
+
+    def open_vault(self):
+        if not tool.has_key(self.folder):messagebox.showinfo("TD Licenze","Prima crea la chiave delle licenze, nella scheda Chiave: la sua password chiude anche le credenziali.",parent=self);self.tabs.select(self.key_tab);return
+        if not self.ask_password("Password della chiave: apre anche le credenziali"):return
+        try:self.vault_rows=tool.vault(self.folder,self.password)
+        except ValueError as ex:messagebox.showerror("TD Licenze",str(ex),parent=self);return
+        self.vault_open=True;self.build_vault()
+        if tool.sync_settings(self.folder):self.vault_sync(quiet=True)
+
+    def vault_refresh(self):
+        self.vtree.delete(*self.vtree.get_children());self.vault_items={}
+        q=self.vault_search.get().casefold().strip()
+        for e in self.vault_rows:
+            if q and q not in " ".join(e.get(k,"") for k in ("cliente","licenza","tipo","nome","username","email","indirizzo","note")).casefold():continue
+            self.vault_items[self.vtree.insert("","end",values=(e["cliente"],e["tipo"],e["nome"],e["username"],e["email"]))]=e
+
+    def vault_pick(self):
+        selected=self.vtree.selection()
+        if not selected:return
+        e=self.vault_items[selected[0]]
+        for k,var in self.vv.items():var.set(e.get(k,""))
+        for box,k in ((self.codes,"codici"),(self.notes,"note")):box.delete("1.0","end");box.insert("1.0",e.get(k,""))
+        self.password_field.configure(show="•")
+
+    def vault_new(self):
+        for k,var in self.vv.items():var.set("")
+        self.vv["tipo"].set(tool.TIPI_CREDENZIALI[1])
+        for box in (self.codes,self.notes):box.delete("1.0","end")
+        self.vtree.selection_remove(self.vtree.selection())
+
+    def vault_toggle(self):self.password_field.configure(show="" if self.password_field.cget("show") else "•")
+
+    def vault_save(self):
+        entry={k:v.get() for k,v in self.vv.items()}|{"codici":self.codes.get("1.0","end").strip(),"note":self.notes.get("1.0","end").strip()}
+        try:saved=tool.vault_put(self.folder,self.password,entry)
+        except ValueError as ex:messagebox.showerror("TD Licenze",str(ex),parent=self);return
+        self.vv["id"].set(saved["id"]);self.vault_reload()
+        self.vault_status.set(f"Salvata: {saved['cliente']}, {saved['tipo']}."+(" "+self.vault_sync(quiet=True,say=False) if tool.sync_settings(self.folder) else ""))
+
+    def vault_delete(self):
+        if not self.vv["id"].get():return
+        if not messagebox.askyesno("TD Licenze","Elimino questa credenziale? Sparisce anche dagli altri PC alla prossima sincronizzazione.",parent=self):return
+        tool.vault_delete(self.folder,self.password,self.vv["id"].get());self.vault_new();self.vault_reload()
+        if tool.sync_settings(self.folder):self.vault_sync(quiet=True)
+
+    def vault_reload(self):
+        self.vault_rows=tool.vault(self.folder,self.password);self.vault_refresh()
+
+    def vault_sync(self,quiet=False,say=True):
+        """Credentials brought up to date with the private repo; returns the line it wrote."""
+        try:result=tool.vault_sync(self.folder,self.password)
+        except tool.SyncError as ex:
+            text=str(ex)
+            if not quiet:messagebox.showwarning("TD Licenze",text,parent=self)
+        else:
+            if result is None:return ""
+            count,arrived,sent=result
+            text=f"GitHub: {count} credenziali"+(f", {arrived} arrivate" if arrived else "")+(f", {sent} mandate" if sent else "")+"."
+            self.vault_reload()
+        if say:self.vault_status.set(text)
+        return text
+
+    def vault_copy(self,text,secret=True):
+        """A password stays in the clipboard 30 seconds, then the clipboard is emptied if nothing else was copied."""
+        if not text:return
+        self.clipboard_clear();self.clipboard_append(text);self.update()
+        self.vault_status.set("Copiata: resta negli appunti 30 secondi." if secret else "Copiato negli appunti.")
+        if secret:
+            def clear():
+                try:
+                    if self.clipboard_get()==text:self.clipboard_clear();self.vault_status.set("Appunti svuotati.")
+                except tk.TclError:pass
+            self.after(30000,clear)
+
+    def vault_export(self):
+        if not messagebox.askyesno("TD Licenze","Il CSV ha le password in chiaro: chi apre il file le legge. Lo salvo lo stesso?",parent=self):return
+        path=filedialog.asksaveasfilename(parent=self,defaultextension=".csv",initialfile="credenziali.csv",filetypes=[("CSV","*.csv")])
+        if not path:return
+        Path(path).write_text(tool.vault_csv(self.vault_rows),encoding="utf-8")
+        self.vault_status.set(f"Esportate {len(self.vault_rows)} credenziali in {path}: tienilo al sicuro, o cancellalo dopo l'uso.")
+
+    def vault_import(self):
+        path=filedialog.askopenfilename(parent=self,filetypes=[("CSV","*.csv"),("Tutti i file","*.*")])
+        if not path:return
+        try:count=tool.vault_import(self.folder,self.password,Path(path).read_text(encoding="utf-8-sig"))
+        except (OSError,UnicodeDecodeError) as ex:messagebox.showerror("TD Licenze",f"Non riesco a leggere il file: {ex}",parent=self);return
+        self.vault_reload();self.vault_status.set(f"Importate {count} credenziali.")
+        if tool.sync_settings(self.folder):self.vault_sync(quiet=True)
+
+    def credentials_selected(self):
+        """From a licence to its client's credentials: found, and a new one already with client and licence."""
+        selected=self.tree.selection()
+        if not selected:messagebox.showinfo("TD Licenze","Seleziona la licenza del cliente.",parent=self);return
+        row=self.rows[selected[0]]
+        if not self.vault_open:
+            self.tabs.select(self.vault_tab);self.open_vault()
+            if not self.vault_open:return
+        self.tabs.select(self.vault_tab);self.vault_search.set(row["intestatario"]);self.vault_new()
+        self.vv["cliente"].set(row["intestatario"]);self.vv["licenza"].set(row["id"])
 
     # the key
     def build_key(self):

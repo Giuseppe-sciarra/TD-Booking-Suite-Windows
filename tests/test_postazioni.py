@@ -32,9 +32,9 @@ def test_first_start_only_from_the_server_pc():
     assert first(username="Admin",email="Admin@Example.invalid",password=PASSWORD,password2=PASSWORD,remember="1").url=="/platform/inizia/"
     assert not (settings.TDWIN_DATA/"licenza"/"primo-avvio.txt").exists()  # used once
     assert "Configurazione guidata" in c.get("/platform/inizia/").content.decode()
-    # Resta collegato: a cookie that outlives the program window, a year by default on this edition
+    # Resta collegato: until Esci (2.13.0), a cookie renewed at every visit for the longest a browser keeps it
     cookie=c.cookies[settings.SESSION_COOKIE_NAME]
-    assert settings.SESSION_REMEMBER_DAYS==365 and int(cookie["max-age"])>360*86400
+    assert settings.SESSION_REMEMBER_DAYS==0 and int(cookie["max-age"])>=399*86400
     admin=User.objects.get()
     assert admin.is_staff and admin.is_superuser and (admin.username,admin.email)==("admin","admin@example.invalid")
     from core.models import SiteSettings
@@ -141,3 +141,29 @@ def test_admin_recovery_link_opens_without_a_licence(admin):
     from django.test import Client
     page=Client().get(link[link.index("/invite/"):])
     assert page.status_code==200 and "password" in page.content.decode().lower()
+
+def test_an_owner_enters_without_password_from_this_pc_and_the_workstations(admin,trial):
+    """2.13.0: Entra senza password, as the administrator turns it on: the server PC and a registered workstation."""
+    from core.models import Tenant,Membership
+    from core.tenancy import scope
+    t=Tenant.objects.create(name="Salone Bella",slug="salone-bella")
+    owner=User.objects.create_user("",PASSWORD,username="giulia");Membership.objects.create(tenant=t,user=owner,role="owner",can_schedule=True)
+    staff=admin[1]
+    m=Membership.objects.get(user=owner)
+    assert "Entra senza password" in staff.get(f"/t/{t.slug}/members/").content.decode()
+    staff.post(f"/t/{t.slug}/members/",{"action":"quick_on","member":m.pk})
+    owner.refresh_from_db();assert owner.quick_login
+    here=Client()
+    assert "Entra come giulia" in here.get("/login/").content.decode()
+    here.post("/login/senza-password/",{"user":str(owner.pk)})
+    assert here.session["_auth_user_id"]==str(owner.pk) and here.get(f"/t/{t.slug}/").status_code==200
+    # a device that is not registered never reaches the login page; a registered one does
+    assert remote().get("/login/").url.startswith("/postazione/")
+    assert remote().post("/login/senza-password/",{"user":str(owner.pk)}).status_code==403
+    item,code=postazioni.new_code("Reception");token,_=postazioni.pair(code)
+    desk=remote();desk.cookies[postazioni.COOKIE]=token
+    assert "Entra come giulia" in desk.get("/login/").content.decode()
+    desk.post("/login/senza-password/",{"user":str(owner.pk)});assert desk.session["_auth_user_id"]==str(owner.pk)
+    with scope(t):
+        from core.models import Audit
+        assert Audit.objects.filter(action="login.quick").count()==2

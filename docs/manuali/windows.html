@@ -49,7 +49,7 @@
 <h3>Due account, oppure uno</h3>
 <div class="cols">
   <div class="card"><h4>Amministratore del programma</h4><p>Si crea al primo avvio. Configura licenza, backup, attività e, sul server, postazioni e rete. Da solo non vede agenda e clienti.</p></div>
-  <div class="card"><h4>Titolare</h4><p>Lavora nell'attività: agenda, prenotazioni, clienti, servizi, orari. Aggiunge le altre persone da Persone e permessi.</p></div>
+  <div class="card"><h4>Titolare</h4><p>Lavora nell'attività: agenda, prenotazioni, clienti, servizi, orari, il suo logo. Le altre persone le aggiunge l'amministratore del programma.</p></div>
 </div>
 <p style="margin-top:3mm">Se il programma lo usi tu, nella configurazione guidata scegli <strong>Io, con questo account</strong>: un solo account configura e lavora. Se lo installi per un cliente, scegli <strong>Il titolare, con un suo account</strong>.</p>
 
@@ -121,14 +121,15 @@
 <table>
   <tr><th>Account</th><th>Vede e fa</th></tr>
   <tr><td>Amministratore del programma</td><td>Configura: licenza, backup, configurazione guidata, impostazioni generali, tipo di attività, sedi, servizi, domande del modulo, sito; sul server postazioni e rete, su Un PC solo <strong>Online e sito</strong>. Agenda e clienti solo se lavora nell'attività (<strong>Io, con questo account</strong>).</td></tr>
-  <tr><td>Titolare</td><td>Lavora: agenda, prenotazioni, clienti, marketing, notifiche, registro attività. Tiene aggiornati orari, chiusure e ferie, il personale (operatori e persone con accesso) e il listino: servizi, varianti, prezzi e sconti dei clienti. Tipo di attività e sedi li cambia l'amministratore del programma.</td></tr>
+  <tr><td>Titolare</td><td>Lavora: agenda, prenotazioni, clienti, notifiche ed email ai clienti, registro attività, marketing se l'amministratore lo attiva. Tiene aggiornati orari, chiusure e ferie, gli operatori, il listino (servizi, varianti, prezzi e sconti dei clienti) e il suo logo. Tipo di attività, sedi e persone con accesso li cambia l'amministratore del programma: <strong>Persone e permessi</strong> il titolare non la vede.</td></tr>
   <tr><td>Persone dell'attività</td><td>Quello che il loro ruolo consente: per esempio l'operatore vede l'agenda delle sue risorse, la reception le prenotazioni, il marketing contatti e campagne.</td></tr>
 </table>
 <h3>Entrare</h3>
 <figure><img src="img/accesso.jpg" alt=""><figcaption><strong>Accesso</strong>: username o email e password. Sotto il modulo c'è il promemoria dei due account.</figcaption></figure>
 <ul>
   <li>Scrivi lo <strong>username</strong> oppure l'<strong>email</strong>, se l'account ne ha una, e la password.</li>
-  <li><strong>Resta collegato su questo dispositivo</strong> è spuntato di serie: il programma si riapre già collegato, fino a un anno senza usarlo.</li>
+  <li><strong>Entra senza password</strong>: l'amministratore del programma lo accende per un titolare da <strong>Persone e permessi</strong>. Dal PC del programma e dalle postazioni registrate la pagina di accesso mostra <strong>Entra come …</strong>: un clic e il titolare è dentro. Da un dispositivo non registrato serve la password, e le pagine sensibili si confermano con un clic.</li>
+  <li><strong>Resta collegato su questo dispositivo</strong> è spuntato di serie: il programma si riapre già collegato, sempre, finché non premi <strong>Esci</strong>.</li>
   <li><strong>Esci</strong>, in alto a destra, chiude la sessione: serve per entrare con un altro account, per esempio come amministratore.</li>
 </ul>
 <h3>Il secondo fattore</h3>
@@ -136,17 +137,23 @@
 <p>Le pagine che cambiano accessi o impostazioni chiedono di confermare che sei tu, al massimo ogni 15 minuti: con la password, o con il secondo fattore se lo hai attivato.</p>
 
 <h2 id="lavoro"><span class="num">7</span>Il lavoro di ogni giorno</h2>
-<figure><img src="img/al-lavoro.jpg" alt=""><figcaption><strong>Dashboard dell'attività</strong>: prenotazioni di oggi e dei prossimi giorni, ricevute e disdette. Nel menu a sinistra agenda, clienti, configurazione e comunicazioni.</figcaption></figure>
+<figure><img src="img/al-lavoro.jpg" alt=""><figcaption><strong>Dashboard dell'attività</strong>: prenotazioni di oggi e dei prossimi giorni, ricevute e disdette. Nel menu a sinistra agenda, clienti, configurazione e comunicazioni; in alto il logo dell'attività.</figcaption></figure>
+<p>In cima alla dashboard <strong>Oggi</strong> e <strong>Prossimi 7 giorni</strong> si cliccano: l'elenco sotto mostra chi viene e a che ora, oggi o giorno per giorno nella settimana. Una colonna del grafico dei prossimi giorni porta dritta a quel giorno.</p>
+<figure><img src="img/dashboard-7giorni.jpg" alt=""><figcaption><strong>Prossimi 7 giorni</strong>: giorno per giorno, l'ora, il cliente, il servizio e l'operatore.</figcaption></figure>
 <p>Il <strong>menu</strong> è diviso in gruppi, ognuno nella sua cornice, con un'icona per voce: in alto il lavoro di ogni giorno, sotto l'attività, le comunicazioni e i controlli; la configurazione del programma si apre e si chiude con un clic. Finita la configurazione guidata, la sua voce sparisce.</p>
 <ul>
   <li><strong>Agenda e prenotazioni</strong>: per parrucchieri, estetica, studi e campi si apre sul <strong>giorno</strong>, con una colonna per ogni operatore che lavora quel giorno, o per uno solo scelto in alto; <strong>Settimana</strong> mostra i sette giorni ora per ora, per tutti o per un operatore, <strong>Mese</strong> quanti appuntamenti ha ogni giorno, <strong>Elenco</strong> la lista. Ogni operatore ha il suo colore e un ! arancione segnala allergie o intolleranze. Un clic su uno spazio libero apre <strong>Nuova prenotazione</strong> con operatore, giorno e ora già messi: cerchi il cliente in rubrica (o scrivi uno nuovo), scegli il trattamento e l'orario è già selezionato. Per ristoranti, soggiorni ed eventi c'è l'elenco della settimana.</li>
   <li><strong>Clienti</strong>: a sinistra chi è il cliente (recapiti, allergie, <strong>sconto</strong> in percentuale o in euro, note), a destra Panoramica con speso e appuntamenti in programma, Prenotazioni con il prezzo, Trattamenti e Consensi e privacy.</li>
   <li><strong>Configura l'attività</strong>: il titolare ci trova orari di apertura, chiusure e ferie e gli <strong>operatori</strong>. Per ogni operatore carica la <strong>foto</strong>, spunta in <strong>Cosa fa</strong> i trattamenti che fa, ognuno con la sua durata e il suo prezzo se diversi (vuoti valgono quelli del trattamento), e, se non segue gli orari dell'attività, i suoi giorni e orari; dalla sua scheda segna le ferie. Ci sono anche i <strong>servizi</strong> con varianti e <strong>prezzi</strong>. Tipo di attività, sedi e domande del modulo li imposta l'amministratore del programma.</li>
-  <li><strong>Persone e permessi</strong>: aggiungi chi lavora con te con uno <strong>username</strong>, l'email se vuoi, e il ruolo. L'accesso si consegna con un link di invito oppure con una password che scegli tu. Una persona che ha già un account si aggiunge scrivendo solo il suo username o la sua email.</li>
+  <li><strong>Logo e aspetto</strong>, in fondo a Configura l'attività: il titolare carica il <strong>logo</strong> (PNG, JPEG o WebP fino a 1 MB, anche orizzontale), che compare in alto nel menu al posto di "TD", sceglie il <strong>colore</strong> e la frase sotto il nome. L'anteprima del menu e della pagina prenotazioni cambia mentre scegli.</li>
+  <li><strong>Notifiche</strong>: gli avvisi per voi a ogni prenotazione nuova, spostata o annullata, per email o su Telegram. Sotto, le <strong>email ai clienti</strong>: conferma, modifica e annullamento partono da sole; se l'amministratore del programma le attiva in <strong>Impostazioni e sito</strong>, il titolare sceglie quali partono, accende il <strong>promemoria</strong> (da 2 ore a 3 giorni prima) e scrive oggetto e testo, con i campi da inserire con un clic e l'anteprima. Il cliente sceglie nel modulo di prenotazione se riceverle; dalla sua scheda, in <strong>Consensi e privacy</strong>, si accendono o si spengono.</li>
+  <li><strong>Marketing</strong> compare quando l'amministratore del programma lo accende in <strong>Impostazioni e sito</strong>: le campagne email, il CSV degli iscritti per Brevo, Mailchimp o un foglio, o tutti e due.</li>
+  <li><strong>Persone e permessi</strong>, solo per l'amministratore del programma, in <strong>Gestione tecnica</strong>: aggiunge chi lavora nell'attività con uno <strong>username</strong>, l'email se vuole, e il ruolo. L'accesso si consegna con un link di invito oppure con una password che scegli tu. Una persona che ha già un account si aggiunge scrivendo solo il suo username o la sua email.</li>
 </ul>
 <figure class="half"><img src="img/agenda.jpg" alt=""><figcaption><strong>Agenda del giorno</strong>: una colonna per operatore.</figcaption></figure><figure class="half"><img src="img/operatore.jpg" alt=""><figcaption><strong>Operatore</strong>: foto, cosa fa con durata e prezzo suoi, giorni e orari, ferie.</figcaption></figure>
 <figure class="half"><img src="img/settimana.jpg" alt=""><figcaption><strong>Settimana</strong>: i sette giorni ora per ora, un colore per operatore.</figcaption></figure><figure class="half"><img src="img/mese.jpg" alt=""><figcaption><strong>Mese</strong>: quanti appuntamenti ha ogni giorno.</figcaption></figure>
 <figure><img src="img/cliente.jpg" alt=""><figcaption><strong>Scheda cliente</strong>: a sinistra chi è, con recapiti, note e sconto; a destra Panoramica, Prenotazioni, Trattamenti, Consensi e privacy.</figcaption></figure>
+<figure class="half"><img src="img/logo-aspetto.jpg" alt=""><figcaption><strong>Logo e aspetto</strong>: logo, colore e frase, con l'anteprima.</figcaption></figure><figure class="half"><img src="img/notifiche.jpg" alt=""><figcaption><strong>Email ai clienti</strong>: quali partono, i testi e l'anteprima.</figcaption></figure>
 <h3>Importare i clienti dal programma di prima</h3>
 <p>In <strong>Clienti › Importa</strong> carichi un file Excel (.xlsx) o CSV con l'anagrafica e, se il tuo settore ha la scheda trattamenti, anche lo storico.</p>
 <figure class="half"><img src="img/import-file.jpg" alt=""><figcaption><strong>Il file</strong>: fino a 20 MB e 20.000 righe.</figcaption></figure><figure class="half"><img src="img/import.jpg" alt=""><figcaption><strong>Le colonne</strong>: per ognuna scegli cosa contiene.</figcaption></figure>
@@ -231,7 +238,7 @@
   <tr><th>Cosa succede</th><th>Cosa fare</th></tr>
   <tr><td>Password dimenticata, dell'amministratore o di chiunque</td><td>Sul PC con il server: menu Start, <strong>TD Booking Suite</strong>, <strong>Recupera accesso</strong>. Serve un account amministratore di Windows. Scrivi username o email: si apre la pagina per scegliere la password nuova, valida 24 ore. Azzera anche Authenticator e passkey, e resta scritto nel Registro attività.</td></tr>
   <tr><td>Il primo avvio chiede un codice</td><td>Menu Start, <strong>TD Booking Suite</strong>, <strong>Codice del primo avvio</strong>, come amministratore di Windows.</td></tr>
-  <tr><td>Una persona ha dimenticato la password</td><td>Il titolare, da <strong>Persone e permessi</strong>, preme <strong>Ripristina password</strong>: un link nuovo, per email o da consegnare a mano.</td></tr>
+  <tr><td>Una persona ha dimenticato la password</td><td>L'amministratore del programma, da <strong>Persone e permessi</strong>, preme <strong>Ripristina password</strong>: un link nuovo, per email o, se la persona non ha l'email, sullo schermo da consegnare a mano.</td></tr>
   <tr><td>La postazione dice che non è registrata</td><td>Sul server, <strong>Postazioni</strong>, <strong>Genera il codice</strong>, e scrivilo sulla postazione entro 15 minuti.</td></tr>
   <tr><td>La postazione avvisa che il certificato del server è cambiato</td><td>Se lo hai cambiato tu (nuovo certificato in Rete e certificato), confronta l'impronta con quella della pagina Postazioni del server e accettalo. Altrimenti non accettarlo e controlla la rete.</td></tr>
   <tr><td>"Username già usato"</td><td>Lo username è di una persona che lavora in un'altra attività: scegline un altro, oppure scrivi l'email di quella persona se vuoi proprio lei.</td></tr>

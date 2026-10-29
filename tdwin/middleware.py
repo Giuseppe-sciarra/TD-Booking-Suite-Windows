@@ -28,6 +28,11 @@ def is_local(request):
     meta=request.META
     return meta.get("REMOTE_ADDR") in local_addresses() and not (meta.get("HTTP_X_FORWARDED_FOR") or meta.get("HTTP_FORWARDED"))
 
+def trusted_device(request):
+    """2.13.0: Entra senza password (core/quick.py): the server PC itself or a registered workstation, as this
+    middleware found them; a browser or phone that is neither never gets here past /postazione/."""
+    return bool(getattr(request,"server_pc",False) or getattr(request,"postazione",None))
+
 from django.middleware.csrf import CsrfViewMiddleware
 class CsrfMiddleware(CsrfViewMiddleware):
     """Django's, with the trusted origins read on every check: the public address of Rete e certificato counts

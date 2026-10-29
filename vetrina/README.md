@@ -17,13 +17,15 @@ TD Booking Suite gestisce appuntamenti, tavoli, camere, lezioni ed eventi. Si in
 | ![Configurazione guidata](screenshots/guida.png) | ![Chi lavora nell'attività](screenshots/guida-io.png) |
 | **Configurazione guidata**: licenza, attività, backup e postazioni, un passo alla volta | **Uno o due account**: lo usi tu con un account solo, oppure lo installi per un cliente con il suo |
 | ![Accesso](screenshots/accesso.png) | ![Tema scuro](screenshots/dashboard-scuro.png) |
-| **Accesso** con username o email: resta collegato, e **Esci** per cambiare account | **Tema chiaro o scuro**, con il colore che preferisci |
+| **Accesso** con username o email, o con un clic per il titolare dal PC del programma: resta collegato, e **Esci** per cambiare account | **Tema chiaro o scuro**, con il colore che preferisci |
 | ![Postazioni](screenshots/postazioni.png) | ![Backup](screenshots/backup.png) |
 | **Postazioni**: ogni PC si registra una volta con un codice di 6 cifre | **Backup automatici**, cifrati, su disco esterno, NAS o server remoto |
 | ![Importa clienti](screenshots/import.png) | ![Anteprima dell'import](screenshots/import-anteprima.png) |
 | **Importa i clienti** dal programma di prima, da Excel o CSV | **Anteprima** prima di importare: cosa entra e cosa no |
-| ![Rete e certificato](screenshots/rete.png) | |
-| **Rete e certificato**: indirizzo pubblico, proxy e certificato, solo per l'amministratore | |
+| ![Prossimi 7 giorni](screenshots/dashboard-7giorni.png) | ![Logo e aspetto](screenshots/logo-aspetto.png) |
+| **Oggi e prossimi 7 giorni**: un clic sulla dashboard e vedi chi viene e a che ora, giorno per giorno | **Logo e aspetto**: il logo dell'attività in alto nel menu, il colore e la frase sotto il nome, con l'anteprima |
+| ![Email ai clienti](screenshots/notifiche.png) | ![Rete e certificato](screenshots/rete.png) |
+| **Email ai clienti**: conferma, modifica, annullamento e promemoria, con il tuo testo e l'anteprima | **Rete e certificato**: indirizzo pubblico, proxy e certificato, solo per l'amministratore |
 
 ## Cosa fa
 
@@ -31,10 +33,11 @@ TD Booking Suite gestisce appuntamenti, tavoli, camere, lezioni ed eventi. Si in
 - **Agenda del giorno, della settimana e del mese** per parrucchieri, estetica, studi e campi: nel giorno una colonna per ogni operatore che lavora, nella settimana i sette giorni ora per ora, nel mese quanti appuntamenti ha ogni giorno. Ogni operatore ha il suo colore. Un clic su uno spazio libero e la prenotazione parte con operatore, giorno e ora già messi.
 - **Operatori con foto, trattamenti, orari e ferie**: ognuno fa i servizi che spunti, ognuno con la sua durata e il suo prezzo se diversi, e, se serve, ha i suoi giorni di lavoro. Il cliente sceglie con chi prenotare dalla foto.
 - **Prenotazioni online** dalla pagina dell'attività, quando il server è raggiungibile da Internet, con conferme e promemoria per email. Con Un PC solo si accendono da *Online e sito*.
+- **Email ai clienti con promemoria**: conferma, modifica e annullamento partono da sole; quando l'amministratore lo attiva, il titolare sceglie quali partono, aggiunge il promemoria da 2 ore a 3 giorni prima e scrive i testi, con l'anteprima. Il cliente sceglie se riceverle.
 - **Clienti**: scheda con i recapiti sempre in vista, quanto ha speso, cosa ha in programma, lo storico con i prezzi, le note, i trattamenti, le intolleranze e i consensi marketing.
 - **Listino e sconti**: il titolare tiene servizi, varianti e prezzi; a un cliente dai uno sconto in percentuale o fisso, che vale da subito sulle sue prenotazioni.
 - **Importa dal programma di prima**: anagrafica e storico dei trattamenti da Excel o CSV. Per ogni colonna scegli cosa contiene e guardi l'anteprima prima di importare. Chi c'è già non viene sovrascritto né raddoppiato. I consensi marketing restano da confermare dal cliente.
-- **Persone e permessi**: ognuno entra con il suo username, l'email è facoltativa, e vede solo quello che il suo ruolo consente. Chi installa configura tipo di attività, sedi e parte tecnica; il titolare lavora e tiene aggiornati orari, personale e listino.
+- **Persone e permessi**: ognuno entra con il suo username, l'email è facoltativa, e vede solo quello che il suo ruolo consente. Chi installa configura tipo di attività, sedi, persone con accesso e parte tecnica; il titolare lavora e tiene aggiornati orari, operatori, listino e il suo logo.
 - **Una o più attività**: le licenze Un PC solo e Server sono per un'attività, la licenza Portale per chi ne gestisce diverse.
 - **Più postazioni**: i PC della rete usano il programma per la postazione; browser e telefono vanno bene lo stesso. Le sedi lontane si collegano allo stesso server.
 - **Da fuori dall'ufficio**: dietro un proxy con il suo certificato (NPMplus, Caddy, IIS) o con un tuo certificato caricato nel programma. Anche i certificati autofirmati vanno bene: le postazioni li riconoscono dall'impronta. Il programma per le postazioni si collega anche alla versione web su Docker.
@@ -45,7 +48,7 @@ TD Booking Suite gestisce appuntamenti, tavoli, camere, lezioni ed eventi. Si in
   - ogni parte del programma con i suoi permessi di Windows;
   - l'amministratore del programma lo crea solo un amministratore di Windows del PC.
 - **Backup automatici ogni notte**, cifrati con la tua password, su disco esterno, NAS, FTP, FTPS o SFTP. Il ripristino si fa dal menu Start.
-- **Il tuo marchio**: nome, loghi, icona, colore principale e tema di partenza si cambiano dalle impostazioni.
+- **Il tuo marchio**: nome, loghi, icona, colore principale e tema di partenza si cambiano dalle impostazioni; ogni attività mette il suo logo, che compare in alto nel menu.
 
 ## Installare
 
@@ -85,7 +88,7 @@ Se lo reinstalli dopo averlo tolto, l'installer trova i dati di prima e chiede: 
 |---|---|
 | **Primo avvio**: l'amministratore si crea solo dal PC del programma | **Licenza**: cosa consente e il codice installazione da mandarci |
 
-**Resta collegato** è spuntato di serie: il programma si riapre già collegato. Per entrare con un altro account usa **Esci**, in alto a destra.
+**Resta collegato** è spuntato di serie: il programma si riapre già collegato, sempre. Il titolare può anche entrare senza password, con un clic, dal PC del programma e dalle postazioni registrate. Per entrare con un altro account usa **Esci**, in alto a destra.
 
 ### Sulle altre postazioni
 
