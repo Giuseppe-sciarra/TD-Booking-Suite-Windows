@@ -65,6 +65,12 @@ def test_install_type_decides_address_and_listening(tmp_path,monkeypatch):
     config,_=setup_files.prepare(data,origine="https://booking.example.com:9443",modalita="standalone")
     config,_=setup_files.prepare(data,modalita="server")
     assert config["origine"]=="https://booking.example.com:9443"  # an address given by hand stays
+    # 2.10.0: Un PC solo with online on answers from the network; off again, only to itself. A server is always online
+    config,_=setup_files.prepare(data,modalita="standalone",online="on")
+    assert (config["online"],config["ascolto"])==(True,"0.0.0.0")
+    assert setup_files.prepare(data)[0]["ascolto"]=="0.0.0.0"  # an update keeps the choice
+    config,_=setup_files.prepare(data,online="off")
+    assert (config["online"],config["ascolto"])==(False,"127.0.0.1")
     # a 2.8 server has no install type: it stays a server
     old=json.loads((data/"config.json").read_text());old.pop("modalita");old.pop("ascolto")
     (data/"config.json").write_text(json.dumps(old))
@@ -113,3 +119,21 @@ def test_one_pc_signs_in_with_the_password_alone(admin,trial,settings):
     assert "Proteggi il tuo account" not in staff.get("/platform/licenza/").content.decode()
     settings.MFA_ENABLED=True  # with workstations: optional, and only the administrator is reminded
     assert "Proteggi il tuo account" in staff.get("/platform/licenza/").content.decode()
+
+
+def test_one_pc_keeps_the_booking_page_off_until_the_administrator_turns_it_on(admin,trial,settings):
+    from tdwin import middleware
+    user,staff=admin
+    settings.TDWIN_STANDALONE=True;settings.TDWIN_ONLINE=False;settings.PUBLIC_BOOKING=False
+    t=Tenant.objects.first()
+    r=staff.get(f"/book/{t.slug}/") if t else staff.get("/book/x/")
+    assert r.status_code==404 and "Online e sito" in r.content.decode()
+    assert staff.get("/api/wordpress/connect/").status_code==404
+    page=staff.get("/platform/rete/").content.decode()
+    assert "Prenotazioni online e sito" in page and 'data-online="on"' in page and "Spente" in page and "Indirizzo pubblico" not in page
+    assert "tdwin/rete.js" in page and "-Online on" in page
+    # turned on: the page and the network settings
+    settings.TDWIN_ONLINE=True;settings.PUBLIC_BOOKING=True
+    page=staff.get("/platform/rete/").content.decode()
+    assert 'data-online="off"' in page and "Accese" in page and "Indirizzo pubblico" in page
+    assert staff.get("/book/nessuna/").status_code!=404 or "Online e sito" not in staff.get("/book/nessuna/").content.decode()

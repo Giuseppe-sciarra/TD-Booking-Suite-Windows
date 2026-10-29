@@ -35,10 +35,17 @@ ALLOWED_HOSTS=ALLOWED_HOSTS+_hosts
 CSRF_TRUSTED_ORIGINS=CSRF_TRUSTED_ORIGINS+["https://"+h+("" if _port==443 else f":{_port}") for h in _hosts]
 # Un PC solo (standalone) or a server with workstations, chosen in the installer
 TDWIN_STANDALONE=CONFIG.get("modalita","server")=="standalone"
-EXTRA_NAV=[{"label":"Configurazione guidata","url":"/platform/inizia/"},{"label":"Licenza","url":"/platform/licenza/"}]+(
-    [] if TDWIN_STANDALONE else [{"label":"Postazioni","url":"/platform/postazioni/"}])+[{"label":"Backup","url":"/platform/backup/"}]+(
-    [] if TDWIN_STANDALONE else [{"label":"Rete e certificato","url":"/platform/rete/"}])
-# a desktop program on Full HD screens: denser pages than the web edition, on every page
+# 2.10.0: the booking page and the website: always on a server; on Un PC solo only once the administrator turns them on
+TDWIN_ONLINE=not TDWIN_STANDALONE or bool(CONFIG.get("online"))
+PUBLIC_BOOKING=TDWIN_ONLINE
+def EXTRA_NAV(request):
+    """The program's own entries. Configurazione guidata goes once there is a licence (or the trial) and a business:
+    from then on the menu keeps only what is used; /platform/inizia/ still opens from its address."""
+    from tdwin.views import setup_done
+    return ([] if setup_done(request) else [{"label":"Configurazione guidata","icon":"compass","url":"/platform/inizia/"}])+[{"label":"Licenza","icon":"key","url":"/platform/licenza/"}]+(
+        [] if TDWIN_STANDALONE else [{"label":"Postazioni","icon":"monitor","url":"/platform/postazioni/"}])+[{"label":"Backup","icon":"archive","url":"/platform/backup/"}]+(
+        [{"label":"Online e sito" if TDWIN_STANDALONE else "Rete e certificato","icon":"globe","url":"/platform/rete/"}])
+# the program's own pages (guided setup, backup, workstations, network); the compact look is in the core since 2.10.0
 EXTRA_CSS=["tdwin/tdwin.css"]
 # who is who: the program's administrator configures, the business's owner and people work
 AGENCY_NAMES={"area":"Configurazione del programma","admin":"Amministratore del programma","who":"amministratore del programma","access":"Accesso dell'amministratore"}

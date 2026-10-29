@@ -8,6 +8,8 @@ TD Booking Suite gestisce appuntamenti, tavoli, camere, lezioni ed eventi. Si in
 
 | | |
 |---|---|
+| ![Agenda per operatore](screenshots/agenda.png) | ![Operatore](screenshots/operatore.png) |
+| **Agenda del giorno**: una colonna per operatore, un clic su uno spazio libero e la prenotazione parte con operatore, giorno e ora | **Operatori**: i trattamenti che fanno, i loro giorni e orari, le ferie |
 | ![Configurazione guidata](screenshots/guida.png) | ![Al lavoro](screenshots/al-lavoro.png) |
 | **Configurazione guidata**: licenza, attività, backup e postazioni, un passo alla volta | **Dashboard**: prenotazioni di oggi e dei prossimi giorni, agenda e clienti a portata di clic |
 | ![Chi lavora nell'attività](screenshots/guida-io.png) | ![Accesso](screenshots/accesso.png) |
@@ -22,10 +24,12 @@ TD Booking Suite gestisce appuntamenti, tavoli, camere, lezioni ed eventi. Si in
 ## Cosa fa
 
 - **Agenda e prenotazioni** per parrucchieri, centri estetici, SPA, ristoranti, studi, autoscuole, officine, hotel, case vacanza, noleggi, tour ed eventi. Ci sono gli orari, le risorse e gli operatori, e le domande giuste per ogni tipo di attività.
-- **Prenotazioni online** dalla pagina dell'attività, quando il server è raggiungibile da Internet, con conferme e promemoria per email.
+- **Agenda del giorno per operatore** per parrucchieri, estetica, studi e campi: una colonna per ognuno, gli appuntamenti dove cadono, un clic su uno spazio libero e la prenotazione parte con operatore, giorno e ora già messi.
+- **Operatori con i loro trattamenti, orari e ferie**: ognuno fa i servizi che spunti e, se serve, ha i suoi giorni di lavoro.
+- **Prenotazioni online** dalla pagina dell'attività, quando il server è raggiungibile da Internet, con conferme e promemoria per email. Con Un PC solo si accendono da *Online e sito*.
 - **Clienti**: scheda con lo storico, le note, i trattamenti, le intolleranze e i consensi marketing.
 - **Importa dal programma di prima**: anagrafica e storico dei trattamenti da Excel o CSV. Per ogni colonna scegli cosa contiene e guardi l'anteprima prima di importare. Chi c'è già non viene sovrascritto né raddoppiato. I consensi marketing restano da confermare dal cliente.
-- **Persone e permessi**: ognuno entra con il suo username, l'email è facoltativa, e vede solo quello che il suo ruolo consente.
+- **Persone e permessi**: ognuno entra con il suo username, l'email è facoltativa, e vede solo quello che il suo ruolo consente. Chi installa configura tipo di attività, servizi e parte tecnica; il titolare lavora e tiene aggiornati orari e personale.
 - **Una o più attività**: le licenze Un PC solo e Server sono per un'attività, la licenza Portale per chi ne gestisce diverse.
 - **Più postazioni**: i PC della rete usano il programma per la postazione; browser e telefono vanno bene lo stesso. Le sedi lontane si collegano allo stesso server.
 - **Da fuori dall'ufficio**: dietro un proxy con il suo certificato (NPMplus, Caddy, IIS) o con un tuo certificato caricato nel programma. Anche i certificati autofirmati vanno bene: le postazioni li riconoscono dall'impronta. Il programma per le postazioni si collega anche alla versione web su Docker.
@@ -54,7 +58,7 @@ Durante l'installazione il programma chiede **Come userai TD Booking Suite su qu
 
 | | |
 |---|---|
-| **Un PC solo** | Programma e dati su questo PC, che si usa da solo: niente altri PC, telefoni o prenotazioni dal sito. Per un'attività con un solo computer. Si entra con username e password |
+| **Un PC solo** | Programma e dati su questo PC, che si usa da solo: niente altri PC o telefoni. Per un'attività con un solo computer. Si entra con username e password. La pagina prenotazioni e il sito si accendono quando servono, da *Online e sito* |
 | **Server con postazioni** | Questo PC tiene i dati e resta acceso. Gli altri PC con la postazione, tablet e telefoni dell'ufficio e, se lo metti online, il sito si collegano a lui. Qui si usa anche il programma |
 | **Solo postazione** | Solo la finestra del programma, per un PC che si collega a un server già installato in ufficio o a TD Booking Suite su Internet |
 

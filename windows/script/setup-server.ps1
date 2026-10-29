@@ -2,8 +2,9 @@
 # si può rilanciare a mano per cambiare indirizzo o porta:
 #   powershell -ExecutionPolicy Bypass -File setup-server.ps1 -Origine https://ufficio-pc:8443 -Porta 8443
 #   powershell -ExecutionPolicy Bypass -File setup-server.ps1 -Modalita standalone   (un PC solo, o server)
+#   powershell -ExecutionPolicy Bypass -File setup-server.ps1 -Online on   (un PC solo: pagina prenotazioni e sito da Internet; off per spegnerli)
 # Non cancella e non sovrascrive mai dati, chiavi e password già esistenti.
-param([string]$Porta = "", [string]$Origine = "", [string]$Indirizzi = "", [string]$Modalita = "")
+param([string]$Porta = "", [string]$Origine = "", [string]$Indirizzi = "", [string]$Modalita = "", [ValidateSet("", "on", "off")][string]$Online = "")
 # the server is never set up as a window only: the installation stops and Windows puts everything back
 if ($Modalita -eq "postazione") { throw "MODALITA=postazione installa solo la finestra: usa ADDLOCAL=Postazione (su un server: REMOVE=Server)." }
 . "$PSScriptRoot\comune.ps1"
@@ -29,6 +30,7 @@ try {
     if ($Origine) { $setup += @("--origine", $Origine) }
     if ($Indirizzi) { $setup += @("--indirizzi", $Indirizzi) }
     if ($Modalita) { $setup += @("--modalita", $Modalita) }
+    if ($Online) { $setup += @("--online", $Online) }
     Invoke-Checked $Python $setup
     $config = Read-Json "config.json"
     $admin = Read-Json "db-admin.json"
@@ -95,7 +97,8 @@ try {
     # 6. the network: Un PC solo listens on this PC only and opens nothing; a server opens its port to private
     # and company networks only, see the guide for a server in the cloud
     Get-NetFirewallRule -DisplayName "TD Booking Suite" -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-    if ($config.modalita -ne "standalone") {
+    # the port opens whenever the program answers from the network: a server, or Un PC solo with online on
+    if ($config.ascolto -ne "127.0.0.1") {
         New-NetFirewallRule -DisplayName "TD Booking Suite" -Direction Inbound -Protocol TCP -LocalPort $config.porta -Action Allow -Profile Domain, Private | Out-Null
     }
     # the installer reads it back at the next update or change, to propose the same choice

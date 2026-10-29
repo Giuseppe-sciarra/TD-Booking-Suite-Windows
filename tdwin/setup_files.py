@@ -25,7 +25,7 @@ def default_origin(config):
     host="localhost" if config.get("modalita")=="standalone" else socket.gethostname().lower()
     return f"https://{host}"+("" if config["porta"]==443 else f":{config['porta']}")
 
-def prepare(data,origine=None,porta=None,indirizzi=None,pg_bin=None,pg_port=55432,modalita=None):
+def prepare(data,origine=None,porta=None,indirizzi=None,pg_bin=None,pg_port=55432,modalita=None,online=None):
     data=Path(data);data.mkdir(parents=True,exist_ok=True)
     for folder in ("licenza","backup","certs","log","tmp"):(data/folder).mkdir(exist_ok=True)
     admin_path=data/"db-admin.json";config_path=data/"config.json"
@@ -45,7 +45,10 @@ def prepare(data,origine=None,porta=None,indirizzi=None,pg_bin=None,pg_port=5543
         if modalita not in ("standalone","server"):raise SystemExit("Modalità non valida: standalone o server.")
         config["modalita"]=modalita
     config.setdefault("modalita","server")
-    config["ascolto"]="127.0.0.1" if config["modalita"]=="standalone" else "0.0.0.0"
+    # 2.10.0: Un PC solo with the booking page and the website on: it answers from the network like a server
+    if online is not None:config["online"]=online in (True,"on","1")
+    config.setdefault("online",False)
+    config["ascolto"]="127.0.0.1" if config["modalita"]=="standalone" and not config["online"] else "0.0.0.0"
     if automatic and not origine:config["origine"]=""
     if origine:
         origine=origine.rstrip("/")
@@ -64,8 +67,9 @@ def main(argv=None):
     p.add_argument("--data",required=True);p.add_argument("--origine");p.add_argument("--porta",type=int)
     p.add_argument("--indirizzi",help="altri nomi o indirizzi, separati da virgola");p.add_argument("--pg-bin");p.add_argument("--pg-port",type=int,default=55432)
     p.add_argument("--modalita",help="standalone (un PC solo) o server (con postazioni)")
+    p.add_argument("--online",choices=["on","off"],help="Un PC solo: pagina prenotazioni e sito accesi (risponde dalla rete) o spenti")
     a=p.parse_args(argv)
-    config,admin=prepare(a.data,a.origine,a.porta,a.indirizzi,a.pg_bin,a.pg_port,a.modalita)
-    print(json.dumps({"origine":config["origine"],"porta":config["porta"],"modalita":config["modalita"]}))
+    config,admin=prepare(a.data,a.origine,a.porta,a.indirizzi,a.pg_bin,a.pg_port,a.modalita,a.online)
+    print(json.dumps({"origine":config["origine"],"porta":config["porta"],"modalita":config["modalita"],"online":config["online"]}))
 
 if __name__=="__main__":main(sys.argv[1:])

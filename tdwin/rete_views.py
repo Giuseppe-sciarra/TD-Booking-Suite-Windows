@@ -1,5 +1,6 @@
 """Rete e certificato: public address, trusted proxies and the certificate, for the supreme administrator only."""
-import datetime
+import datetime,sys
+from pathlib import Path
 from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import render,redirect
@@ -40,4 +41,6 @@ def page(request):
     served["scadenza"]=datetime.datetime.fromisoformat(served["scadenza"])
     return render(request,"tdwin/rete.html",{"row":r,"state":state,"served":served,"own_served":cert==rete.own_paths()[0],
         "warnings":rete.warnings(state),"fingerprint":rete.fingerprint(),"office":settings.TDWIN_CONFIG["origine"],"standalone":settings.TDWIN_STANDALONE,
-        "port":settings.TDWIN_CONFIG.get("porta",8443)})
+        "port":settings.TDWIN_CONFIG.get("porta",8443),"online":settings.TDWIN_ONLINE,
+        # where the installer put the setup script: server\python\python.exe and server\script\setup-server.ps1
+        "script":str(Path(sys.executable).resolve().parent.parent/"script"/"setup-server.ps1")})

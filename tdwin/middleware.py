@@ -1,12 +1,14 @@
 """Windows edition, on every request: the first start, the registered workstations and the licence."""
 import re,time
 from urllib.parse import urlencode
+from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.utils import timezone
 from . import netnames
 
 # reachable from any device: booking pages and links for the customers of the businesses, the pairing page
+OFFLINE=("/book/","/api/wordpress/")
 PUBLIC=("/book/","/action/","/brand/","/site/","/static/","/prezzi/","/privacy/","/perche-sceglierci/","/perche-sceglierlo/","/prova/","/api/wordpress/","/postazione/")
 # needed before the administrator exists
 SETUP=("/static/","/site/","/primo-avvio/")
@@ -67,6 +69,9 @@ class WindowsMiddleware:
             if path.startswith(SETUP):return self.get_response(request)
             if request.server_pc:return redirect("/primo-avvio/")
             return HttpResponse("Il programma non è ancora configurato: completa il primo avvio dal PC server.",status=503,content_type="text/plain; charset=utf-8")
+        # 2.10.0: Un PC solo without online: no booking page and no website connection, also from this PC
+        if not settings.TDWIN_ONLINE and path.startswith(OFFLINE):
+            return HttpResponse("La pagina prenotazioni non è attiva: l'amministratore del programma la accende da Online e sito.",status=404,content_type="text/plain; charset=utf-8")
         if not request.server_pc and not path.startswith(PUBLIC):
             request.postazione=postazioni.current(request)
             if not request.postazione:

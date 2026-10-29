@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
@@ -124,8 +125,34 @@ namespace TDBookingSuite
             };
             core.DocumentTitleChanged += (s, e) => Text = string.IsNullOrEmpty(core.DocumentTitle) ? "TD Booking Suite" : core.DocumentTitle + " - TD Booking Suite";
             core.ProcessFailed += (s, e) => { if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited) Close(); else core.Reload(); };
+            core.WebMessageReceived += Message;
             core.Navigate(config.Server + "/");
         }
+
+        /// <summary>2.10.0: Online e sito on Un PC solo. Turning the booking page on or off changes how this PC listens
+        /// and opens or closes its port: setup-server.ps1, as administrator after the Windows prompt. Only this one
+        /// message, from the program's own page, and only where the server is installed on this PC.</summary>
+        async void Message(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            string text;
+            try { text = e.TryGetWebMessageAsString(); } catch (ArgumentException) { return; }
+            if ((text != "tdwin-online:on" && text != "tdwin-online:off") || !config.SameOrigin(e.Source)
+                || !Uri.TryCreate(e.Source, UriKind.Absolute, out var page) || page.AbsolutePath != "/platform/rete/") return;
+            var script = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "server", "script", "setup-server.ps1"));
+            if (!File.Exists(script)) { Reply("Il server non è installato su questo PC: accendilo dal PC server."); return; }
+            var start = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe"),
+                $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"{script}\" -Online {text.Substring(13)}")
+                { Verb = "runas", UseShellExecute = true, WindowStyle = ProcessWindowStyle.Hidden };
+            int code;
+            try { using (var run = Process.Start(start)) { await Task.Run(() => run.WaitForExit()); code = run.ExitCode; } }
+            catch (System.ComponentModel.Win32Exception) { Reply("Annullato: Windows non ha dato l'autorizzazione."); return; }
+            if (code != 0) { Reply("Non riuscito: i dettagli sono in C:\\ProgramData\\TD Booking Suite\\log\\setup.log."); return; }
+            // the services restart with the new setting: the page comes back when they answer
+            await Task.Delay(6000);
+            web.CoreWebView2?.Reload();
+        }
+
+        void Reply(string error) => web.CoreWebView2?.PostWebMessageAsString("tdwin-online-error:" + error);
 
         bool warned;
 

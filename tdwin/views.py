@@ -124,6 +124,12 @@ def create_business(name,preset,email,password,actor,owner=None,username=""):
         with scope(tenant):audit(tenant,actor,"tenant.created",tenant.pk)
     return tenant
 
+def setup_done(request):
+    """The guided setup is over: a licence or the trial, and at least one business."""
+    from core.models import Tenant
+    state=getattr(request,"licenza",None) or licensing.apply()
+    return state["kind"]!="bloccato" and Tenant.objects.exists()
+
 def guide(request):
     """Configurazione guidata, for the program's administrator: every step says if it is done and leads to it."""
     from core.models import Membership,Tenant
