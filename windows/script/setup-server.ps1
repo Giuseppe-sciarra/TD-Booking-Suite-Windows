@@ -37,6 +37,10 @@ if ($firstInstall) {
     Protect-Folder $Data -Reset
     $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
     foreach ($name in "config.json", "db-admin.json") { $file = Join-Path $Data $name; if (Test-Path $file) { Move-Item $file "$file.prima-$stamp" } }
+    # 2.10.2: a configuration without its database is a start that did not finish (the database was never made):
+    # new keys, but its addresses, port, type and installation code stay, so the licence of this PC still holds
+    $unfinished = Join-Path $Data "config.json.prima-$stamp"
+    if (-not $keep -and (Test-Path $unfinished)) { $keep = $unfinished }
 }
 New-Item -ItemType Directory -Force (Join-Path $Data "log") | Out-Null
 Start-Transcript -Path (Join-Path $Data "log\setup.log") -Append | Out-Null
@@ -67,8 +71,23 @@ try {
         $pwFile = Join-Path $Data "tmp\pg-password.txt"
         New-Item -ItemType Directory -Force (Split-Path $pwFile) | Out-Null
         [IO.File]::WriteAllText($pwFile, $env:PGPASSWORD)
+        # 2.10.2: initdb drops the Administrators group from its own rights. From the installer it runs as SYSTEM,
+        # which stays; run by hand from an administrator's PowerShell it is that user, named here only while it works
+        $me = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+        $byHand = $me -ne "S-1-5-18"
+        if ($byHand) {
+            Invoke-Checked "icacls.exe" @($pgData, "/grant", "*$($me):(OI)(CI)F")
+            Invoke-Checked "icacls.exe" @($pwFile, "/grant", "*$($me):R")
+        }
         try { Invoke-Checked (Join-Path $PgBin "initdb.exe") @("-D", $pgData, "-U", "postgres", "-E", "UTF8", "--no-locale", "--auth=scram-sha-256", "--pwfile=$pwFile") }
-        finally { Remove-Item $pwFile -Force -ErrorAction SilentlyContinue }
+        finally {
+            Remove-Item $pwFile -Force -ErrorAction SilentlyContinue
+            # the files initdb made belong to that user: back to the Administrators, and the user's own right goes
+            if ($byHand) {
+                Invoke-Checked "icacls.exe" @($pgData, "/setowner", "*S-1-5-32-544", "/T", "/C", "/Q")
+                Invoke-Checked "icacls.exe" @($pgData, "/remove:g", "*$me", "/T", "/C", "/Q")
+            }
+        }
         Add-Content -Path (Join-Path $pgData "postgresql.conf") -Value "`r`n# TD Booking Suite`r`nlisten_addresses = '127.0.0.1'`r`nport = $pgPort`r`n" -Encoding ASCII
         $fresh = $true
     }

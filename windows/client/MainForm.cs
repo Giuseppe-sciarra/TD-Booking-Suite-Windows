@@ -186,7 +186,9 @@ namespace TDBookingSuite
                 case CoreWebView2WebErrorStatus.CannotConnect: case CoreWebView2WebErrorStatus.ConnectionAborted:
                 case CoreWebView2WebErrorStatus.ConnectionReset: case CoreWebView2WebErrorStatus.Disconnected:
                 case CoreWebView2WebErrorStatus.ServerUnreachable: case CoreWebView2WebErrorStatus.Timeout:
-                case CoreWebView2WebErrorStatus.HostNameNotResolved: break;
+                case CoreWebView2WebErrorStatus.HostNameNotResolved:
+                // 2.10.2: an empty answer from a service that is stopping or starting (Errore Unknown): wait for it too
+                case CoreWebView2WebErrorStatus.Unknown: break;
                 case CoreWebView2WebErrorStatus.OperationCanceled: return;  // a click on another page meanwhile
                 default:
                     // the browser's own error pages are off: our page, with what went wrong and Riprova
@@ -218,7 +220,8 @@ namespace TDBookingSuite
         {
             bool dark = WindowsDark();
             string ink = dark ? "#efeaf6" : "#2b2236", muted = dark ? "#b0a4c2" : "#6b6079", bg = dark ? "#16111d" : "#f6f3fa";
-            web.CoreWebView2?.NavigateToString("<!doctype html><html lang=\"it\"><meta charset=\"utf-8\"><style>body{margin:0;height:100vh;display:grid;place-items:center;"
+            // its title, not about:blank, in the title bar
+            web.CoreWebView2?.NavigateToString("<!doctype html><html lang=\"it\"><meta charset=\"utf-8\"><title>" + title + "</title><style>body{margin:0;height:100vh;display:grid;place-items:center;"
                 + $"background:{bg};color:{ink};font:15px/1.6 'Segoe UI',sans-serif}}main{{max-width:520px;padding:32px}}h1{{font-size:24px;margin:0 0 10px}}p{{color:{muted};margin:0 0 18px}}"
                 + "code{font-size:13px}a{display:inline-block;padding:9px 18px;border-radius:10px;background:#8b67b8;color:#fff;text-decoration:none;font-weight:600}"
                 + ".dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8b67b8;margin-right:10px;animation:p 1.2s infinite}@keyframes p{50%{opacity:.25}}</style>"

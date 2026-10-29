@@ -107,7 +107,31 @@ try {
     # an empty program: the first start asks for its administrator
     $page = Invoke-WebRequest "https://localhost:$($after.porta)/" -UseBasicParsing
     if ($page.Content -notmatch "Primo avvio") { throw "Da zero non compare il primo avvio" }
+
+    # 2.10.2: initdb drops the Administrators group; by hand it is not SYSTEM, as in the installer, but this user
+    Write-Host "Da zero a mano, da un PowerShell di amministratore, come lo lancia chi assiste il cliente"
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $app "script\setup-server.ps1") -Ricomincia 1
+    if ($LASTEXITCODE -ne 0) { throw "Da zero a mano non riuscito, codice $LASTEXITCODE" }
+    $aside = @(Get-ChildItem $env:ProgramData -Directory | Where-Object Name -like "TD Booking Suite (dati del *")
+    if ($aside.Count -ne 2) { throw "Da zero a mano: $($aside.Count) cartelle messe da parte invece di 2" }
+    if ((Get-Content (Join-Path $data "config.json") -Raw | ConvertFrom-Json).install_id -ne $before.install_id) { throw "Da zero a mano ha cambiato il codice installazione" }
+    $me = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $mine = (Get-Acl (Join-Path $data "pgdata")).Access | Where-Object { try { $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -eq $me } catch { $false } }
+    if ($mine) { throw "Dopo il da zero a mano l'utente che l'ha lanciato ha ancora diritti sul database" }
+    Test-Mode "standalone"
+    if ((Invoke-WebRequest "https://localhost:9443/" -UseBasicParsing).Content -notmatch "Primo avvio") { throw "Da zero a mano non compare il primo avvio" }
+
+    # the state a by-hand start of 2.10.1 left: data aside, configuration made, database never created
+    Write-Host "Un da zero rimasto a metà, senza database: l'aggiornamento lo finisce e tiene il codice installazione"
+    Stop-Service TDBookingWeb, TDBookingWorker, TDBookingDB -Force
+    Get-ChildItem (Join-Path $data "pgdata") -Force | Remove-Item -Recurse -Force
+    Install-Msi @("/i", "`"$Msi`"") "finisce.log"
+    foreach ($name in "TDBookingDB", "TDBookingWeb", "TDBookingWorker") { if ((Get-Service $name).Status -ne "Running") { throw "Dopo l'aggiornamento che finisce $name è fermo" } }
+    if ((Get-Content (Join-Path $data "config.json") -Raw | ConvertFrom-Json).install_id -ne $before.install_id) { throw "Finendo il da zero il codice installazione è cambiato: la licenza non varrebbe più" }
+    if (@(Get-ChildItem $env:ProgramData -Directory | Where-Object Name -like "TD Booking Suite (dati del *").Count -ne 2) { throw "L'aggiornamento ha messo da parte altri dati" }
+    Test-Mode "standalone"
+    if ((Invoke-WebRequest "https://localhost:9443/" -UseBasicParsing).Content -notmatch "Primo avvio") { throw "Finendo il da zero non compare il primo avvio" }
 }
 catch { Show-Logs; throw }
-Install-Msi @("/x", "`"$Upgrade`"") "uninstall-2.log"
+Install-Msi @("/x", "`"$Msi`"") "uninstall-2.log"
 Write-Host "Prova completa riuscita"
