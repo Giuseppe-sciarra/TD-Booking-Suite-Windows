@@ -35,6 +35,8 @@ namespace TDBookingSuite
         static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TD Booking Suite");
         static string FilePath => Path.Combine(Folder, "postazione.txt");
         public static string WebViewFolder => Path.Combine(Folder, "WebView2");
+        /// <summary>2.14.0: the read-only copies of the agenda, encrypted for this Windows user (MainForm.StoreCopy).</summary>
+        public static string CopyFolder => Path.Combine(Folder, "Copia agenda");
         // written by the server installation, so the program on the server PC needs no questions
         static string SharedPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "TD Booking Suite Postazione", "server.txt");
 

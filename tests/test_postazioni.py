@@ -167,3 +167,26 @@ def test_an_owner_enters_without_password_from_this_pc_and_the_workstations(admi
     with scope(t):
         from core.models import Audit
         assert Audit.objects.filter(action="login.quick").count()==2
+
+def test_the_window_copies_the_day_sheet_as_who_is_signed_in(admin,trial):
+    """2.14.0: the window of a workstation keeps today's and tomorrow's sheet with the address in its own script
+    (MainForm.cs): a registered workstation reads it as who is signed in, without keeping the session awake; signed
+    out or not registered it gets a redirect, which the script skips."""
+    import re
+    from django.urls import NoReverseMatch,reverse
+    from core.models import Tenant,Membership
+    from tests.conftest import ROOT
+    try:reverse("agenda_sheet",args=["x"])
+    except NoReverseMatch:pytest.skip("core prima della 2.14.0: niente foglio del giorno")
+    script=(ROOT/"windows"/"client"/"MainForm.cs").read_text("utf-8")
+    assert "'X-TDBS-Refresh': '1'" in script
+    t=Tenant.objects.create(name="Salone Bella",slug="salone-bella")
+    owner=User.objects.create_user("",PASSWORD,username="giulia");Membership.objects.create(tenant=t,user=owner,role="owner")
+    url=re.search(r"get\('(/t/SLUG/[^']+)' \+ day\)",script)[1].replace("SLUG",t.slug)+"2026-11-02"
+    item,code=postazioni.new_code("Reception");token,_=postazioni.pair(code)
+    desk=login(owner,remote());desk.cookies[postazioni.COOKIE]=token
+    s=desk.session;s["last_seen"]-=600;s.save();seen=s["last_seen"]
+    page=desk.get(url,HTTP_X_TDBS_REFRESH="1");html=page.content.decode()
+    assert page.status_code==200 and "Foglio del giorno" in html and 'value="2026-11-02"' in html and "<main" in html and 'rel="stylesheet"' in html
+    assert desk.session["last_seen"]==seen
+    assert Client().get(url).status_code==302 and remote().get(url).status_code==302

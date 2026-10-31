@@ -67,6 +67,15 @@ jobs:
         id: msi
         env:
           TDBS_RILASCIO: ${{ inputs.rilascio }}
+          # 2.14.0: code signing, only with these secrets (windows/firma.ps1); without them the MSI is not signed
+          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARTIFACT_SIGNING_ENDPOINT: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          ARTIFACT_SIGNING_ACCOUNT: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          ARTIFACT_SIGNING_PROFILE: ${{ secrets.ARTIFACT_SIGNING_PROFILE }}
         run: |
           pwsh windows/build.ps1
           "version=$((Get-Content suite/VERSION).Trim())" >> $env:GITHUB_OUTPUT
@@ -95,6 +104,14 @@ jobs:
         env:
           TD_LICENZE_CHIAVE: ${{ secrets.TD_LICENZE_CHIAVE }}
           TD_LICENZE_REGISTRO: ${{ secrets.TD_LICENZE_REGISTRO }}
+          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARTIFACT_SIGNING_ENDPOINT: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          ARTIFACT_SIGNING_ACCOUNT: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          ARTIFACT_SIGNING_PROFILE: ${{ secrets.ARTIFACT_SIGNING_PROFILE }}
         run: |
           python -m pip install --disable-pip-version-check "pyinstaller>=6.11,<7" cryptography
           # the seller's key, encrypted with its password, inside the exe: TD Licenze works on any PC with the password
@@ -102,6 +119,7 @@ jobs:
           python -m PyInstaller --noconfirm --windowed --name "TD Licenze" --icon windows/client/app.ico --add-data "windows/client/app.ico;." --paths licenze --hidden-import chiave_incorporata --distpath dist-licenze --workpath build/pyinstaller licenze/td_licenze_gui.py
           $p = Start-Process "dist-licenze/TD Licenze/TD Licenze.exe" -ArgumentList "--prova" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "TD Licenze.exe non parte, codice $($p.ExitCode)" }
+          & windows/firma.ps1 -Nome "TD Licenze" -Files "dist-licenze/TD Licenze/TD Licenze.exe"
 
       - uses: actions/upload-artifact@v4
         with:

@@ -95,6 +95,12 @@ Invoke-Native dotnet @("build", (Join-Path $root "windows\client\TDBookingSuite.
 Get-ChildItem $postazione -Include "*.pdb", "Microsoft.Web.WebView2.Wpf.dll" -Recurse | Remove-Item -Force
 Copy-Item (Join-Path $root "windows\client\app.ico") $postazione
 
+# 2.14.0: our own code signed before it goes into the MSI, when the build has a certificate (windows/firma.ps1)
+$firma = Join-Path $PSScriptRoot "firma.ps1"
+if ($env:WINDOWS_CERT_PFX -or $env:ARTIFACT_SIGNING_ACCOUNT) {
+    & $firma -Files (@(Join-Path $postazione "TDBookingSuite.exe") + (Get-ChildItem (Join-Path $app "tdwin") -Recurse -Filter "*.pyd").FullName)
+}
+
 # 6. the MSI
 Invoke-Native dotnet @("tool", "update", "--global", "wix", "--version", $WixVersion)
 Invoke-Native wix @("extension", "add", "-g", "WixToolset.Util.wixext/$WixVersion", "WixToolset.UI.wixext/$WixVersion")
@@ -102,6 +108,7 @@ $msi = Join-Path $dist "TD-Booking-Suite-$Version.msi"
 Invoke-Native wix @("build", (Join-Path $root "windows\wix\Package.wxs"), (Join-Path $root "windows\wix\Modalita.wxs"), "-arch", "x64", "-culture", "it-IT",
     "-ext", "WixToolset.Util.wixext", "-ext", "WixToolset.UI.wixext",
     "-bindpath", "server=$server", "-bindpath", "postazione=$postazione", "-d", "Version=$Version", "-o", $msi)
+& $firma -Files $msi  # without a certificate, the one line that says the build is not signed
 Write-Host "Pronto: $msi ($([math]::Round((Get-Item $msi).Length / 1MB)) MB)"
 if ($env:GITHUB_ACTIONS) {
     # a second build of the same files has another product code: smoke-test.ps1 uses it as a real upgrade

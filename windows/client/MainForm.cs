@@ -1,10 +1,15 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
@@ -27,6 +32,43 @@ namespace TDBookingSuite
         string shown;
         bool downloading;
         const int MaxFailures = 40;  // about two minutes
+        // 2.14.0: a read-only copy of today's and tomorrow's agenda on this PC, for when the server does not answer:
+        // saved every 15 minutes for the last activity opened, shown from the page of a server that does not answer
+        readonly Timer copyTimer = new Timer { Interval = 15 * 60 * 1000 };
+        string slug;
+        const string CopyLink = "https://tdwin.invalid/copia";  // a link of our own page, never opened: it shows the copy
+        // the day sheet fetched with the session of who is signed in (his permissions, his masking) as a refresh, which
+        // does not keep the session awake; no copy when it is not there (an older server), signed out or not allowed.
+        // The print rules apply on screen too, scripts and forms go, and the page reaches nothing: the sheet on paper
+        const string CopyScript = @"(async () => {
+  const get = url => fetch(url, {credentials: 'same-origin', headers: {'X-TDBS-Refresh': '1'}});
+  let page;
+  for (const day of [DAYS]) {
+    const r = await get('/t/SLUG/agenda/stampa/?data=' + day);
+    if (r.status == 404) chrome.webview.postMessage('tdwin-copia:');
+    if (!r.ok || r.redirected) return;
+    const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+    if (page) page.querySelector('main').append(...doc.querySelector('main').children); else page = doc;
+  }
+  for (const link of page.querySelectorAll('link[rel=stylesheet]')) {
+    const style = page.createElement('style');
+    style.textContent = (await (await get(link.getAttribute('href'))).text()).replaceAll('@media print', '@media all');
+    link.replaceWith(style);
+  }
+  page.querySelectorAll('script,link,form').forEach(e => e.remove());
+  const csp = page.createElement('meta');
+  csp.httpEquiv = 'Content-Security-Policy'; csp.content = ""default-src 'none'; style-src 'unsafe-inline'"";
+  page.head.prepend(csp);
+  const own = page.createElement('style');
+  own.textContent = 'body{padding:0 24px 24px}.tdwin-copia{position:sticky;top:0;z-index:9;margin:0 -24px 18px;padding:10px 24px;background:#fff3cd;color:#5c4400;border-bottom:1px solid #e6c463;font-weight:600}.tdwin-copia a{margin-left:10px;text-decoration:underline}';
+  page.head.append(own);
+  const now = new Date(), note = page.createElement('p'), back = page.createElement('a');
+  note.className = 'tdwin-copia';
+  note.append('Copia del ' + now.toLocaleDateString('it-IT', {day: 'numeric', month: 'numeric'}) + ' alle ' + now.toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'}) + ': il server non risponde, i dati potrebbero non essere aggiornati.');
+  back.href = location.origin + '/'; back.textContent = 'Riprova'; note.append(back);
+  page.body.prepend(note);
+  chrome.webview.postMessage('tdwin-copia:<!doctype html>' + page.documentElement.outerHTML);
+})().catch(() => {});";
         const int WM_SYSCOMMAND = 0x112, MF_STRING = 0, MF_SEPARATOR = 0x800, ID_RELOAD = 0x1000, ID_SERVER = 0x1010;
 
         [DllImport("user32.dll")] static extern IntPtr GetSystemMenu(IntPtr hWnd, bool revert);
@@ -139,7 +181,7 @@ namespace TDBookingSuite
             {
                 if (config.SameOrigin(e.Uri) || e.Uri.StartsWith("about:") || e.Uri.StartsWith("data:")) return;
                 e.Cancel = true;
-                OpenOutside(e.Uri);
+                if (e.Uri == CopyLink) BeginInvoke((Action)ShowCopy); else OpenOutside(e.Uri);
             };
             core.NewWindowRequested += (s, e) =>
             {
@@ -153,7 +195,8 @@ namespace TDBookingSuite
             core.DownloadStarting += (s, e) => { downloading = true; };
             core.NavigationCompleted += Completed;
             retry.Tick += (s, e) => { retry.Stop(); web.CoreWebView2?.Navigate(target ?? config.Server + "/"); };
-            FormClosed += (s, e) => retry.Dispose();
+            copyTimer.Tick += (s, e) => SaveCopy();
+            FormClosed += (s, e) => { retry.Dispose(); copyTimer.Dispose(); };
             core.Navigate(config.Server + "/");
         }
 
@@ -164,6 +207,12 @@ namespace TDBookingSuite
         {
             string text;
             try { text = e.TryGetWebMessageAsString(); } catch (ArgumentException) { return; }
+            if (text.StartsWith("tdwin-copia:") && config.SameOrigin(e.Source))
+            {
+                // empty: a server older than 2.14.0, without the sheet; no more tries, there each one keeps the session awake
+                if (text.Length == 12) copyTimer.Stop(); else StoreCopy(text.Substring(12));
+                return;
+            }
             if ((text != "tdwin-online:on" && text != "tdwin-online:off") || !config.SameOrigin(e.Source)
                 || !Uri.TryCreate(e.Source, UriKind.Absolute, out var page) || page.AbsolutePath != "/platform/rete/") return;
             var script = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "server", "script", "setup-server.ps1"));
@@ -185,7 +234,18 @@ namespace TDBookingSuite
         void Completed(object sender, CoreWebView2NavigationCompletedEventArgs e)
         {
             var core = web.CoreWebView2;
-            if (e.IsSuccess) { if (config.SameOrigin(core.Source)) { failures = 0; shown = core.Source; } return; }
+            if (e.IsSuccess)
+            {
+                if (!config.SameOrigin(core.Source)) return;
+                failures = 0; shown = core.Source;
+                // 2.14.0: the activity whose agenda the copy keeps; the first one opened makes a copy at once
+                var activity = Regex.Match(new Uri(core.Source).AbsolutePath, "^/t/([a-zA-Z0-9_-]+)/");
+                if (!activity.Success) return;
+                var first = slug == null;
+                slug = activity.Groups[1].Value;
+                if (first) { copyTimer.Start(); SaveCopy(); }
+                return;
+            }
             if (downloading) { downloading = false; target = shown; return; }
             switch (e.WebErrorStatus)
             {
@@ -198,7 +258,7 @@ namespace TDBookingSuite
                 case CoreWebView2WebErrorStatus.OperationCanceled: return;  // a click on another page meanwhile
                 default:
                     // the browser's own error pages are off: our page, with what went wrong and Riprova
-                    Page("La pagina non si apre", "Errore " + e.WebErrorStatus + ". Premi Riprova; se succede ancora, riavvia il programma.", false);
+                    Page("La pagina non si apre", "Errore " + e.WebErrorStatus + ". Premi Riprova; se succede ancora, riavvia il programma.", false, true);
                     return;
             }
             failures++;
@@ -218,21 +278,74 @@ namespace TDBookingSuite
                 text = local ? "Il servizio di TD Booking Suite su questo PC non è partito. Riavvia il PC; se succede ancora, apri <strong>Servizi</strong> di Windows e controlla <strong>TD Booking Suite Web</strong> e <strong>TD Booking Suite Database</strong>. I dettagli sono in <code>C:\\ProgramData\\TD Booking Suite\\log</code>."
                              : "Il PC server è spento, fuori rete o il suo indirizzo è cambiato. Quando è di nuovo acceso premi Riprova; per un altro server: menu di sistema della finestra, <strong>Cambia server</strong>.";
             }
-            Page(title, text, failures <= MaxFailures);
+            // the copy, but not while the program on this PC is only starting: its page comes in seconds
+            Page(title, text, failures <= MaxFailures, !(local && failures <= MaxFailures));
         }
 
-        /// <summary>A page of the window itself, light or dark like Windows, with Riprova to the page that was asked.</summary>
-        void Page(string title, string text, bool waiting)
+        /// <summary>A page of the window itself, light or dark like Windows, with Riprova to the page that was asked,
+        /// and the copy of the agenda when there is one.</summary>
+        void Page(string title, string text, bool waiting, bool copy)
         {
+            copy = copy && LatestCopy() != null;
             bool dark = WindowsDark();
             string ink = dark ? "#efeaf6" : "#2b2236", muted = dark ? "#b0a4c2" : "#6b6079", bg = dark ? "#16111d" : "#f6f3fa";
             // its title, not about:blank, in the title bar
             web.CoreWebView2?.NavigateToString("<!doctype html><html lang=\"it\"><meta charset=\"utf-8\"><title>" + title + "</title><style>body{margin:0;height:100vh;display:grid;place-items:center;"
                 + $"background:{bg};color:{ink};font:15px/1.6 'Segoe UI',sans-serif}}main{{max-width:520px;padding:32px}}h1{{font-size:24px;margin:0 0 10px}}p{{color:{muted};margin:0 0 18px}}"
                 + "code{font-size:13px}a{display:inline-block;padding:9px 18px;border-radius:10px;background:#8b67b8;color:#fff;text-decoration:none;font-weight:600}"
+                + "a.alt{margin:8px 0 0 8px;background:none;color:#8b67b8;box-shadow:inset 0 0 0 1.5px #8b67b8}"
                 + ".dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8b67b8;margin-right:10px;animation:p 1.2s infinite}@keyframes p{50%{opacity:.25}}</style>"
                 + $"<main><h1>{(waiting ? "<span class=\"dot\"></span>" : "")}{title}</h1><p>{text}</p>"
-                + $"<a href=\"{WebUtility.HtmlEncode(target ?? config.Server + "/")}\">Riprova</a></main></html>");
+                + (copy ? "<p>Intanto puoi consultare l'ultima copia dell'agenda salvata su questo PC, in sola lettura.</p>" : "")
+                + $"<a href=\"{WebUtility.HtmlEncode(target ?? config.Server + "/")}\">Riprova</a>"
+                + (copy ? $"<a class=\"alt\" href=\"{CopyLink}\">Apri la copia dell'agenda (sola lettura)</a>" : "") + "</main></html>");
+        }
+
+        static string Day(int offset) => DateTime.Today.AddDays(offset).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+        /// <summary>2.14.0: the page script fetches today's and tomorrow's sheet and sends it back (Message, StoreCopy).</summary>
+        void SaveCopy()
+        {
+            var core = web.CoreWebView2;
+            if (core == null || slug == null || !config.SameOrigin(core.Source)) return;
+            _ = core.ExecuteScriptAsync(CopyScript.Replace("SLUG", slug).Replace("DAYS", $"'{Day(0)}', '{Day(1)}'"));
+        }
+
+        /// <summary>The copy encrypted for this Windows user (DPAPI), the last one of each day; the copies from before
+        /// yesterday go, they hold only days gone by. A copy that fails never stops the window.</summary>
+        static void StoreCopy(string html)
+        {
+            try
+            {
+                Directory.CreateDirectory(Config.CopyFolder);
+                File.WriteAllBytes(Path.Combine(Config.CopyFolder, Day(0) + ".bin"), ProtectedData.Protect(Encoding.UTF8.GetBytes(html), null, DataProtectionScope.CurrentUser));
+                foreach (var file in Directory.GetFiles(Config.CopyFolder, "*.bin"))
+                    if (string.CompareOrdinal(Path.GetFileName(file), Day(-1)) < 0) File.Delete(file);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is CryptographicException) { }
+        }
+
+        /// <summary>The newest copy of today or yesterday (that one has today in it), or null.</summary>
+        static string LatestCopy() => !Directory.Exists(Config.CopyFolder) ? null
+            : Directory.GetFiles(Config.CopyFolder, "*.bin").Where(f => string.CompareOrdinal(Path.GetFileName(f), Day(-1)) >= 0).OrderBy(f => f, StringComparer.Ordinal).LastOrDefault();
+
+        /// <summary>Apri la copia dell'agenda: the copy, read-only, until Riprova; no new tries meanwhile.</summary>
+        void ShowCopy()
+        {
+            try
+            {
+                var file = LatestCopy();
+                if (file != null)
+                {
+                    var html = Encoding.UTF8.GetString(ProtectedData.Unprotect(File.ReadAllBytes(file), null, DataProtectionScope.CurrentUser));
+                    retry.Stop();
+                    // shortcut: NavigateToString takes up to 2 MB, thousands of appointments in two days; beyond that, a temporary file
+                    web.CoreWebView2?.NavigateToString(html);
+                    return;
+                }
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is CryptographicException || ex is ArgumentException) { }
+            Page("La copia dell'agenda non si apre", "La copia salvata su questo PC non si legge. Premi Riprova quando il server risponde.", false, false);
         }
 
         void Reply(string error) => web.CoreWebView2?.PostWebMessageAsString("tdwin-online-error:" + error);

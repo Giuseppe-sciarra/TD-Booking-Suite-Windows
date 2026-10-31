@@ -54,7 +54,7 @@ L'MSI non ha ancora una firma digitale, quindi Windows non riconosce chi lo pubb
 2. **Windows ha protetto il PC**, la finestra blu di SmartScreen, compare al doppio clic. Premi **Ulteriori informazioni** e poi **Esegui comunque**.
 3. Se il file arriva da una chiavetta o da una email e non parte: tasto destro, **Proprietà**, spunta **Sblocca** in basso, **OK**.
 
-Per togliere gli avvisi serve un certificato di firma del codice, che costa qualche centinaio di euro l'anno.
+Per togliere gli avvisi serve un certificato di firma del codice, che costa qualche centinaio di euro l'anno: la build lo usa da sola, vedi [Firma del codice](#firma-del-codice).
 
 ### Un PC solo, o il PC server
 
@@ -327,6 +327,15 @@ GitHub Actions (`.github/workflows/windows.yml`) gira a ogni push su `main`:
 
 Con un tag `v2.13.0` crea anche una **Release** con l'MSI allegato.
 
+### Firma del codice
+
+La build firma il programma della postazione, i moduli `.pyd` di tdwin, l'MSI e TD Licenze.exe (SHA-256, con marca temporale) solo se trova un certificato nei secret della repo (**Settings → Secrets and variables → Actions**, `windows/firma.ps1`). Senza, tutto resta come prima, non firmato, e il log lo dice in una riga.
+
+- **Certificato OV o EV in un file `.pfx`**: `WINDOWS_CERT_PFX`, il file in base64 (in PowerShell `[Convert]::ToBase64String([IO.File]::ReadAllBytes("firma.pfx"))`), e `WINDOWS_CERT_PASSWORD`, la sua password.
+- **Azure Artifact Signing** (ex Trusted Signing, da circa 10 $ al mese, anche per le aziende in UE): `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` e `AZURE_CLIENT_SECRET` di un'app registrata con il ruolo *Certificate Profile Signer* sull'account di firma, più `ARTIFACT_SIGNING_ENDPOINT` (per esempio `https://weu.codesigning.azure.net/`), `ARTIFACT_SIGNING_ACCOUNT` e `ARTIFACT_SIGNING_PROFILE`.
+
+Dal 2023 i certificati OV ed EV delle autorità hanno la chiave su un token USB o in un HSM in cloud e di norma non si esportano in `.pfx`: per firmare su GitHub Actions va bene Azure Artifact Signing, oppure il servizio di firma in cloud dell'autorità, da aggiungere in `windows/firma.ps1`. Anche firmato, un certificato nuovo (EV compreso) toglie gli avvisi di SmartScreen dopo un po' di installazioni.
+
 Per costruirlo a mano su Windows servono Python 3.14, .NET SDK 8, PowerShell 7 e i Visual Studio Build Tools con il compilatore C++ (per Cython):
 
 ```powershell
@@ -355,6 +364,7 @@ Le istruzioni in PDF si rifanno con `python docs/manuali/build.py` (Pillow e Pla
 | `windows/script/` | configurazione del server, rimozione, ripristino, recupero di un accesso, codice del primo avvio |
 | `windows/servizi/` | i servizi Windows, WinSW |
 | `windows/compile_tdwin.py` | la compilazione di tdwin con Cython e la chiave della licenza, nella build |
+| `windows/firma.ps1` | la firma del codice nella build, solo con il certificato nei secret |
 | `docs/` | le istruzioni in PDF, gli screenshot e le loro sorgenti in `docs/manuali/` |
 | `tests/` | test, anche con PostgreSQL vero: `TDWIN_PG_ADMIN=postgresql://postgres:…@127.0.0.1:5432/postgres pytest` |
 
