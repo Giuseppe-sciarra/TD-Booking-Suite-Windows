@@ -19,6 +19,8 @@ from tdbooking.settings import INSTALLED_APPS,MIDDLEWARE,ALLOWED_HOSTS,CSRF_TRUS
 TDWIN_DATA=DATA
 # 2.13.0: the state of the licences TD Licenze publishes in the seller's public repo, read once a day when online
 TDWIN_STATO_LICENZE=os.environ.get("TDWIN_STATO_LICENZE","https://raw.githubusercontent.com/Giuseppe-sciarra/TD-Licenze-Stato/main/stato-licenze.json")
+# 2.14.0: the public releases with the MSI, looked at for new versions (also in windows/client/MainForm.cs)
+TDWIN_RILASCI="Giuseppe-sciarra/TD-Booking-Suite-per-Windows"
 # 2.13.0: the devices from which an owner the administrator allows enters without password
 TRUSTED_DEVICE="tdwin.middleware.trusted_device"
 TDWIN_CONFIG=CONFIG

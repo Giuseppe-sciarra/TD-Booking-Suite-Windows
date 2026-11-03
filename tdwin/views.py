@@ -10,7 +10,8 @@ from django.utils import timezone
 from core.identity import fresh
 from core.models import User
 from core.site import staff_only
-from . import licensing
+from . import aggiornamenti,licensing
+from .models import Aggiornamenti
 
 def primo_avvio_file():return settings.TDWIN_DATA/"licenza"/"primo-avvio.txt"
 
@@ -78,6 +79,14 @@ def licence_view(request):
             except OSError:messages.error(request,"Internet non raggiungibile da questo PC: la licenza in uso resta valida, riprovo più tardi.")
             except ValueError as ex:messages.error(request,str(ex))
             else:messages.success(request,said or "Controllato: la licenza è aggiornata.")
+        elif request.POST.get("azione")=="aggiornamenti":
+            # 2.14.0: avvisa or spento, and a look at GitHub now
+            if request.POST.get("modo") in ("avvisa","spento"):
+                Aggiornamenti.objects.update_or_create(pk=1,defaults={"modo":request.POST["modo"]})
+            if request.POST.get("modo")!="spento":
+                try:messages.success(request,aggiornamenti.check())
+                except (OSError,ValueError):messages.error(request,Aggiornamenti.get().esito)
+            else:messages.success(request,"Aggiornamenti spenti: il programma non guarda più se ci sono versioni nuove.")
         else:
             try:data,over=licensing.install(request.POST.get("licenza",""))
             except ValueError as ex:messages.error(request,str(ex))
@@ -87,7 +96,8 @@ def licence_view(request):
         return redirect("/platform/inizia/" if request.POST.get("next")=="/platform/inizia/" else "/platform/licenza/")
     return render(request,"tdwin/licenza.html",{"state":state,"code":licensing.install_code(),
         "trial_available":not licensing.trial_start() and state["kind"]!="licenza","staff":request.user.is_staff,"standalone":settings.TDWIN_STANDALONE,
-        "tipo_label":licensing.TIPI.get(state.get("tipo",""),""),"online":bool(settings.TDWIN_STATO_LICENZE),"last_check":licensing.last_check()})
+        "tipo_label":licensing.TIPI.get(state.get("tipo",""),""),"online":bool(settings.TDWIN_STATO_LICENZE),"last_check":licensing.last_check(),
+        "agg":Aggiornamenti.get(),"version":settings.VERSION,"update":aggiornamenti.notice(request,request.user)})
 
 # ---------- guided setup: licence, the business and its owner, backups, workstations, then work as the owner
 def create_business(name,preset,email,password,actor,owner=None,username=""):

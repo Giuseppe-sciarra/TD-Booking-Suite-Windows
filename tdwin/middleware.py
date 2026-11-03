@@ -112,8 +112,10 @@ class WindowsMiddleware:
 def notices(request,state):
     """The trial's last days, a licence about to expire, backups off or failing: on top of the agency's pages."""
     user=getattr(request,"user",None)
-    if not (user and user.is_authenticated and user.is_staff) or request.path.startswith(("/book/","/action/")):return []
-    found=[]
+    if not (user and user.is_authenticated) or request.path.startswith(("/book/","/action/")):return []
+    from . import aggiornamenti
+    found=[n for n in (aggiornamenti.notice(request,user),) if n]  # 2.14.0: also for the titolare
+    if not user.is_staff:return found
     if state["kind"]=="prova" and not request.path.startswith("/platform/licenza/"):
         found.append({"title":"Versione di prova","text":f"Mancano {state['giorni']} giorn{'o' if state['giorni']==1 else 'i'}: poi il programma chiede la licenza","url":"/platform/licenza/","action":"Inserisci la licenza"})
     elif state["kind"]=="licenza" and state["giorni"] is not None and state["giorni"]<=15:

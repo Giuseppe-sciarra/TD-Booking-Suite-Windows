@@ -78,3 +78,12 @@ class Rete(models.Model):
     aggiornata=models.DateTimeField(auto_now=True)
     @classmethod
     def get(cls):return cls.objects.get_or_create(pk=1)[0]
+
+class Aggiornamenti(models.Model):
+    """2.14.0, one row: the newest public release seen on GitHub, proposed in the program (tdwin/aggiornamenti.py)."""
+    modo=models.CharField(max_length=10,default="avvisa",choices=[("avvisa","Avvisa quando c'è una versione nuova"),("spento","Spento")])
+    ultimo_controllo=models.DateTimeField(null=True)
+    esito=models.TextField(blank=True)
+    disponibile=models.CharField(max_length=20,blank=True)  # a newer version, with its MSI and SHA-256 published
+    @classmethod
+    def get(cls):return cls.objects.get_or_create(pk=1)[0]

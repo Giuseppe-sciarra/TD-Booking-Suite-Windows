@@ -37,6 +37,8 @@ namespace TDBookingSuite
         readonly Timer copyTimer = new Timer { Interval = 15 * 60 * 1000 };
         string slug;
         const string CopyLink = "https://tdwin.invalid/copia";  // a link of our own page, never opened: it shows the copy
+        // 2.14.0: Aggiorna ora links the MSI of a public release (tdwin/aggiornamenti.py): only from here, never another address
+        const string Releases = "https://github.com/Giuseppe-sciarra/TD-Booking-Suite-per-Windows/releases/download/";
         // the day sheet fetched with the session of who is signed in (his permissions, his masking) as a refresh, which
         // does not keep the session awake; no copy when it is not there (an older server), signed out or not allowed.
         // The print rules apply on screen too, scripts and forms go, and the page reaches nothing: the sheet on paper
@@ -166,6 +168,9 @@ namespace TDBookingSuite
             // and the right click offers only cut, copy and paste where there is something to cut, copy or paste
             core.Settings.IsBuiltInErrorPageEnabled = false;
             core.Settings.IsSwipeNavigationEnabled = false;
+            // 2.14.0: the server tells a postazione whose window is older than itself to update
+            var mine = typeof(MainForm).Assembly.GetName().Version;
+            core.Settings.UserAgent += $" TDBookingSuite/{mine.Major}.{mine.Minor}.{mine.Build}";
             core.ContextMenuRequested += (s, e) =>
             {
                 var keep = new[] { "cut", "copy", "paste", "selectAll" };
@@ -181,7 +186,9 @@ namespace TDBookingSuite
             {
                 if (config.SameOrigin(e.Uri) || e.Uri.StartsWith("about:") || e.Uri.StartsWith("data:")) return;
                 e.Cancel = true;
-                if (e.Uri == CopyLink) BeginInvoke((Action)ShowCopy); else OpenOutside(e.Uri);
+                if (e.Uri == CopyLink) BeginInvoke((Action)ShowCopy);
+                else if (Regex.IsMatch(e.Uri, "^" + Regex.Escape(Releases) + @"v\d+\.\d+\.\d+/TD-Booking-Suite-\d+\.\d+\.\d+\.msi$")) BeginInvoke((Action)(() => Update(e.Uri)));
+                else OpenOutside(e.Uri);
             };
             core.NewWindowRequested += (s, e) =>
             {
@@ -388,6 +395,43 @@ namespace TDBookingSuite
                     Close();
                 }
             }));
+        }
+
+        // 2.14.0: the MSI checked with the SHA-256 published next to it, then msiexec with Windows' confirmation (an
+        // administrator of this PC). It keeps Un PC solo, server or postazione; this window closes so its files can change.
+        // shortcut: no Authenticode check of its own while the MSI is unsigned, Windows shows the publisher in the confirmation
+        async void Update(string url)
+        {
+            if (MessageBox.Show(this, "Scarico la versione nuova, la controllo e la installo. Il programma si chiude per qualche minuto: poi riaprilo.\r\n\r\nContinuo?",
+                "TD Booking Suite", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
+            var msi = Path.Combine(Path.GetTempPath(), Path.GetFileName(new Uri(url).AbsolutePath));
+            try
+            {
+                Cursor = Cursors.WaitCursor;
+                using (var http = new WebClient())
+                {
+                    ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+                    http.Headers[HttpRequestHeader.UserAgent] = "TD-Booking-Suite";
+                    var expected = Regex.Match(await http.DownloadStringTaskAsync(url + ".sha256"), "[0-9a-fA-F]{64}").Value.ToLowerInvariant();
+                    await http.DownloadFileTaskAsync(url, msi);
+                    string got;
+                    using (var file = File.OpenRead(msi)) using (var sha = SHA256.Create())
+                        got = BitConverter.ToString(sha.ComputeHash(file)).Replace("-", "").ToLowerInvariant();
+                    if (expected.Length != 64 || got != expected)
+                    {
+                        File.Delete(msi);
+                        MessageBox.Show(this, "Il file scaricato non corrisponde al suo SHA-256: non lo installo. Riprova più tardi.", "TD Booking Suite", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                }
+                Process.Start(new ProcessStartInfo("msiexec.exe", $"/i \"{msi}\" /passive /norestart") { UseShellExecute = true, Verb = "runas" });
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Aggiornamento non riuscito: " + ex.Message, "TD Booking Suite", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            finally { Cursor = Cursors.Default; }
         }
 
         static void OpenOutside(string url)

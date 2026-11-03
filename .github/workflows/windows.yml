@@ -144,14 +144,18 @@ jobs:
           name: TD-Booking-Suite-Windows
           path: dist
 
+      # 2.14.0: the program checks the MSI it downloads for Aggiorna ora against this file (tdwin/aggiornamenti.py)
+      - name: SHA-256 dell'MSI
+        run: cd dist && for f in *.msi; do sha256sum "$f" > "$f.sha256"; done && cat *.sha256
+
       - name: Rilascio con l'MSI allegato
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/*.msi --repo "$GITHUB_REPOSITORY" --clobber
+            gh release upload "$TAG" dist/*.msi dist/*.msi.sha256 --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$TAG" dist/*.msi --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            gh release create "$TAG" dist/*.msi dist/*.msi.sha256 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
               --title "TD Booking Suite per Windows $TAG" \
               --notes "MSI per server e postazioni. Windows lo segnala come app non riconosciuta perché non è firmato: Ulteriori informazioni, poi Esegui comunque."
           fi
@@ -177,9 +181,9 @@ jobs:
           git diff --cached --quiet || git commit -q -m "TD Booking Suite per Windows $TAG"
           git push -q origin main
           if gh release view "$TAG" --repo "$VETRINA" >/dev/null 2>&1; then
-            gh release upload "$TAG" ../dist/*.msi Istruzioni-TD-Booking-Suite-Windows.pdf --repo "$VETRINA" --clobber
+            gh release upload "$TAG" ../dist/*.msi ../dist/*.msi.sha256 Istruzioni-TD-Booking-Suite-Windows.pdf --repo "$VETRINA" --clobber
           else
-            gh release create "$TAG" ../dist/*.msi Istruzioni-TD-Booking-Suite-Windows.pdf --repo "$VETRINA" --target main \
+            gh release create "$TAG" ../dist/*.msi ../dist/*.msi.sha256 Istruzioni-TD-Booking-Suite-Windows.pdf --repo "$VETRINA" --target main \
               --title "TD Booking Suite per Windows $TAG" \
               --notes "Un solo MSI per Un PC solo, per il server e per le postazioni: la scelta si fa durante l'installazione. 7 giorni di prova. Windows lo segnala perché non è ancora firmato: Ulteriori informazioni, poi Esegui comunque. Le istruzioni sono nel PDF allegato."
           fi
