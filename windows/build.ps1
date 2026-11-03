@@ -53,7 +53,7 @@ Invoke-Native python @("-m", "pip", "install", "--disable-pip-version-check", "-
 # 2. the program: core and Windows edition, without tests, compiled ahead because the services cannot write there
 $app = Join-Path $server "app"
 New-Item -ItemType Directory -Force (Join-Path $app "suite") | Out-Null
-foreach ($item in "core", "tdbooking", "templates", "static", "locale", "scripts", "VERSION", "LICENSE", "THIRD-PARTY.md") {
+foreach ($item in "core", "tdbooking", "templates", "static", "locale", "scripts", "wordpress", "VERSION", "LICENSE", "THIRD-PARTY.md") {
     Copy-Item (Join-Path $root "suite\$item") (Join-Path $app "suite") -Recurse
 }
 Copy-Item (Join-Path $root "tdwin") $app -Recurse
