@@ -43,6 +43,8 @@ TDWIN_STANDALONE=CONFIG.get("modalita","server")=="standalone"
 # 2.10.0: the booking page and the website: always on a server; on Un PC solo only once the administrator turns them on
 TDWIN_ONLINE=not TDWIN_STANDALONE or bool(CONFIG.get("online"))
 PUBLIC_BOOKING=TDWIN_ONLINE
+# 2.16.0: the server PC is in the shop: it talks to the till itself (network or USB), no bridge needed
+TILL_DIRECT=True
 def EXTRA_NAV(request):
     """The program's own entries. Configurazione guidata goes once there is a licence (or the trial) and a business:
     from then on the menu keeps only what is used; /platform/inizia/ still opens from its address."""
