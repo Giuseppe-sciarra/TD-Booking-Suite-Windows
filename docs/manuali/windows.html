@@ -27,7 +27,7 @@
     <li><span>7</span><a href="#lavoro">Il lavoro di ogni giorno</a><small>agenda, clienti, promemoria, import</small></li>
     <li><span>8</span><a href="#cassa">Cassa e registratore di cassa</a><small>conto, scontrini, cassa in rete o USB, dati fiscali</small></li>
     <li><span>9</span><a href="#postazioni">Le postazioni</a><small>solo Server con postazioni</small></li>
-    <li><span>10</span><a href="#fuori">Da fuori dall'ufficio</a><small>proxy, certificato, sito con il PC spento, agenda riservata</small></li>
+    <li><span>10</span><a href="#fuori">Da fuori dall'ufficio</a><small>proxy, certificato, sito con il PC spento, agenda riservata, sito come archivio, firewall</small></li>
     <li><span>11</span><a href="#backup">Backup e ripristino</a></li>
     <li><span>12</span><a href="#licenza">La licenza</a><small>tipi, codice installazione, prova</small></li>
     <li><span>13</span><a href="#problemi">Se qualcosa non va</a></li>
@@ -287,6 +287,45 @@
   <li>Dai la password solo a chi deve vedere l'agenda. Arriva alla sincronizzazione dopo, entro 2 minuti con il PC acceso. Per aprirla: la pagina, la password, <strong>Apri l'agenda</strong>; <strong>Esci</strong> la chiude, e dopo 8 ore si esce da soli. Dopo 5 password sbagliate si blocca per 15 minuti.</li>
 </ol>
 <div class="note"><strong>Chi la può leggere</strong>Chi ha la password. Il PC la manda cifrata, ma il sito la decifra per mostrarla: chi amministra il sito WordPress, o il suo hosting, può tecnicamente leggerla. Se non va bene, non impostate la password: senza, l'agenda resta spenta.</div>
+
+<h3>Il sito come archivio centrale</h3>
+<p>Con la modalità PC il sito può tenere anche <strong>la copia di tutto</strong>: diventa l'archivio delle prenotazioni. Il programma sul PC resta il motore (calcola gli orari, conferma, fa cassa); il sito conserva, mostra l'agenda riservata e permette di rimettere tutto su un PC nuovo.</p>
+<p><strong>Cosa va sul sito:</strong></p>
+<ul>
+  <li>tutte le prenotazioni, anche quelle passate, con spostamenti, annullamenti e cambi di stato;</li>
+  <li>le schede clienti con i dati fiscali;</li>
+  <li>lo <strong>storico clienti</strong>: la scheda trattamenti (data, chi l'ha fatto, formula colore, prodotti, note) e lo storico dei consensi privacy e marketing;</li>
+  <li>il riepilogo degli scontrini emessi.</li>
+</ul>
+<p>Ogni modifica fatta sul PC entra in una coda e parte alla sincronizzazione dopo. Se il PC è spento o senza Internet la coda aspetta e parte appena torna: ogni modifica arriva una volta sola e nell'ordine giusto, senza doppioni né buchi. Un cliente cancellato sul PC (diritto all'oblio) viene cancellato anche dal sito, con tutto il suo storico. Sul sito i dati sono cifrati: chi apre il database vede solo testo illeggibile. Lo storico trattamenti non compare nell'agenda riservata.</p>
+<ol class="steps">
+  <li>Nel programma, come amministratore, in <strong>Configura l'attività › Sito WordPress · modalità PC</strong> accendi <strong>Sito come archivio centrale</strong> e premi <strong>Salva</strong>.</li>
+  <li>In WordPress, <strong>Impostazioni › TD Booking Suite › Modalità PC</strong>, accendi <strong>Il sito come archivio centrale</strong> e premi <strong>Salva la modalità PC</strong>. Devono essere accese tutte e due: con una sola l'archivio resta fermo. Se la spegni nel plugin, la copia sul sito viene cancellata (il plugin chiede conferma): per riaverla la riaccendi e nel programma premi <strong>Carica tutto sul sito</strong>.</li>
+  <li>La prima volta premi nel programma <strong>Carica tutto sul sito</strong>: manda in un colpo lo storico che c'è già. Poi va avanti da solo.</li>
+</ol>
+<p>Il titolare non vede né tocca queste impostazioni: le gestisce l'amministratore del programma.</p>
+<p><strong>Rimettere i dati su un PC nuovo</strong> (PC rotto o cambiato):</p>
+<ol class="steps">
+  <li>Installa il programma e collegalo al sito con la stessa chiave.</li>
+  <li>Ricrea servizi e operatori con gli stessi nomi: il programma dice quali mancano.</li>
+  <li>Premi <strong>Ripristina dal sito</strong>: tornano clienti, prenotazioni, storico trattamenti e consensi, già agganciati tra loro.</li>
+</ol>
+<p>Su un'attività vuota il ripristino parte subito; se ci sono già dati chiede conferma. In ogni caso non crea doppioni. Il backup del capitolo 11 resta comunque da tenere: l'archivio sul sito non contiene licenza, chiavi e impostazioni del programma.</p>
+<p><strong>Il sito deve avere</strong> i permalink diversi da «Semplice» (<strong>Impostazioni › Permalink</strong>, per esempio <strong>Nome articolo</strong>) e la pagina dell'agenda esclusa dalla cache del server.</p>
+<h3>Per il firewall del sito</h3>
+<p>Se davanti al sito c'è un firewall applicativo (WAF), le chiamate del PC vanno lasciate passare. Nella whitelist del WAF, tipo <strong>path</strong>, aggiungi due voci:</p>
+<table>
+  <tr><th>Tipo</th><th>Valore</th><th>Nota</th></tr>
+  <tr><td>path</td><td><code>/wp-json/tdbs/v1/sync</code></td><td>TD Booking Suite – PC</td></tr>
+  <tr><td>path</td><td><code>/wp-json/tdbs/v1/archive/</code></td><td>TD Booking Suite – PC</td></tr>
+</table>
+<ul>
+  <li>Così valgono per tutti i siti. Per un sito solo: <code>sitocliente.it|/wp-json/tdbs/v1/sync</code> e <code>sitocliente.it|/wp-json/tdbs/v1/archive/</code>. Il nome va scritto esatto: se il sito risponde anche con il www, aggiungi le stesse voci con <code>www.sitocliente.it</code>.</li>
+  <li><strong>Non</strong> aprire tutto <code>/wp-json/tdbs/v1/</code>: lì ci sono anche <code>/slots</code> e <code>/book</code>, che usano i visitatori per prenotare e devono restare protetti dal WAF.</li>
+  <li>Da quei due percorsi passano solo richieste POST in JSON dal PC, con le intestazioni <code>X-TDBS-Time</code> e <code>X-TDBS-Signature</code>: la firma è fatta con la chiave condivisa, e una richiesta più vecchia di 5 minuti o ripetuta viene rifiutata.</li>
+  <li>Le richieste dell'archivio pesano al massimo <strong>512 KB</strong>: l'archivio viaggia a pezzi, sotto il limite di 1 MB che nginx ha di serie. Quella degli orari liberi (<code>/sync</code>) di solito pesa molto meno; con tanti servizi e 90 giorni prenotabili può superare 1 MB: se nel programma la sincronizzazione dice errore 413, alza nel proxy il limite del corpo a 5 MB (in NPMplus: <code>client_max_body_size 5m;</code> nella configurazione avanzata dell'host).</li>
+</ul>
+<div class="note"><strong>Un percorso con ../ non passa</strong>Il WAF non applica l'eccezione a un indirizzo che prova a risalire le cartelle: chi tenta di usare quei percorsi per arrivare altrove resta bloccato.</div>
 
 <h2 id="backup"><span class="num">11</span>Backup e ripristino</h2>
 <p>Dalla pagina <strong>Backup</strong>:</p>
