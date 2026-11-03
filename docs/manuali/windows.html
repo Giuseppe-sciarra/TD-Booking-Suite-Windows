@@ -11,7 +11,7 @@
   <div class="mark">TD</div>
   <div class="kicker">Istruzioni · versione {{VERSION}}</div>
   <h1>TD Booking Suite per Windows</h1>
-  <p class="sub">Installare il programma, configurarlo con la configurazione guidata, lavorarci ogni giorno, collegare le postazioni, fare i backup e gestire la licenza.</p>
+  <p class="sub">Installare il programma, configurarlo con la configurazione guidata, lavorarci ogni giorno, usare la cassa, collegare le postazioni, fare i backup e gestire la licenza.</p>
   <div class="foot"><div><strong>Tastiere Digitali</strong>tastieredigitali.tech</div><div>{{DATE}}</div></div>
 </section>
 
@@ -24,14 +24,15 @@
     <li><span>4</span><a href="#primo">Primo avvio</a><small>l'amministratore del programma</small></li>
     <li><span>5</span><a href="#guida">Configurazione guidata</a><small>licenza, attività, backup, postazioni</small></li>
     <li><span>6</span><a href="#account">Gli account e l'accesso</a><small>chi vede cosa, entrare e uscire</small></li>
-    <li><span>7</span><a href="#lavoro">Il lavoro di ogni giorno</a><small>agenda, clienti, persone, import</small></li>
-    <li><span>8</span><a href="#postazioni">Le postazioni</a><small>solo Server con postazioni</small></li>
-    <li><span>9</span><a href="#fuori">Da fuori dall'ufficio</a><small>proxy, certificato, versione web</small></li>
-    <li><span>10</span><a href="#backup">Backup e ripristino</a></li>
-    <li><span>11</span><a href="#licenza">La licenza</a><small>tipi, codice installazione, prova</small></li>
-    <li><span>12</span><a href="#problemi">Se qualcosa non va</a></li>
-    <li><span>13</span><a href="#aggiornare">Aggiornare, cambiare tipo, disinstallare</a></li>
-    <li><span>14</span><a href="#tecnico">Per il tecnico</a><small>riga di comando, file, servizi</small></li>
+    <li><span>7</span><a href="#lavoro">Il lavoro di ogni giorno</a><small>agenda, clienti, promemoria, import</small></li>
+    <li><span>8</span><a href="#cassa">Cassa e registratore di cassa</a><small>conto, scontrini, cassa in rete o USB, dati fiscali</small></li>
+    <li><span>9</span><a href="#postazioni">Le postazioni</a><small>solo Server con postazioni</small></li>
+    <li><span>10</span><a href="#fuori">Da fuori dall'ufficio</a><small>proxy, certificato, sito con il PC spento, agenda riservata</small></li>
+    <li><span>11</span><a href="#backup">Backup e ripristino</a></li>
+    <li><span>12</span><a href="#licenza">La licenza</a><small>tipi, codice installazione, prova</small></li>
+    <li><span>13</span><a href="#problemi">Se qualcosa non va</a></li>
+    <li><span>14</span><a href="#aggiornare">Aggiornare, cambiare tipo, disinstallare</a><small>aggiornamenti proposti, Aggiorna ora</small></li>
+    <li><span>15</span><a href="#tecnico">Per il tecnico</a><small>riga di comando, file, servizi</small></li>
   </ol>
 </section>
 
@@ -78,7 +79,7 @@
   <li>Premi <strong>Installa</strong> e dai il permesso di amministratore. La prima volta servono un paio di minuti: l'installer prepara il database e i servizi di Windows.</li>
   <li>Alla fine lascia spuntato <strong>Apri TD Booking Suite</strong>, oppure usa l'icona sul desktop.</li>
 </ol>
-<div class="note"><strong>Sul PC con il server la finestra non fa domande</strong>Con Un PC solo e con Server con postazioni la finestra apre da sola il programma installato su quel PC, già verificato. Indirizzo e impronta del certificato li chiede solo una postazione (capitolo 8).</div>
+<div class="note"><strong>Sul PC con il server la finestra non fa domande</strong>Con Un PC solo e con Server con postazioni la finestra apre da sola il programma installato su quel PC, già verificato. Indirizzo e impronta del certificato li chiede solo una postazione (capitolo 9).</div>
 
 <h2 id="primo"><span class="num">4</span>Primo avvio</h2>
 <p>La prima volta il programma chiede di creare l'<strong>amministratore del programma</strong>. Si fa solo dal PC dove c'è il server, e solo finché un amministratore non esiste.</p>
@@ -87,7 +88,7 @@
   <li><strong>Codice del primo avvio</strong>: apri il menu Start, <strong>TD Booking Suite</strong>, <strong>Codice del primo avvio</strong>. Windows chiede il permesso di amministratore e mostra il codice: scrivilo nella pagina. Serve perché un altro utente di Windows dello stesso PC non crei l'amministratore al posto tuo.</li>
   <li><strong>Username</strong>: con questo entri nel programma. Lettere, numeri, punto e trattino, da 3 a 40 caratteri, per esempio <code>mario</code>.</li>
   <li><strong>Email, facoltativa</strong>: se la metti puoi entrare anche con quella.</li>
-  <li><strong>Password</strong> di almeno 12 caratteri, due volte. Conservala bene: se la perdi si recupera solo da questo PC (capitolo 12).</li>
+  <li><strong>Password</strong> di almeno 12 caratteri, due volte. Conservala bene: se la perdi si recupera solo da questo PC (capitolo 13).</li>
   <li><strong>Resta collegato su questo PC</strong>, già spuntato: alla prossima apertura entri senza scrivere niente.</li>
 </ol>
 <p>Premi <strong>Crea l'amministratore</strong>: sei già dentro e si apre la configurazione guidata.</p>
@@ -108,10 +109,10 @@
 <div class="note"><strong>Se il titolare ha già un account</strong>, per esempio perché ha già un'altra attività con la licenza Portale, scrivi solo il suo username o la sua email e lascia vuote le password: resta la sua.</div>
 
 <h3>Passo 3 · Backup</h3>
-<p>Imposta la password dei backup, attiva il backup di ogni notte e aggiungi una destinazione fuori dal PC: disco esterno, NAS, FTP o SFTP. È spiegato nel capitolo 10.</p>
+<p>Imposta la password dei backup, attiva il backup di ogni notte e aggiungi una destinazione fuori dal PC: disco esterno, NAS, FTP o SFTP. È spiegato nel capitolo 11.</p>
 
 <h3>Passo 4 · Postazioni e accesso da fuori</h3>
-<p>Solo con Server con postazioni: registri gli altri PC (capitolo 8) e, se serve, l'accesso da fuori dall'ufficio (capitolo 9).</p>
+<p>Solo con Server con postazioni: registri gli altri PC (capitolo 9) e, se serve, l'accesso da fuori dall'ufficio (capitolo 10).</p>
 
 <h3>Al lavoro</h3>
 <figure><img src="img/guida-al-lavoro-io.jpg" alt=""><figcaption>Con <strong>Io, con questo account</strong>: <strong>Vai all'agenda</strong> e lavori subito.</figcaption></figure>
@@ -152,11 +153,20 @@
   <li><strong>Clienti</strong>: a sinistra chi è il cliente (recapiti, allergie, <strong>sconto</strong> in percentuale o in euro, note), a destra Panoramica con speso e appuntamenti in programma, Prenotazioni con il prezzo, Trattamenti e Consensi e privacy. In <strong>Etichette e preferenze</strong> si mettono etichette, data di nascita, <strong>Cliente VIP</strong> e <strong>Non prenotabile online</strong>; la stella VIP e il numero di assenze compaiono anche in agenda. <strong>Unisci con un'altra scheda</strong> riunisce due schede dello stesso cliente. La ricerca trova i nomi dall'inizio delle parole, anche senza accenti.</li>
   <li><strong>Configura l'attività</strong>: il titolare ci trova orari di apertura, chiusure e ferie e gli <strong>operatori</strong>. Per ogni operatore carica la <strong>foto</strong>, spunta in <strong>Cosa fa</strong> i trattamenti che fa, ognuno con la sua durata e il suo prezzo se diversi (vuoti valgono quelli del trattamento), e, se non segue gli orari dell'attività, i suoi giorni e orari; dalla sua scheda segna le ferie. Ci sono anche i <strong>servizi</strong> con varianti e <strong>prezzi</strong>, e per ristoranti ed eventi i <strong>turni</strong> e le <strong>date</strong> (anche ripetute, con <em>Ripeti</em>). Nella scheda dell'operatore ogni giorno può avere una seconda fascia, per la pausa pranzo; negli orari <em>Ogni quante settimane</em> fa le settimane alterne. In <strong>Chiusure e giorni speciali</strong> una riga va <em>Dal giorno</em> <em>Al giorno</em>, e <strong>Segna le festività</strong> mette in un clic le festività italiane dell'anno, con Pasqua e il santo patrono. Tipo di attività, sedi, tipo di prenotazione e domande del modulo li imposta l'amministratore del programma.</li>
   <li><strong>Logo e aspetto</strong>, in fondo a Configura l'attività: il titolare carica il <strong>logo</strong> (PNG, JPEG o WebP fino a 1 MB, anche orizzontale), che compare in alto nel menu al posto di "TD", sceglie il <strong>colore</strong> e la frase sotto il nome. L'anteprima del menu e della pagina prenotazioni cambia mentre scegli.</li>
-  <li><strong>Notifiche</strong>: gli avvisi per voi a ogni prenotazione nuova, spostata o annullata, per email o su Telegram, con <strong>Avvisa anche l'operatore</strong> e il <strong>Riepilogo serale</strong> delle prenotazioni di domani. Sotto, le <strong>email ai clienti</strong>, a gruppi: <strong>Promemoria e conferme</strong>, <strong>Prima dell'arrivo</strong>, <strong>Dopo la visita</strong>. Conferma, modifica e annullamento partono da sole, con il logo dell'attività. Il <strong>promemoria</strong> è acceso di serie per le attività nuove (il giorno prima) e il titolare lo regola anche se l'amministratore del programma non ha attivato le email ai clienti; ha i tasti <strong>Confermo</strong> e <strong>Non vengo</strong>, e chi conferma ha la spunta verde ✓ in agenda. Chi non ha confermato compare nella dashboard in <strong>Da chiamare</strong>. Se l'amministratore le attiva in <strong>Impostazioni e sito</strong>, il titolare sceglie anche quali email standard partono e scrive oggetto e testo, con i campi da inserire con un clic e l'anteprima. Il cliente sceglie nel modulo di prenotazione se riceverle; dalla sua scheda, in <strong>Consensi e privacy</strong>, si accendono o si spengono. Avvisi e riepilogo per un operatore partono solo se la persona ha l'email in <strong>Persone e permessi</strong>.</li>
+  <li><strong>Notifiche</strong>: gli avvisi per voi a ogni prenotazione nuova, spostata o annullata, per email o su Telegram, con <strong>Avvisa anche l'operatore</strong> e il <strong>Riepilogo serale</strong> delle prenotazioni di domani. Sotto, le <strong>email ai clienti</strong>, a gruppi: <strong>Promemoria e conferme</strong>, <strong>Prima dell'arrivo</strong>, <strong>Dopo la visita</strong>. Conferma, modifica e annullamento partono da sole, con il logo dell'attività. Il <strong>promemoria</strong> è acceso di serie per le attività nuove (il giorno prima); se parte e quando lo decide l'amministratore del programma (vedi sotto); ha i tasti <strong>Confermo</strong> e <strong>Non vengo</strong>, e chi conferma ha la spunta verde ✓ in agenda. Chi non ha confermato compare nella dashboard in <strong>Da chiamare</strong>. Se l'amministratore le attiva in <strong>Impostazioni e sito</strong>, il titolare sceglie anche quali email standard partono e scrive oggetto e testo, con i campi da inserire con un clic e l'anteprima. Il cliente sceglie nel modulo di prenotazione se riceverle; dalla sua scheda, in <strong>Consensi e privacy</strong>, si accendono o si spengono. Avvisi e riepilogo per un operatore partono solo se la persona ha l'email in <strong>Persone e permessi</strong>.</li>
   <li><strong>Marketing</strong> compare quando l'amministratore del programma lo accende in <strong>Impostazioni e sito</strong>: le campagne email, il CSV degli iscritti per Brevo, Mailchimp o un foglio, o tutti e due.</li>
   <li><strong>Persone e permessi</strong>, solo per l'amministratore del programma, in <strong>Gestione tecnica</strong>: aggiunge chi lavora nell'attività con uno <strong>username</strong>, l'email se vuole, e il ruolo. L'accesso si consegna con un link di invito oppure con una password che scegli tu. Una persona che ha già un account si aggiunge scrivendo solo il suo username o la sua email.</li>
 </ul>
-<div class="note"><strong>I link aperti dal cliente vogliono Online e sito</strong>I tasti Confermo e Non vengo, la pagina <em>Gestisci</em> con Sposta, <em>Aggiungi al calendario</em> e il link della lista d'attesa funzionano solo se la pagina prenotazioni è raggiungibile da Internet: con Server con postazioni messo online, o con Un PC solo con <strong>Online e sito</strong> acceso (capitolo 9). Senza, l'email arriva lo stesso ma il link non si apre; al banco si lavora come sempre.</div>
+<div class="note"><strong>I link aperti dal cliente vogliono Online e sito</strong>I tasti Confermo e Non vengo, la pagina <em>Gestisci</em> con Sposta, <em>Aggiungi al calendario</em> e il link della lista d'attesa funzionano solo se la pagina prenotazioni è raggiungibile da Internet: con Server con postazioni messo online, o con Un PC solo con <strong>Online e sito</strong> acceso (capitolo 10). Senza, l'email arriva lo stesso ma il link non si apre; al banco si lavora come sempre.</div>
+<h3>Promemoria impostati dall'amministratore</h3>
+<p>Se partono e quando li decide l'<strong>amministratore del programma</strong>: promemoria, secondo promemoria, annullamento di chi non conferma, <em>Prima dell'arrivo</em> e <em>Dopo la visita</em>. Il titolare li vede in <strong>Notifiche e promemoria</strong> come sono impostati, con la scritta «Se parte e quando: li imposta l'amministratore del programma».</p>
+<ol class="steps">
+  <li>L'amministratore apre <strong>Notifiche e promemoria</strong> dell'attività e scende a <strong>Email ai clienti</strong>.</li>
+  <li>Nella card <strong>Promemoria</strong> accende l'interruttore e sceglie <strong>Quando parte</strong>: un numero di ore prima (con 24, un appuntamento di martedì alle 10 riceve il promemoria lunedì alle 10), oppure <strong>Il giorno prima, a un'ora fissa</strong>, e scrive l'ora, per esempio 18:00. Con l'ora fissa chi prenota dopo quell'ora non lo riceve, perché non serve.</li>
+  <li>In <strong>Se il cliente non preme Confermo</strong> sceglie se la prenotazione resta (e compare in <strong>Da chiamare</strong>) o si annulla da sola qualche ora prima, con un'email al cliente.</li>
+  <li>Se serve accende il <strong>Secondo promemoria</strong>, da 1 a 6 ore prima o anche lui il giorno prima a un'ora fissa, e preme <strong>Salva le email ai clienti</strong>.</li>
+</ol>
+<p>I promemoria partono dal PC del programma: se a quell'ora il PC è spento, partono appena si riaccende, se c'è ancora tempo. Per i tasti Confermo e Non vengo vale la nota qui sopra.</p>
 <figure class="half"><img src="img/agenda.jpg" alt=""><figcaption><strong>Agenda del giorno</strong>: una colonna per operatore.</figcaption></figure><figure class="half"><img src="img/operatore.jpg" alt=""><figcaption><strong>Operatore</strong>: foto, cosa fa con durata e prezzo suoi, giorni e orari, ferie.</figcaption></figure>
 <figure class="half"><img src="img/settimana.jpg" alt=""><figcaption><strong>Settimana</strong>: i sette giorni ora per ora, un colore per operatore.</figcaption></figure><figure class="half"><img src="img/mese.jpg" alt=""><figcaption><strong>Mese</strong>: quanti appuntamenti ha ogni giorno.</figcaption></figure>
 <figure><img src="img/cliente.jpg" alt=""><figcaption><strong>Scheda cliente</strong>: a sinistra chi è, con recapiti, note e sconto; a destra Panoramica, Prenotazioni, Trattamenti, Consensi e privacy.</figcaption></figure>
@@ -169,7 +179,51 @@
 <p>In <strong>Impostazioni generali</strong> l'amministratore cambia nome, loghi chiaro e scuro, icona, colore principale e tema di partenza. Ognuno sceglie per sé il tema chiaro o scuro dalla barra in alto.</p>
 <figure class="half"><img src="img/aspetto.jpg" alt=""><figcaption><strong>Impostazioni generali</strong>.</figcaption></figure><figure class="half"><img src="img/dashboard-scuro.jpg" alt=""><figcaption><strong>Tema scuro</strong> con un altro colore principale.</figcaption></figure>
 
-<h2 id="postazioni"><span class="num">8</span>Le postazioni</h2>
+<h2 id="cassa"><span class="num">8</span>Cassa e registratore di cassa</h2>
+<p class="lead">Dal programma chiudete il conto e lo mandate al registratore di cassa. È la cassa a stampare lo scontrino e a mandarlo all'Agenzia delle Entrate: il programma non fa mai scontrini da solo. I dati dello scontrino restano sulla prenotazione e nella scheda del cliente.</p>
+<p>Vanno bene la <strong>RCH Print!F</strong>, in rete o con il cavo USB, e le <strong>Epson FP-81II e FP-90III RT</strong>, in rete. Il PC con il programma parla direttamente con la cassa: non serve installare altro.</p>
+<h3>Chiudere il conto</h3>
+<p>La usano titolare, amministratore sede e reception; gli operatori solo se il titolare lo permette in <strong>Configura l'attività › Al banco</strong>.</p>
+<ol class="steps">
+  <li>Apri <strong>Ogni giorno › Cassa</strong>, oppure dalla prenotazione premi <strong>Chiudi il conto</strong>: il servizio arriva già con il suo prezzo, con gli altri servizi della stessa visita.</li>
+  <li>Tocca i servizi nella griglia o cercali. Con − e + cambi la quantità; prezzo e descrizione si possono correggere. <strong>Riga libera</strong> serve per un prodotto o una cosa fuori listino. Se serve, scrivi lo sconto in euro.</li>
+  <li>Scegli il pagamento: contanti, carta o bancomat, altro. Se il cliente paga in due modi apri <strong>Dividi il pagamento</strong>: la somma deve fare il totale.</li>
+  <li>Codice fiscale e codice lotteria solo se il cliente li dà. Se hai scelto il cliente e la sua scheda ha il codice fiscale, si mette da solo.</li>
+  <li>Premi <strong>Invia alla cassa</strong>. La cassa stampa lo scontrino, la prenotazione diventa <em>Completata</em> e lo scontrino compare sotto, in <strong>Scontrini di oggi</strong>.</li>
+</ol>
+<p><strong>Copia per email</strong>: solo se il cliente la chiede. Prima di inviare scegli il cliente (serve l'email nella scheda) e spunta <strong>Il cliente vuole la copia per email</strong>: resta registrato il suo consenso, separato da quello per le offerte. La copia non vale come scontrino. La copia per email parte solo se il programma può mandare email.</p>
+<table>
+  <tr><th>Scritta</th><th>Cosa vuol dire, cosa fare</th></tr>
+  <tr><td>In coda, In corso</td><td>Lo scontrino sta andando alla cassa. Aspetta qualche secondo: la pagina si aggiorna da sola.</td></tr>
+  <tr><td>Emesso</td><td>La cassa l'ha stampato. Ci sono <strong>Copia</strong>, <strong>Rimanda la copia</strong> e l'annullo.</td></tr>
+  <tr><td>Non emesso</td><td>La cassa ha detto di no e lo scontrino non è uscito. Sotto c'è il motivo (carta finita, coperchio aperto, errore della cassa): sistema la cassa e premi <strong>Riprova</strong>.</td></tr>
+  <tr><td>Da verificare</td><td>Il conto è partito ma la risposta della cassa non è arrivata: lo scontrino può essere uscito oppure no. Guarda la cassa. Se è uscito premi <strong>È uscito</strong> (se vuoi scrivi il numero); se non è uscito <strong>Non è uscito, rimanda</strong>. Non rimandare senza aver guardato: rischi due scontrini.</td></tr>
+  <tr><td>Annullato</td><td>Su Epson premi <strong>Annulla</strong> e la cassa stampa l'annullo. Su RCH annullo e reso si fanno dalla cassa, come sempre; poi qui premi <strong>Annullato dalla cassa</strong>.</td></tr>
+</table>
+<h3>Collegare la cassa</h3>
+<p>Una volta per ogni sede, nella pagina <strong>Registratore di cassa</strong>: la apre l'amministratore del programma, in <strong>Gestione tecnica</strong>, o il titolare se l'amministratore glielo permette nelle impostazioni dell'attività.</p>
+<ol class="steps">
+  <li><strong>Chiedi i numeri al tecnico della cassa.</strong> Ogni cassa ha i suoi <em>reparti</em>, ognuno con la sua aliquota IVA (per esempio reparto 1 al 22%), e i suoi numeri dei pagamenti (contanti, carta, non riscosso). Li ha impostati il tecnico che ha installato la cassa: chiediglieli, e per la cassa in rete chiedi anche un indirizzo IP fisso.</li>
+  <li><strong>Scegli la cassa e il collegamento.</strong> In <strong>Registratore</strong> scegli il modello. In <strong>Collegata con</strong> scegli <strong>Rete</strong> se la cassa ha il cavo di rete, <strong>USB / seriale</strong> se è attaccata con il cavo USB (solo RCH). In <strong>Collegamento</strong> lascia <strong>Da questo computer, nella stessa rete</strong>.</li>
+  <li><strong>In rete: l'indirizzo IP.</strong> La cassa deve stare nella stessa rete del PC con il programma (con Server con postazioni, del PC server). Sulla RCH l'indirizzo è nel menu della cassa: <strong>SRV › Connettività › Ethernet</strong>, e il web server della cassa deve essere acceso. Sulla Epson chiedilo al tecnico. È un numero come <code>192.168.1.50</code>.</li>
+  <li><strong>Via USB: la porta COM.</strong> Attacca la cassa al PC dove gira il programma (con Server con postazioni, al PC server). Poi tasto destro su Start, <strong>Gestione dispositivi</strong>, apri <strong>Porte (COM e LPT)</strong>: la cassa compare con il suo numero, per esempio <code>COM3</code>, e il programma propone le porte che vede. Scegli la velocità che dice il tecnico e lascia il protocollo <strong>RCH con conferma</strong>: senza conferma ogni scontrino resta da verificare a mano.</li>
+  <li><strong>Matricola</strong>: è sulla targhetta della cassa e in fondo agli scontrini.</li>
+  <li><strong>Reparti e pagamenti.</strong> In <strong>Reparti dei servizi</strong> scrivi per ogni servizio il numero del reparto: è il reparto a decidere l'IVA, la colonna IVA è solo un promemoria. Scrivi anche il reparto per le righe libere e, in <strong>Pagamenti</strong>, i numeri del tecnico (vuoti valgono quelli scritti sopra). Premi <strong>Salva</strong>.</li>
+  <li><strong>Prova collegamento.</strong> Sotto compare l'esito: «la cassa risponde», oppure il motivo. Sulla Epson c'è anche <strong>Stampa scontrino di prova</strong>, non fiscale.</li>
+  <li><strong>Primo scontrino vero, piccolo.</strong> Dalla Cassa fai un conto di pochi centesimi con una riga libera e invialo. Controlla sullo scontrino reparto, IVA e pagamento. Poi annullalo: su RCH dalla cassa e poi <strong>Annullato dalla cassa</strong>, su Epson con <strong>Annulla</strong>.</li>
+</ol>
+<div class="note"><strong>Se la cassa non risponde</strong>Controlla che sia accesa e nella stessa rete, e che l'indirizzo IP sia ancora quello del menu della cassa: se cambia ogni tanto, serve un indirizzo fisso. Via USB, se attacchi il cavo a un'altra presa il numero COM può cambiare: guardalo di nuovo in Gestione dispositivi.</div>
+<h3>Dati fiscali del cliente</h3>
+<p>Per mettere il codice fiscale sullo scontrino e avere pronti i dati di chi chiede la fattura (la fattura non la fa il programma). Li vede e li cambia chi crea prenotazioni e vede i recapiti.</p>
+<ol class="steps">
+  <li>Apri <strong>Clienti</strong>, cerca il cliente e apri la scheda.</li>
+  <li>Nella card <strong>Dati fiscali</strong> premi <strong>Aggiungi i dati fiscali</strong> e scegli il tipo: privato, azienda o ditta, professionista.</li>
+  <li>Scrivi codice fiscale e, per aziende e professionisti, ragione sociale, partita IVA, indirizzo con CAP, comune, provincia (la sigla, per esempio RM), nazione (IT), codice destinatario SDI o PEC.</li>
+  <li>Premi <strong>Salva i dati fiscali</strong>. Il programma controlla codice fiscale e partita IVA e dice se c'è un errore di battitura. Per l'estero partita IVA e CAP restano liberi.</li>
+</ol>
+<p>In Cassa, scelto il cliente, il codice fiscale si mette da solo. I dati sono cifrati con il resto della scheda, si importano con i clienti (colonne Codice fiscale, Partita IVA, Ragione sociale, PEC, SDI, CAP, Provincia) e vanno via con la cancellazione del cliente.</p>
+
+<h2 id="postazioni"><span class="num">9</span>Le postazioni</h2>
 <p>Solo con <strong>Server con postazioni</strong>. Le postazioni sono gli altri PC dell'ufficio, ma anche un browser o un telefono: ognuna si registra una volta con un codice.</p>
 <h3>Un altro PC</h3>
 <ol class="steps">
@@ -193,10 +247,10 @@
 <ul>
   <li>La copia sta sul PC, cifrata per quell'utente di Windows, in <code>%LOCALAPPDATA%\TD Booking Suite\Copia agenda</code>; quelle di prima di ieri si cancellano da sole.</li>
   <li>Se il server non risponde, la pagina <em>Il server non risponde</em> ha il pulsante <strong>Apri la copia dell'agenda (sola lettura)</strong>. La copia si apre con una striscia gialla con data e ora della copia; <strong>Riprova</strong> torna al programma.</li>
-  <li>La copia non tiene aperta la sessione: dopo 30 minuti senza nessuno si esce come sempre e la copia non si aggiorna fino al nuovo accesso. Serve un server con la 2.14.0 o più nuovo.</li>
+  <li>La copia non tiene aperta la sessione: dopo 30 minuti senza nessuno si esce come sempre e la copia non si aggiorna fino al nuovo accesso.</li>
 </ul>
 
-<h2 id="fuori"><span class="num">9</span>Da fuori dall'ufficio</h2>
+<h2 id="fuori"><span class="num">10</span>Da fuori dall'ufficio</h2>
 <p>Le sedi e chi lavora da fuori si collegano tutti allo <strong>stesso server</strong>, come postazioni: non c'è niente da sincronizzare. Il server può essere un PC dell'ufficio raggiungibile da Internet oppure un Windows in cloud. Si imposta in <strong>Rete e certificato</strong>, che vede solo l'amministratore del programma.</p>
 <figure><img src="img/rete.jpg" alt=""><figcaption><strong>Rete e certificato</strong>: indirizzo pubblico, proxy fidati e certificato.</figcaption></figure>
 <ul>
@@ -213,8 +267,28 @@
 </ol>
 <p>Da fuori si raggiungono solo la pagina prenotazioni e il collegamento del sito: agenda, clienti e configurazione restano su quel PC. <strong>Spegni</strong> torna come prima.</p>
 <p><strong>La versione web.</strong> La finestra della postazione si collega anche a TD Booking Suite installato con Docker su un server Linux: installa <strong>Solo postazione</strong> e scrivi il suo indirizzo.</p>
+<h3>Sito WordPress con il PC spento</h3>
+<p>Con <strong>Un PC solo</strong> c'è anche un altro modo, senza aprire porte nel router: la <strong>modalità PC</strong>. Il sito WordPress prende le richieste di prenotazione anche con il PC spento. Quando il PC è acceso, ogni 2 minuti il programma chiama il sito: gli manda servizi, operatori e orari liberi e si prende le richieste arrivate. Le richieste diventano prenotazioni con origine <em>Sito WordPress</em> e il cliente riceve dal programma l'email di conferma. Se intanto quell'orario l'avete dato al banco, la prenotazione arriva tra le <strong>Richieste da confermare</strong> della dashboard. Sopra l'agenda e la dashboard una riga dice com'è andata l'ultima sincronizzazione.</p>
+<ol class="steps">
+  <li>Nel programma, come amministratore, apri <strong>Configura l'attività › Sito WordPress · modalità PC</strong>. Scrivi l'indirizzo del sito, per esempio <code>https://www.sito.it</code>, e quanti giorni si possono prenotare dal sito (30 di serie, al massimo 90). Premi <strong>Salva</strong>.</li>
+  <li>Premi <strong>Genera la chiave</strong> e copiala con <strong>Copia</strong>: si vede una volta sola.</li>
+  <li>Premi <strong>Scarica il plugin</strong>. In WordPress: <strong>Plugin › Aggiungi nuovo › Carica plugin</strong>, scegli lo zip, <strong>Installa ora</strong> e <strong>Attiva</strong>. Se c'era già, accetta di sostituirlo.</li>
+  <li>In WordPress, <strong>Impostazioni › TD Booking Suite</strong>, riquadro <strong>Modalità PC</strong>: incolla la chiave in <strong>Chiave dal programma</strong>, spunta <strong>Usa la modalità PC</strong> e premi <strong>Salva la modalità PC</strong>.</li>
+  <li>Metti lo shortcode <code>[td_booking_suite]</code> in una pagina del sito, per esempio Prenota.</li>
+  <li>Nel programma accendi <strong>Sincronizzazione attiva</strong>, premi <strong>Salva</strong> e poi <strong>Sincronizza ora</strong>. La riga in alto deve dire «Sincronizzato con il sito alle…»; altrimenti dice il motivo (vedi capitolo 13). Fai una prenotazione di prova dal sito e poi annullala.</li>
+</ol>
+<p>Nel sito vanno i servizi su appuntamento, senza link riservato e senza domande obbligatorie. Il cliente vede «Disponibilità aggiornata alle…» e riceve «Richiesta ricevuta». I suoi dati restano nel sito, cifrati, solo finché il PC non li prende. Se il PC resta spento più dei giorni scritti nel plugin in <strong>Dati validi per</strong> (7 di serie), il modulo dice di contattarvi.</p>
+<h3>Agenda riservata sul sito</h3>
+<p>Con la modalità PC il titolare e i collaboratori vedono le prenotazioni anche con il PC spento, dal telefono, in una pagina del sito protetta da una password. Vista giorno e settimana, una colonna per operatore, con orario, servizio, stato, cliente, telefono e note, anche le richieste del sito non ancora prese dal PC. Si può solo guardare.</p>
+<ol class="steps">
+  <li>In WordPress, <strong>Impostazioni › TD Booking Suite › Modalità PC</strong>: scrivi la <strong>Password dell'agenda</strong> (almeno 10 caratteri) e premi <strong>Salva la modalità PC</strong>.</li>
+  <li>Crea una pagina, per esempio Agenda, con lo shortcode <code>[tdbs_agenda]</code>. Non metterla nel menu del sito.</li>
+  <li>Togli quella pagina dalla cache del server: i plugin di cache di WordPress la saltano da soli, la cache del server no (per esempio la FastCGI cache di aaPanel: aggiungi <code>/agenda/</code> agli indirizzi esclusi). Altrimenti le prenotazioni potrebbero arrivare a chi non ha la password.</li>
+  <li>Dai la password solo a chi deve vedere l'agenda. Arriva alla sincronizzazione dopo, entro 2 minuti con il PC acceso. Per aprirla: la pagina, la password, <strong>Apri l'agenda</strong>; <strong>Esci</strong> la chiude, e dopo 8 ore si esce da soli. Dopo 5 password sbagliate si blocca per 15 minuti.</li>
+</ol>
+<div class="note"><strong>Chi la può leggere</strong>Chi ha la password. Il PC la manda cifrata, ma il sito la decifra per mostrarla: chi amministra il sito WordPress, o il suo hosting, può tecnicamente leggerla. Se non va bene, non impostate la password: senza, l'agenda resta spenta.</div>
 
-<h2 id="backup"><span class="num">10</span>Backup e ripristino</h2>
+<h2 id="backup"><span class="num">11</span>Backup e ripristino</h2>
 <p>Dalla pagina <strong>Backup</strong>:</p>
 <ul>
   <li>la <strong>password dei backup</strong>: senza, il file non si apre, nemmeno da chi ha installato il programma. Conservala fuori dal PC;</li>
@@ -231,7 +305,7 @@
   <li>Su un PC nuovo: installa prima l'MSI, poi ripristina, poi chiedi la licenza con il nuovo codice installazione.</li>
 </ol>
 
-<h2 id="licenza"><span class="num">11</span>La licenza</h2>
+<h2 id="licenza"><span class="num">12</span>La licenza</h2>
 <table>
   <tr><th>Tipo</th><th>Attività</th><th>Postazioni in rete</th></tr>
   <tr><td>Un PC solo</td><td>1</td><td>nessuna</td></tr>
@@ -247,7 +321,7 @@
 <figure><img src="img/bloccato.jpg" alt=""><figcaption><strong>Senza licenza</strong>: restano aperte solo licenza, backup e configurazione guidata. Prenotazioni e clienti sono al sicuro.</figcaption></figure>
 <div class="note"><strong>La data del PC</strong>Prova e scadenza si contano dall'ultimo giorno in cui il programma ha lavorato: spostare indietro la data di Windows non le allunga. Tieni la data e l'ora di Windows giuste.</div>
 
-<h2 id="problemi"><span class="num">12</span>Se qualcosa non va</h2>
+<h2 id="problemi"><span class="num">13</span>Se qualcosa non va</h2>
 <table>
   <tr><th>Cosa succede</th><th>Cosa fare</th></tr>
   <tr><td>Password dimenticata, dell'amministratore o di chiunque</td><td>Sul PC con il server: menu Start, <strong>TD Booking Suite</strong>, <strong>Recupera accesso</strong>. Serve un account amministratore di Windows. Scrivi username o email: si apre la pagina per scegliere la password nuova, valida 24 ore. Azzera anche Authenticator e passkey, e resta scritto nel Registro attività.</td></tr>
@@ -258,12 +332,28 @@
   <tr><td>"Username già usato"</td><td>Lo username è di una persona che lavora in un'altra attività: scegline un altro, oppure scrivi l'email di quella persona se vuoi proprio lei.</td></tr>
   <tr><td>La data del PC risulta indietro</td><td>Correggi data e ora di Windows. Prova e scadenza si contano comunque dall'ultimo uso.</td></tr>
   <tr><td>"TD Booking Suite è stato modificato"</td><td>Qualcuno ha toccato i file del programma: reinstalla l'MSI sopra. I dati restano.</td></tr>
-  <tr><td>Il server non risponde e serve l'agenda</td><td>Nella pagina <em>Il server non risponde</em> premi <strong>Apri la copia dell'agenda (sola lettura)</strong>: è il foglio di oggi e di domani salvato dalla finestra (capitolo 8). Sul PC server il pulsante compare dopo i primi due minuti dall'avvio.</td></tr>
+  <tr><td>Il server non risponde e serve l'agenda</td><td>Nella pagina <em>Il server non risponde</em> premi <strong>Apri la copia dell'agenda (sola lettura)</strong>: è il foglio di oggi e di domani salvato dalla finestra (capitolo 9). Sul PC server il pulsante compare dopo i primi due minuti dall'avvio.</td></tr>
   <tr><td>La copia dell'agenda non si apre</td><td>Il file non si decifra, per esempio perché il profilo di Windows è stato copiato su un altro PC o il file è rovinato. Si rifà da solo appena il server risponde.</td></tr>
   <tr><td>Un backup non riesce</td><td>In <strong>Backup</strong>, premi <strong>Prova</strong> sulla destinazione e leggi l'esito: disco staccato, password del NAS cambiata, server non raggiungibile.</td></tr>
+  <tr><td>Prova collegamento: la cassa non risponde</td><td>Cassa accesa e nella stessa rete del PC con il programma? L'indirizzo IP è ancora quello del menu della cassa (RCH: SRV › Connettività › Ethernet, con il web server acceso)? Via USB, la porta COM è quella di Gestione dispositivi? Se l'IP cambia ogni tanto, chiedi al tecnico un indirizzo fisso.</td></tr>
+  <tr><td>Uno scontrino è «Non emesso» o «Da verificare»</td><td>Non emesso: leggi il motivo, sistema la cassa e premi <strong>Riprova</strong>. Da verificare: guarda la cassa, poi <strong>È uscito</strong> oppure <strong>Non è uscito, rimanda</strong> (capitolo 8).</td></tr>
+  <tr><td>Sito con il PC spento: «il sito non riconosce la chiave»</td><td>Genera una chiave nuova nel programma e incollala nel plugin. Controlla anche data e ora di Windows: se sono sbagliate di più di 5 minuti il sito rifiuta la chiamata.</td></tr>
+  <tr><td>Sito con il PC spento: «sito non raggiungibile» o «nel sito manca il plugin»</td><td>Indirizzo del sito scritto male, sito fermo o PC senza Internet; oppure il plugin non è attivo, la chiave non è nel plugin, un plugin di sicurezza blocca <code>/wp-json/</code> o in WordPress i permalink sono su «Semplice».</td></tr>
+  <tr><td>Il modulo nel sito dice «Pagina scaduta» o mostra orari vecchi</td><td>La pagina è nella cache del server: escludila, come la pagina dell'agenda riservata.</td></tr>
+  <tr><td>Non compare «È disponibile la versione…»</td><td>In <strong>Licenza › Aggiornamenti</strong> guarda <strong>Versioni nuove</strong> (forse è Spento) e l'esito dell'ultimo controllo.</td></tr>
 </table>
 
-<h2 id="aggiornare"><span class="num">13</span>Aggiornare, cambiare tipo, disinstallare</h2>
+<h2 id="aggiornare"><span class="num">14</span>Aggiornare, cambiare tipo, disinstallare</h2>
+<h3>Aggiornamenti proposti dal programma</h3>
+<p>Dopo l'avvio e una volta al giorno il programma guarda se c'è una versione nuova. Se c'è, in alto compare <strong>«È disponibile la versione…»</strong> con <strong>Aggiorna ora</strong> e <strong>Cosa cambia</strong>. Lo vedono l'amministratore del programma e il titolare. Niente si installa da solo.</p>
+<ol class="steps">
+  <li>Scegli un momento senza clienti: durante l'aggiornamento il programma si chiude per qualche minuto.</li>
+  <li>Premi <strong>Aggiorna ora</strong>. Il programma scarica l'MSI, controlla che sia quello giusto e chiede la conferma di Windows: rispondi Sì.</li>
+  <li>Il programma riparte da solo. Prenotazioni, clienti e impostazioni restano; prima di toccare il database l'installer ne fa una copia.</li>
+  <li>Con Server con postazioni aggiorna prima il server: dopo, l'avviso compare anche sulle postazioni, e lì si preme di nuovo Aggiorna ora.</li>
+</ol>
+<p><strong>Spegnere l'avviso</strong>: <strong>Licenza › Aggiornamenti</strong>, in <strong>Versioni nuove</strong> scegli <strong>Spento</strong> e premi <strong>Salva e controlla ora</strong> (solo l'amministratore del programma). Lì vedi anche la versione installata e com'è andato l'ultimo controllo; se dice che GitHub non si raggiunge, il PC non ha Internet o un firewall blocca github.com. Con l'avviso spento si aggiorna aprendo l'MSI nuovo, come qui sotto.</p>
+<h3>A mano, cambiare tipo, disinstallare</h3>
 <ul>
   <li><strong>Aggiornare</strong>: apri l'MSI nuovo sopra quello vecchio. Tipo, porta, database e dati restano. Prima di aggiornare l'installer salva una copia del database in <code>backup\prima-dell-aggiornamento.dump</code>; se l'aggiornamento non riesce, Windows rimette la versione di prima.</li>
   <li><strong>Cambiare tipo</strong> (per esempio da Un PC solo a Server con postazioni): apri di nuovo l'MSI, oppure Impostazioni di Windows › App › TD Booking Suite › Modifica, scegli di cambiare l'installazione e il tipo nuovo. I dati restano.</li>
@@ -271,7 +361,7 @@
   <li><strong>Reinstallare dopo averlo tolto</strong>: se l'installer trova i dati di prima, dopo il tipo chiede cosa farne. <strong>Usa i dati di prima</strong>, già scelto, riparte da dove era, con l'amministratore di allora. <strong>Ricomincia da zero</strong> dà un programma vuoto e al primo avvio crei l'amministratore: i dati di prima non si cancellano, vanno interi in <code>C:\ProgramData\TD Booking Suite (dati del giorno e ora)</code>. Licenza, prova, indirizzi, porta e certificato restano. Un aggiornamento non lo chiede. Da zero anche senza disinstallare: PowerShell come amministratore, <code>powershell -ExecutionPolicy Bypass -File "C:\Program Files\TD Booking Suite\server\script\setup-server.ps1" -Ricomincia 1</code>.</li>
 </ul>
 
-<h2 id="tecnico"><span class="num">14</span>Per il tecnico</h2>
+<h2 id="tecnico"><span class="num">15</span>Per il tecnico</h2>
 <h3>Installazione da riga di comando</h3>
 <pre>rem Un PC solo
 msiexec /i TD-Booking-Suite-{{VERSION}}.msi MODALITA=standalone /qn
