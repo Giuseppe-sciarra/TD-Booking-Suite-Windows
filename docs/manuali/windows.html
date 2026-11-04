@@ -186,7 +186,7 @@
 <p>La usano titolare, amministratore sede e reception; gli operatori solo se il titolare lo permette in <strong>Configura l'attività › Al banco</strong>.</p>
 <ol class="steps">
   <li>Apri <strong>Ogni giorno › Cassa</strong>, oppure dalla prenotazione premi <strong>Chiudi il conto</strong>: il servizio arriva già con il suo prezzo, con gli altri servizi della stessa visita.</li>
-  <li>Tocca i servizi nella griglia o cercali. Con − e + cambi la quantità; prezzo e descrizione si possono correggere. <strong>Riga libera</strong> serve per un prodotto o una cosa fuori listino. Se serve, scrivi lo sconto in euro.</li>
+  <li>Tocca i servizi nella griglia o cercali. Con − e + cambi la quantità; prezzo e descrizione si possono correggere. <strong>Riga libera</strong> serve per un prodotto o una cosa fuori listino. Lo <strong>Sconto</strong> di una riga si scrive accanto al prezzo, in euro (<code>5,00</code>) o in percentuale (<code>100%</code>): sullo scontrino esce come riga SCONTO sotto quel servizio. <strong>Sconto sul totale</strong> toglie euro da tutto il conto.</li>
   <li>Scegli il pagamento: contanti, carta o bancomat, altro. Se il cliente paga in due modi apri <strong>Dividi il pagamento</strong>: la somma deve fare il totale.</li>
   <li>Codice fiscale e codice lotteria solo se il cliente li dà. Se hai scelto il cliente e la sua scheda ha il codice fiscale, si mette da solo.</li>
   <li>Premi <strong>Invia alla cassa</strong>. La cassa stampa lo scontrino, la prenotazione diventa <em>Completata</em> e lo scontrino compare sotto, in <strong>Scontrini di oggi</strong>.</li>
@@ -198,8 +198,16 @@
   <tr><td>Emesso</td><td>La cassa l'ha stampato. Ci sono <strong>Copia</strong>, <strong>Rimanda la copia</strong> e l'annullo.</td></tr>
   <tr><td>Non emesso</td><td>La cassa ha detto di no e lo scontrino non è uscito. Sotto c'è il motivo (carta finita, coperchio aperto, errore della cassa): sistema la cassa e premi <strong>Riprova</strong>.</td></tr>
   <tr><td>Da verificare</td><td>Il conto è partito ma la risposta della cassa non è arrivata: lo scontrino può essere uscito oppure no. Guarda la cassa. Se è uscito premi <strong>È uscito</strong> (se vuoi scrivi il numero); se non è uscito <strong>Non è uscito, rimanda</strong>. Non rimandare senza aver guardato: rischi due scontrini.</td></tr>
-  <tr><td>Annullato</td><td>Su Epson premi <strong>Annulla</strong> e la cassa stampa l'annullo. Su RCH annullo e reso si fanno dalla cassa, come sempre; poi qui premi <strong>Annullato dalla cassa</strong>.</td></tr>
+  <tr><td>Annullato</td><td>Premi <strong>Annulla</strong> con il «Documento n.» dello scontrino e la cassa stampa l'annullo (vedi qui sotto). Se sulla RCH il comando di annullo è vuoto, l'annullo si fa dalla cassa e qui si preme <strong>Annullato dalla cassa</strong>.</td></tr>
 </table>
+<h3>Chiusura giornaliera e annulli</h3>
+<p>In fondo alla Cassa, nel riquadro <strong>Chiusura e annulli</strong>.</p>
+<ul>
+<li><strong>Chiusura giornaliera.</strong> A fine giornata, dopo l'ultimo scontrino, premi <strong>Chiusura giornaliera</strong>: la cassa stampa la chiusura e manda i corrispettivi all'Agenzia delle Entrate. Conservala come sempre</li>
+<li><strong>Annullare uno scontrino di oggi.</strong> In <strong>Scontrini di oggi</strong> premi <strong>Annulla</strong> accanto allo scontrino. Serve il suo «Documento n.», stampato in fondo (per esempio 2026-0012: 2026 è la chiusura, 0012 il documento): se il programma lo conosce è già scritto, altrimenti copialo dallo scontrino. La cassa stampa l'annullo e lo scontrino risulta <strong>Annullato</strong></li>
+<li><strong>Annullare uno scontrino di un altro giorno</strong>, o fatto dalla cassa: in <strong>Annulla un altro scontrino</strong> scrivi la data e il «Documento n.» e premi <strong>Annulla lo scontrino</strong></li>
+</ul>
+<p>Conserva lo scontrino sbagliato insieme all'annullo. Sulla RCH i comandi di sconto di riga, annullo e chiusura vanno provati la prima volta: se la cassa dà errore si correggono in <strong>Registratore di cassa › Comandi RCH da provare</strong>. Lasciati vuoti, annullo e chiusura si fanno dalla cassa e qui l'annullo si segna con <strong>Annullato dalla cassa</strong>.</p>
 <h3>Collegare la cassa</h3>
 <p>Una volta per ogni sede, nella pagina <strong>Registratore di cassa</strong>: la apre l'amministratore del programma, in <strong>Gestione tecnica</strong>, o il titolare se l'amministratore glielo permette nelle impostazioni dell'attività.</p>
 <ol class="steps">
@@ -212,6 +220,7 @@
   <li><strong>Prova collegamento.</strong> Sotto compare l'esito: «la cassa risponde», oppure il motivo. Sulla Epson c'è anche <strong>Stampa scontrino di prova</strong>, non fiscale.</li>
   <li><strong>Primo scontrino vero, piccolo.</strong> Dalla Cassa fai un conto di pochi centesimi con una riga libera e invialo. Controlla sullo scontrino reparto, IVA e pagamento. Poi annullalo: su RCH dalla cassa e poi <strong>Annullato dalla cassa</strong>, su Epson con <strong>Annulla</strong>.</li>
 </ol>
+<div class="note"><strong>Comandi RCH da provare</strong>Sulla RCH sconto di riga, annullo e chiusura usano i comandi di <strong>Registratore di cassa › Comandi RCH da provare</strong>: di serie <code>=V-/${importo}</code>, <code>=k/&amp;{data}/[{z}/]{numero}</code> e <code>=C3 =C10 =C1</code>. Provali la prima volta con uno scontrino di pochi centesimi: se la cassa dà errore, chiedi al tecnico RCH il comando giusto e scrivilo lì. Vuoti: lo sconto esce dentro il prezzo, annullo e chiusura si fanno dalla cassa. Sulla Epson sono già previsti.</div>
 <div class="note"><strong>Se la cassa non risponde</strong>Controlla che sia accesa e nella stessa rete, e che l'indirizzo IP sia ancora quello del menu della cassa: se cambia ogni tanto, serve un indirizzo fisso. Via USB, se attacchi il cavo a un'altra presa il numero COM può cambiare: guardalo di nuovo in Gestione dispositivi.</div>
 <h3>Dati fiscali del cliente</h3>
 <p>Per mettere il codice fiscale sullo scontrino e avere pronti i dati di chi chiede la fattura (la fattura non la fa il programma). Li vede e li cambia chi crea prenotazioni e vede i recapiti.</p>
@@ -279,12 +288,19 @@
 </ol>
 <p>Nel sito vanno i servizi su appuntamento, senza link riservato e senza domande obbligatorie. Il cliente vede «Disponibilità aggiornata alle…» e riceve «Richiesta ricevuta». I suoi dati restano nel sito, cifrati, solo finché il PC non li prende. Se il PC resta spento più dei giorni scritti nel plugin in <strong>Dati validi per</strong> (7 di serie), il modulo dice di contattarvi.</p>
 <h3>Agenda riservata sul sito</h3>
-<p>Con la modalità PC il titolare e i collaboratori vedono le prenotazioni anche con il PC spento, dal telefono, in una pagina del sito protetta da una password. Vista giorno e settimana, una colonna per operatore, con orario, servizio, stato, cliente, telefono e note, anche le richieste del sito non ancora prese dal PC. Si può solo guardare.</p>
+<p>Con la modalità PC il titolare e i collaboratori vedono le prenotazioni anche con il PC spento, dal telefono, in una pagina del sito protetta da una password. Vista giorno e settimana, una colonna per operatore, con orario, servizio, stato, cliente, telefono e note, anche le richieste del sito non ancora prese dal PC. Sul telefono operatori e prenotazioni scorrono insieme, in un solo riquadro. Chi ha la password può anche <strong>aggiungere appuntamenti</strong>; spostarli e annullarli si fa dal programma.</p>
 <ol class="steps">
   <li>In WordPress, <strong>Impostazioni › TD Booking Suite › Modalità PC</strong>: scrivi la <strong>Password dell'agenda</strong> (almeno 10 caratteri) e premi <strong>Salva la modalità PC</strong>.</li>
   <li>Crea una pagina, per esempio Agenda, con lo shortcode <code>[tdbs_agenda]</code>. Non metterla nel menu del sito.</li>
   <li>Togli quella pagina dalla cache del server: i plugin di cache di WordPress la saltano da soli, la cache del server no (per esempio la FastCGI cache di aaPanel: aggiungi <code>/agenda/</code> agli indirizzi esclusi). Altrimenti le prenotazioni potrebbero arrivare a chi non ha la password.</li>
   <li>Dai la password solo a chi deve vedere l'agenda. Arriva alla sincronizzazione dopo, entro 2 minuti con il PC acceso. Per aprirla: la pagina, la password, <strong>Apri l'agenda</strong>; <strong>Esci</strong> la chiude, e dopo 8 ore si esce da soli. Dopo 5 password sbagliate si blocca per 15 minuti.</li>
+</ol>
+<p><strong>Aggiungere un appuntamento dall'agenda del sito</strong>, anche con il PC spento:</p>
+<ol class="steps">
+  <li>Nell'agenda premi <strong>Nuovo appuntamento</strong>.</li>
+  <li>Scegli <strong>Servizio</strong> (e <strong>Prestazione</strong>, se ce n'è più d'una), <strong>Operatore</strong> e <strong>Giorno</strong>, poi uno degli orari liberi. Se serve un orario che non c'è, scrivilo in <strong>Altro orario</strong>: lo controlla il PC.</li>
+  <li>Scrivi <strong>Nome</strong>, <strong>Cognome</strong> e <strong>Telefono</strong> del cliente; <strong>Email</strong> e <strong>Note</strong> se ci sono. Premi <strong>Salva l'appuntamento</strong>.</li>
+  <li>L'appuntamento compare subito come «Da sincronizzare» e quell'orario sparisce dal modulo del sito. Quando il PC si accende diventa una prenotazione con origine <strong>Agenda del sito</strong>: confermata se l'orario è ancora libero, e il cliente con l'email riceve la conferma; se intanto l'avete dato al banco, va tra le <strong>Richieste da confermare</strong>.</li>
 </ol>
 <div class="note"><strong>Chi la può leggere</strong>Chi ha la password. Il PC la manda cifrata, ma il sito la decifra per mostrarla: chi amministra il sito WordPress, o il suo hosting, può tecnicamente leggerla. Se non va bene, non impostate la password: senza, l'agenda resta spenta.</div>
 
@@ -321,7 +337,7 @@
 </table>
 <ul>
   <li>Così valgono per tutti i siti. Per un sito solo: <code>sitocliente.it|/wp-json/tdbs/v1/sync</code> e <code>sitocliente.it|/wp-json/tdbs/v1/archive/</code>. Il nome va scritto esatto: se il sito risponde anche con il www, aggiungi le stesse voci con <code>www.sitocliente.it</code>.</li>
-  <li><strong>Non</strong> aprire tutto <code>/wp-json/tdbs/v1/</code>: lì ci sono anche <code>/slots</code> e <code>/book</code>, che usano i visitatori per prenotare e devono restare protetti dal WAF.</li>
+  <li><strong>Non</strong> aprire tutto <code>/wp-json/tdbs/v1/</code>: lì ci sono anche <code>/slots</code>, <code>/book</code> e <code>/agenda/book</code>, che usano i visitatori e l'agenda riservata dal browser e devono restare protetti dal WAF.</li>
   <li>Da quei due percorsi passano solo richieste POST in JSON dal PC, con le intestazioni <code>X-TDBS-Time</code> e <code>X-TDBS-Signature</code>: la firma è fatta con la chiave condivisa, e una richiesta più vecchia di 5 minuti o ripetuta viene rifiutata.</li>
   <li>Le richieste dell'archivio pesano al massimo <strong>512 KB</strong>: l'archivio viaggia a pezzi, sotto il limite di 1 MB che nginx ha di serie. Quella degli orari liberi (<code>/sync</code>) di solito pesa molto meno; con tanti servizi e 90 giorni prenotabili può superare 1 MB: se nel programma la sincronizzazione dice errore 413, alza nel proxy il limite del corpo a 5 MB (in NPMplus: <code>client_max_body_size 5m;</code> nella configurazione avanzata dell'host).</li>
 </ul>
