@@ -13,6 +13,13 @@ os.environ.setdefault("TDBS_EDITION","private")
 # sold under the seller's own licence: the footer shows the version without the AGPL source link
 os.environ.setdefault("TDBS_SOURCE_URL","")
 # a program on one's own PC: with Resta collegato it opens signed in until Esci (2.13.0: the core's default, 0)
+# 2.20.4: Python on Windows trusts only the roots already in the Windows store, and Windows fetches a missing one only
+# for the browsers: with SSL_CERT_FILE every default context (updates, WordPress site, calendars, mail) also loads
+# certifi's, next to the store (ssl.SSLContext.load_default_certs). TD Licenze had the same trouble with GitHub
+try:
+    import certifi
+    os.environ.setdefault("SSL_CERT_FILE",certifi.where())
+except ImportError:pass
 from tdbooking.settings import *  # noqa: F401,F403
 from tdbooking.settings import INSTALLED_APPS,MIDDLEWARE,ALLOWED_HOSTS,CSRF_TRUSTED_ORIGINS
 
