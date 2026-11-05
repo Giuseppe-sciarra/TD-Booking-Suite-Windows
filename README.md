@@ -253,7 +253,7 @@ Il codice resta in questa repo privata. Quello che vedono tutti sta in **[TD-Boo
 - istruzioni;
 - gli MSI da scaricare, con la prova di 7 giorni.
 
-Per pubblicare una versione apri **Actions → Windows → Run workflow**, spunta **Pubblica il rilascio** e premi **Run workflow**. Va bene anche un tag, per esempio `git tag v2.20.5 && git push origin v2.20.5`. La build fa i test, l'MSI e la prova di installazione. Poi copia nella vetrina `vetrina/README.md` e `docs/screenshots/`, e pubblica lì una Release con l'MSI. Per scrivere nella vetrina usa il secret `VETRINA_TOKEN`: un token fine-grained con *Contents: Read and write* solo su quella repo. Il testo della vetrina si cambia in `vetrina/README.md`. Le immagini di TD Licenze stanno in `docs/manuali/img-licenze`, mai in `docs/screenshots`, che va in pubblico.
+Per pubblicare una versione apri **Actions → Windows → Run workflow**, spunta **Pubblica il rilascio** e premi **Run workflow**. Va bene anche un tag, per esempio `git tag v2.20.5 && git push origin v2.20.5`. La build fa i test e l'MSI; la prova di installazione (`windows/smoke-test.ps1`) non gira più nella build, si lancia a mano su un PC Windows quando cambia l'installatore. Poi copia nella vetrina `vetrina/README.md` e `docs/screenshots/`, e pubblica lì una Release con l'MSI. Per scrivere nella vetrina usa il secret `VETRINA_TOKEN`: un token fine-grained con *Contents: Read and write* solo su quella repo. Il testo della vetrina si cambia in `vetrina/README.md`. Le immagini di TD Licenze stanno in `docs/manuali/img-licenze`, mai in `docs/screenshots`, che va in pubblico.
 
 ## Backup e ripristino
 
@@ -326,8 +326,9 @@ GitHub Actions (`.github/workflows/windows.yml`) gira a ogni push su `main`:
 
 1. esegue i test;
 2. costruisce l'MSI con `windows/build.ps1`, che compila tdwin con Cython (`windows/compile_tdwin.py`);
-3. lo installa davvero su Windows (`windows/smoke-test.ps1`): un server con i servizi e i loro account, HTTPS con il certificato, un backup fatto dal worker; poi l'aggiornamento di un server come quelli della 2.8, senza il tipo nel registro, che resta server con porta, dati e backup; poi la modifica verso Un PC solo (solo su 127.0.0.1, niente firewall); infine la disinstallazione che lascia i dati;
-4. lo mette tra gli *Artifacts* dell'esecuzione, per 30 giorni.
+3. lo mette tra gli *Artifacts* dell'esecuzione, per 2 giorni.
+
+La prova di installazione (`windows/smoke-test.ps1`) non gira nella build, per fare prima. Si lancia a mano, da amministratore, su un PC Windows di prova quando cambia l'installatore. Installa davvero l'MSI: un server con i servizi e i loro account, HTTPS con il certificato, un backup fatto dal worker. Poi aggiorna un server come quelli della 2.8, senza il tipo nel registro, che deve restare server con porta, dati e backup. Poi lo cambia in Un PC solo, solo su 127.0.0.1 e senza firewall. Infine lo disinstalla, e i dati devono restare.
 
 Con un tag `v2.20.5` crea anche una **Release** con l'MSI allegato.
 
