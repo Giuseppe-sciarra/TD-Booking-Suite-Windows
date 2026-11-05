@@ -208,3 +208,10 @@ def test_a_slow_page_leaves_a_line_in_the_log(admin,trial,monkeypatch,capsys):
     staff.get("/platform/licenza/?q=Maria")
     err=capsys.readouterr().err
     assert "Pagina lenta: GET /platform/licenza/ " in err and "Maria" not in err
+
+def test_the_web_service_reads_its_modules_and_templates_at_the_start():
+    # 2.20.7: the first time of each action no longer waits for Windows to look at files never opened before
+    import sys,time
+    from tdwin.management.commands.serve_https import warm
+    start=time.monotonic();warm()
+    assert "core.reports" in sys.modules and "tdwin.backup_views" in sys.modules and time.monotonic()-start<60
