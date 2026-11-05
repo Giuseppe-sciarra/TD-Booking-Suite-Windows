@@ -82,7 +82,9 @@ jobs:
           pwsh windows/build.ps1
           "version=$((Get-Content suite/VERSION).Trim())" >> $env:GITHUB_OUTPUT
 
-      # 2.20.5: no install test here, for speed: run windows/smoke-test.ps1 by hand on a Windows PC when the installer changes
+      - name: Prova di installazione
+        run: pwsh windows/smoke-test.ps1
+
       - uses: actions/upload-artifact@v4
         continue-on-error: true  # storage full: the MSI still goes to the release below
         with:
