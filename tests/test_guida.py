@@ -117,8 +117,9 @@ def test_one_pc_signs_in_with_the_password_alone(admin,trial,settings):
     page=Client().get("/login/").content.decode()
     assert "Username o email" in page and "passkey-login" not in page
     assert "Proteggi il tuo account" not in staff.get("/platform/licenza/").content.decode()
-    settings.MFA_ENABLED=True  # with workstations: optional, and only the administrator is reminded
-    assert "Proteggi il tuo account" in staff.get("/platform/licenza/").content.decode()
+    settings.MFA_ENABLED=True  # with workstations: optional, and since 2.20.5 nobody is reminded, site linked or not
+    assert "Proteggi il tuo account" not in staff.get("/platform/licenza/").content.decode()
+    assert "Authenticator" in staff.get("/security/").content.decode()  # still there for who wants it
 
 
 def test_one_pc_keeps_the_booking_page_off_until_the_administrator_turns_it_on(admin,trial,settings):

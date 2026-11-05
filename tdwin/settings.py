@@ -69,10 +69,10 @@ LOGIN_NOTE=({"title":"Amministratore del programma","text":"Configura licenza, "
 MORE_TENANTS_HINT="Per più attività serve una licenza Portale con più attività: la inserisci da Licenza."
 EDITION_LABEL="Windows"
 # accounts have a username, the email is optional; Un PC solo answers only on 127.0.0.1: password alone,
-# with workstations Authenticator and passkeys stay optional and only the program's administrator is reminded
+# with workstations Authenticator and passkeys stay optional, without reminders
 LOGIN_USERNAMES=True
 MFA_ENABLED=not TDWIN_STANDALONE
-MFA_REMINDER="staff"
+MFA_REMINDER=""  # 2.20.5: no "Proteggi il tuo account" banner on the PC program, site linked or not; Authenticator stays in Account e sicurezza
 STATIC_ROOT=Path(__file__).resolve().parent.parent/"static-collected"  # made by windows/build.ps1
 # client import: the sealed file between the steps and the upload itself stay in a folder the web service may write
 IMPORT_DIR=str(DATA/"import")
