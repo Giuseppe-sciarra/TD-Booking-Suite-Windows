@@ -58,9 +58,10 @@ def EXTRA_NAV(request):
     from tdwin.views import setup_done
     return ([] if setup_done(request) else [{"label":"Configurazione guidata","icon":"compass","url":"/platform/inizia/"}])+[{"label":"Licenza","icon":"key","url":"/platform/licenza/"}]+(
         [] if TDWIN_STANDALONE else [{"label":"Postazioni","icon":"monitor","url":"/platform/postazioni/"}])+[{"label":"Backup","icon":"archive","url":"/platform/backup/"}]+(
-        [{"label":"Online e sito" if TDWIN_STANDALONE else "Rete e certificato","icon":"globe","url":"/platform/rete/"}])
+        [{"label":"Online e sito" if TDWIN_STANDALONE else "Rete e certificato","icon":"globe","url":"/platform/rete/"}])+[{"label":"Stato del programma","icon":"list","url":"/platform/stato/"}]
 # the program's own pages (guided setup, backup, workstations, network); the compact look is in the core since 2.10.0
 EXTRA_CSS=["tdwin/tdwin.css"]
+SLOW_LOG_URL="/platform/stato/lento/"  # 2.20.8: the window reports the pages it waited for (static/app.js)
 # who is who: the program's administrator configures, the business's owner and people work
 AGENCY_NAMES={"area":"Configurazione del programma","admin":"Amministratore del programma","who":"amministratore del programma","access":"Accesso dell'amministratore"}
 ROLE_LABELS={"owner":"Titolare"}

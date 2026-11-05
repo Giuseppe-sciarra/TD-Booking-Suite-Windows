@@ -215,3 +215,23 @@ def test_the_web_service_reads_its_modules_and_templates_at_the_start():
     from tdwin.management.commands.serve_https import warm
     start=time.monotonic();warm()
     assert "core.reports" in sys.modules and "tdwin.backup_views" in sys.modules and time.monotonic()-start<60
+
+def test_program_state_writes_slow_pages_by_itself_and_hands_the_logs(admin,trial,monkeypatch):
+    # 2.20.8: Stato del programma: slow pages of the program and of the window, without the terminal
+    import io,json,zipfile
+    from tdwin import middleware,stato
+    stato.path().unlink(missing_ok=True)
+    user,staff=admin
+    page=staff.get("/platform/stato/").content.decode()
+    assert "Tutto regolare" in page and "Pagine lente" not in page
+    clock=iter([100.0,104.5]);monkeypatch.setattr(middleware.time,"monotonic",lambda:next(clock,104.5))
+    staff.get("/platform/licenza/?q=Maria");monkeypatch.undo()
+    assert staff.post("/platform/stato/lento/",json.dumps({"p":"/t/x/cassa/","ms":8200}),content_type="application/json").status_code==200
+    assert Client().post("/platform/stato/lento/",json.dumps({"p":"/x/","ms":9000}),content_type="application/json").status_code in (302,403)  # not signed in: nothing
+    rows=stato.lines()
+    assert [(r["where"],r["page"],r["seconds"]) for r in rows]==[("finestra","/t/x/cassa/","8.2"),("programma","GET /platform/licenza/","4.5")]
+    assert "Maria" not in stato.path().read_text("utf-8")
+    assert "Pagine lente" in staff.get("/platform/licenza/").content.decode()
+    got=staff.get("/platform/stato/?scarica=1")
+    assert "lente.log" in zipfile.ZipFile(io.BytesIO(got.content)).namelist()
+    stato.path().unlink(missing_ok=True)

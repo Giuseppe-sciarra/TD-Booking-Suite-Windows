@@ -69,7 +69,10 @@ class WindowsMiddleware:
         try:return self.serve(request)
         finally:
             took=time.monotonic()-start
-            if took>3:print(f"Pagina lenta: {request.method} {request.path} {took:.1f} s",file=sys.stderr,flush=True)
+            if took>3:
+                print(f"Pagina lenta: {request.method} {request.path} {took:.1f} s",file=sys.stderr,flush=True)
+                from .stato import note
+                note("programma",f"{request.method} {request.path}",took)
     def serve(self,request):
         from . import licensing,postazioni,rete
         path=request.path
@@ -128,6 +131,10 @@ def notices(request,state):
         found.append({"title":"Versione di prova","text":f"Mancano {state['giorni']} giorn{'o' if state['giorni']==1 else 'i'}: poi il programma chiede la licenza","url":"/platform/licenza/","action":"Inserisci la licenza"})
     elif state["kind"]=="licenza" and state["giorni"] is not None and state["giorni"]<=15:
         found.append({"title":"Licenza in scadenza","text":f"Scade il {state['scadenza']:%d/%m/%Y}: chiedi il rinnovo","url":"/platform/licenza/","action":"Apri Licenza"})
+    if not request.path.startswith("/platform/stato/"):
+        from .stato import recent
+        n=recent()
+        if n:found.append({"title":"Pagine lente","text":f"Nelle ultime 24 ore {n} pagin{'a ha' if n==1 else 'e hanno'} fatto aspettare più di qualche secondo: lo stato del programma dice quali","url":"/platform/stato/","action":"Apri Stato del programma"})
     if not request.path.startswith("/platform/backup/"):
         from .models import ImpostazioniBackup,Esecuzione
         last=Esecuzione.objects.exclude(esito="in corso").first()
