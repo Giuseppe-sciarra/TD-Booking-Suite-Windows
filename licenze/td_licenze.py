@@ -179,18 +179,30 @@ def sync_token(folder,password):
     try:return AESGCM(_seal_key(password,unb64(cfg["sale"]))).decrypt(unb64(cfg["nonce"]),unb64(cfg["token"]),cfg["repo"].encode()).decode()
     except Exception:raise SyncError("Non riesco ad aprire il token di GitHub con questa password: collega di nuovo la repo.") from None
 
+def tls():
+    """The certificates Windows already has plus certifi's: a Windows that never opened GitHub in Edge may still lack the
+    root GitHub uses, and Python does not download it as the browsers do (CERTIFICATE_VERIFY_FAILED)."""
+    import ssl
+    context=ssl.create_default_context()
+    try:
+        import certifi
+        context.load_verify_locations(certifi.where())
+    except ImportError:pass
+    return context
 def github(method,path,token,body=None):
     """(status, answer) of the GitHub API; SyncError when GitHub cannot be reached."""
     import urllib.error,urllib.request
     request=urllib.request.Request(API+path,method=method,data=json.dumps(body).encode() if body is not None else None,
         headers={"Authorization":"Bearer "+token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28","User-Agent":"TD-Licenze"})
     try:
-        with urllib.request.urlopen(request,timeout=20) as answer:return answer.status,json.loads(answer.read() or b"null")
+        with urllib.request.urlopen(request,timeout=20,context=tls()) as answer:return answer.status,json.loads(answer.read() or b"null")
     except urllib.error.HTTPError as ex:
         try:data=json.loads(ex.read() or b"null")
         except ValueError:data=None
         return ex.code,data
-    except (urllib.error.URLError,OSError) as ex:raise SyncError("GitHub non raggiungibile: senza Internet lavoro sulla copia della cartella e mando tutto la prossima volta.") from ex
+    except (urllib.error.URLError,OSError) as ex:
+        why=str(getattr(ex,"reason",ex))[:160]
+        raise SyncError(f"GitHub non raggiungibile ({why}): senza Internet lavoro sulla copia della cartella e mando tutto la prossima volta.") from ex
 
 def sync(folder,password):
     """The register merged both ways with the one in the private repo: (licences, arrived, sent), or None when no
