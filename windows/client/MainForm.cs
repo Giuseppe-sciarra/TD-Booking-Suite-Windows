@@ -214,6 +214,7 @@ namespace TDBookingSuite
         {
             string text;
             try { text = e.TryGetWebMessageAsString(); } catch (ArgumentException) { return; }
+            if (text.StartsWith("tdwin-pdf:") && config.SameOrigin(e.Source)) { SavePdf(text.Substring(10)); return; }
             if (text.StartsWith("tdwin-copia:") && config.SameOrigin(e.Source))
             {
                 // empty: a server older than 2.14.0, without the sheet; no more tries, there each one keeps the session awake
@@ -353,6 +354,33 @@ namespace TDBookingSuite
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is CryptographicException || ex is ArgumentException) { }
             Page("La copia dell'agenda non si apre", "La copia salvata su questo PC non si legge. Premi Riprova quando il server risponde.", false, false);
+        }
+
+        /// <summary>2.20.7: the PDF of a report table straight into Download, without the print dialog: after that dialog
+        /// the window took no more clicks once Windows had switched to another window. The page keeps only that table.</summary>
+        async void SavePdf(string name)
+        {
+            var core = web.CoreWebView2;
+            if (core == null) return;
+            var safe = Regex.Replace(name, @"[^\p{L}\p{N} ._-]", "").Trim();
+            if (safe.Length == 0) safe = "Report";
+            if (safe.Length > 80) safe = safe.Substring(0, 80).Trim();
+            var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            var path = Path.Combine(folder, safe + ".pdf");
+            for (int i = 2; File.Exists(path); i++) path = Path.Combine(folder, $"{safe} ({i}).pdf");
+            var done = false;
+            try
+            {
+                Directory.CreateDirectory(folder);
+                var settings = core.Environment.CreatePrintSettings();
+                settings.ShouldPrintBackgrounds = true;
+                settings.ShouldPrintHeaderAndFooter = false;
+                done = await core.PrintToPdfAsync(path, settings);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is COMException || ex is ArgumentException) { }
+            web.CoreWebView2?.PostWebMessageAsString("tdwin-pdf-done:" + (done ? "ok" : ""));
+            if (done) Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            else MessageBox.Show(this, "Non riesco a salvare il PDF nella cartella Download.", "TD Booking Suite", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         void Reply(string error) => web.CoreWebView2?.PostWebMessageAsString("tdwin-online-error:" + error);
