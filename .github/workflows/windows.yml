@@ -151,6 +151,8 @@ jobs:
     # TD Licenze.exe, the seller's window to make licences: never inside the customers' MSI
     runs-on: windows-latest
     timeout-minutes: 20
+    permissions:
+      contents: write  # the zip also goes to a draft release of this private repo (td-licenze), outside the Actions storage
     steps:
       - uses: actions/checkout@v4
 
@@ -178,6 +180,19 @@ jobs:
           $p = Start-Process "dist-licenze/TD Licenze/TD Licenze.exe" -ArgumentList "--prova" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "TD Licenze.exe non parte, codice $($p.ExitCode)" }
           & windows/firma.ps1 -Nome "TD Licenze" -Files "dist-licenze/TD Licenze/TD Licenze.exe"
+
+      # always downloadable, also when the Actions storage is full: a draft release seen only by who can see this repo
+      - name: TD Licenze nella release interna
+        if: github.event_name != 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist-licenze && powershell -NoProfile -Command "Compress-Archive -Path 'TD Licenze' -DestinationPath 'TD-Licenze.zip' -Force" && cd ..
+          if ! gh release view td-licenze --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create td-licenze --repo "$GITHUB_REPOSITORY" --draft --title "TD Licenze (interno)" --notes "Solo per chi vende le licenze. Mai nella vetrina pubblica."
+          fi
+          gh release upload td-licenze dist-licenze/TD-Licenze.zip --repo "$GITHUB_REPOSITORY" --clobber
 
       - uses: actions/upload-artifact@v4
         continue-on-error: true
