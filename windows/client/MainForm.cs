@@ -395,6 +395,8 @@ namespace TDBookingSuite
                         "Chiudi il programma e ripara l'installazione: Impostazioni > App > App installate > TD Booking Suite > Modifica > Ripara " +
                         "(serve un amministratore). Poi riapri. Le altre postazioni chiederanno una volta di confermare la nuova impronta.",
                         "TD Booking Suite", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    // open, every page and every Salva would be cancelled without a word
+                    Close();
                     return;
                 }
                 if (MessageBox.Show(this,
