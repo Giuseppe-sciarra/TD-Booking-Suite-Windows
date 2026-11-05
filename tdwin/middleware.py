@@ -1,5 +1,5 @@
 """Windows edition, on every request: the first start, the registered workstations and the licence."""
-import re,time
+import re,sys,time
 from urllib.parse import urlencode
 from django.conf import settings
 from django.http import HttpResponse
@@ -63,6 +63,14 @@ def configured():
 class WindowsMiddleware:
     def __init__(self,get_response):self.get_response=get_response
     def __call__(self,request):
+        """2.20.5: a page slower than 3 seconds leaves a line in TDBookingWeb.err.log (path only, no query: it can
+        hold a client's name), to see what stops the program on a PC we cannot reach."""
+        start=time.monotonic()
+        try:return self.serve(request)
+        finally:
+            took=time.monotonic()-start
+            if took>3:print(f"Pagina lenta: {request.method} {request.path} {took:.1f} s",file=sys.stderr,flush=True)
+    def serve(self,request):
         from . import licensing,postazioni,rete
         path=request.path
         network=rete.apply()

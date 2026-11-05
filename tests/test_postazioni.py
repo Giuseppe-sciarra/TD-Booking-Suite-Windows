@@ -199,3 +199,12 @@ def test_the_window_copies_the_day_sheet_as_who_is_signed_in(admin,trial):
     assert page.status_code==200 and "Foglio del giorno" in html and 'value="2026-11-02"' in html and "<main" in html and 'rel="stylesheet"' in html
     assert desk.session["last_seen"]==seen
     assert Client().get(url).status_code==302 and remote().get(url).status_code==302
+
+def test_a_slow_page_leaves_a_line_in_the_log(admin,trial,monkeypatch,capsys):
+    # 2.20.5: what stops the program on a shop's PC, with the path and without the query (a client's name)
+    from tdwin import middleware
+    user,staff=admin
+    clock=iter([100.0,104.5]);monkeypatch.setattr(middleware.time,"monotonic",lambda:next(clock,104.5))
+    staff.get("/platform/licenza/?q=Maria")
+    err=capsys.readouterr().err
+    assert "Pagina lenta: GET /platform/licenza/ " in err and "Maria" not in err
