@@ -4,7 +4,7 @@ Set by the supreme administrator in Rete e certificato and applied without a res
 proxies at once, a new certificate from the next connection. The web service and the worker both apply it,
 so the links in the emails carry the public address.
 """
-import datetime,ipaddress,os,re,ssl,tempfile,time
+import datetime,ipaddress,os,re,ssl,tempfile,threading,time
 from urllib.parse import urlparse
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes,serialization
@@ -72,6 +72,7 @@ def client(meta,nets):
     try:return str(ipaddress.ip_address(last))
     except ValueError:return remote
 
+_reloading=threading.Lock()
 def apply(force=False):
     """Allowed names, public address and certificate as the administrator set them; read again once a minute."""
     if not force and _applied["value"] is not None and time.monotonic()-_applied["at"]<60:return _applied["value"]
@@ -86,8 +87,18 @@ def apply(force=False):
     settings.CSRF_TRUSTED_ORIGINS=_base["csrf"]+([public] if public and public not in _base["csrf"] else [])
     settings.PUBLIC_ORIGIN=public or _base["origin"]
     state={"origin":public,"proxies":trusted,"own":r.certificato=="proprio","info":r.info}
-    try:reload()
-    except Exception:pass  # keep serving the certificate already loaded; the page shows the problem
+    if settings.TESTING or force:  # a change just saved in Rete e certificato: served at once
+        try:reload()
+        except Exception:pass  # keep serving the certificate already loaded; the page shows the problem
+    elif _reloading.acquire(blocking=False):
+        # 2.20.5: in a thread of its own: the check reads this PC's names (its full name asks the network's DNS, seconds
+        # on some routers) and every request of that minute waited for it
+        def run():
+            from django.db import connection
+            try:reload()
+            except Exception:pass
+            finally:_reloading.release();connection.close()
+        threading.Thread(target=run,daemon=True).start()
     _applied.update(at=time.monotonic(),value=state)
     return state
 
