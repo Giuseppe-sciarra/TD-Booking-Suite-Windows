@@ -71,14 +71,21 @@ def permitted(ca,name):
     except ValueError:
         return any(isinstance(t,x509.DNSName) and (name==t.value or name.endswith("."+t.value)) for t in subtrees)
 
+def configured():
+    """The names chosen at installation and in Rete e certificato: only these may remake the authority."""
+    return [n.lower() for n in [*settings.TDWIN_CONFIG.get("indirizzi",[]),urlparse(office()).hostname] if n]
+
 def authority(wanted):
-    """The authority of this installation; made again, with a new fingerprint, when a new name falls outside it."""
+    """The authority of this installation; made again, with a new fingerprint, only when a configured name falls
+    outside it. 2.20.5: a name the PC found by itself (its full name with the DNS suffix of a new network, the
+    salon's router instead of the office's) no longer remakes it: every workstation would have to confirm it again,
+    and the window on the server PC would keep the old fingerprint and loop on its warning."""
     folder().mkdir(parents=True,exist_ok=True)
     key_path=folder()/"ca.key"
     if key_path.exists() and ca_path().exists():
         ca=x509.load_pem_x509_certificate(ca_path().read_bytes());key=serialization.load_pem_private_key(key_path.read_bytes(),None)
         spki=lambda k:k.public_bytes(serialization.Encoding.DER,serialization.PublicFormat.SubjectPublicKeyInfo)
-        if all(permitted(ca,n) for n in wanted) and spki(ca.public_key())==spki(key.public_key()):return key,ca
+        if all(permitted(ca,n) for n in wanted if n in configured()) and spki(ca.public_key())==spki(key.public_key()):return key,ca
         print("Nuovi indirizzi fuori dall'autorità del programma: ne creo una nuova. Le postazioni chiederanno di confermare la nuova impronta.")
     key=ec.generate_private_key(ec.SECP256R1())
     now=datetime.datetime.now(datetime.timezone.utc)
@@ -105,6 +112,7 @@ def ensure(now=None):
 def _ensure(now):
     wanted=names()
     ca_key,ca=authority(wanted)
+    wanted=[n for n in wanted if permitted(ca,n)]  # a name found by itself outside the authority stays out of the certificate
     cert_path,key_path=folder()/"server.crt",folder()/"server.key"
     now=now or datetime.datetime.now(datetime.timezone.utc)
     if cert_path.exists() and key_path.exists():

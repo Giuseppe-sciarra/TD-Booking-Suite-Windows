@@ -121,6 +121,15 @@ def test_certificates_cover_this_pc_and_the_authority_only_signs_for_it(settings
     context=ssl.create_default_context(cafile=str(certs.ca_path()));context.load_cert_chain(cert,key)
     first=certs.fingerprint()
     assert certs.ensure()==(cert,key) and certs.fingerprint()==first  # nothing changes without a reason
+    # a new network gives the PC a new full name (another DNS suffix): the authority stays, the name stays out
+    import tdwin.netnames
+    real=tdwin.netnames.socket.getfqdn
+    tdwin.netnames.socket.getfqdn=lambda *a:"cassa.homenet.example"
+    try:
+        cert2,_=certs.ensure()
+        alt2={str(n.value) for n in x509.load_pem_x509_certificates(cert2.read_bytes())[0].extensions.get_extension_for_class(x509.SubjectAlternativeName).value}
+        assert certs.fingerprint()==first and "localhost" in alt2 and "cassa.homenet.example" not in alt2
+    finally:tdwin.netnames.socket.getfqdn=real
     settings.TDWIN_CONFIG={**settings.TDWIN_CONFIG,"indirizzi":["ufficio.test","booking.example.com"]}
     certs.ensure()
     assert certs.fingerprint()!=first and certs.permitted(x509.load_pem_x509_certificate(certs.ca_path().read_bytes()),"booking.example.com")
