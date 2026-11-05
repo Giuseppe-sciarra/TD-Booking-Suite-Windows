@@ -87,7 +87,7 @@ jobs:
         with:
           name: TD-Booking-Suite-Windows
           path: dist/*.msi
-          retention-days: 30
+          retention-days: 2  # the release keeps the MSI; this copy only feeds the release job of the same run (storage quota)
 
   licenze:
     # TD Licenze.exe, the seller's window to make licences: never inside the customers' MSI
@@ -125,7 +125,7 @@ jobs:
         with:
           name: TD-Licenze
           path: dist-licenze/TD Licenze
-          retention-days: 90
+          retention-days: 3  # download it within three days; every run made a new 17 MB copy (storage quota)
 
   release:
     # a tag v2.8.0, or Actions > Windows > Run workflow with "Pubblica il rilascio"
