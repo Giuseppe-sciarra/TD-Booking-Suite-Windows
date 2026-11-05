@@ -26,6 +26,8 @@ jobs:
   msi:
     if: github.event_name != 'schedule'  # the monthly run makes only TD Licenze
     runs-on: windows-latest
+    permissions:
+      contents: write  # the release is published from this job: no artifact in between (the Actions storage can be full)
     timeout-minutes: 60
     outputs:
       version: ${{ steps.msi.outputs.version }}
@@ -84,10 +86,66 @@ jobs:
         run: pwsh windows/smoke-test.ps1
 
       - uses: actions/upload-artifact@v4
+        continue-on-error: true  # storage full: the MSI still goes to the release below
         with:
           name: TD-Booking-Suite-Windows
           path: dist/*.msi
-          retention-days: 2  # the release keeps the MSI; this copy only feeds the release job of the same run (storage quota)
+          retention-days: 2  # a copy to download from the run; the release keeps the MSI (storage quota)
+
+      # the release: a tag v2.8.0, or Actions > Windows > Run workflow with "Pubblica il rilascio"
+      # 2.14.0: the program checks the MSI it downloads for Aggiorna ora against this file (tdwin/aggiornamenti.py)
+      - name: SHA-256 dell'MSI
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.rilascio
+        shell: bash
+        env:
+          TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', steps.msi.outputs.version) }}
+        run: cd dist && for f in *.msi; do sha256sum "$f" > "$f.sha256"; done && cat *.sha256
+
+      - name: Rilascio con l'MSI allegato
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.rilascio
+        shell: bash
+        env:
+          TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', steps.msi.outputs.version) }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.msi dist/*.msi.sha256 --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" dist/*.msi dist/*.msi.sha256 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "TD Booking Suite per Windows $TAG" \
+              --notes "MSI per server e postazioni. Windows lo segnala come app non riconosciuta perché non è firmato: Ulteriori informazioni, poi Esegui comunque."
+          fi
+
+      # the public showcase: README, screenshots and the MSI, never the code
+      - name: Vetrina pubblica
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.rilascio
+        shell: bash
+        env:
+          TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', steps.msi.outputs.version) }}
+          GH_TOKEN: ${{ secrets.VETRINA_TOKEN }}
+          VETRINA: ${{ vars.VETRINA_REPO || 'Giuseppe-sciarra/TD-Booking-Suite-per-Windows' }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "::notice::Manca il secret VETRINA_TOKEN: vetrina non aggiornata"; exit 0; fi
+          git clone -q "https://x-access-token:${GH_TOKEN}@github.com/${VETRINA}.git" vetrina-repo
+          mkdir -p vetrina-repo/screenshots
+          cp vetrina/README.md vetrina-repo/README.md
+          cp docs/screenshots/*.png vetrina-repo/screenshots/
+          # the customers' instructions; the TD Licenze one is internal and never leaves this repo
+          cp docs/Istruzioni-TD-Booking-Suite-Windows.pdf vetrina-repo/
+          cd vetrina-repo
+          git checkout -q -B main
+          git config user.name "TD Booking Suite"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -q -m "TD Booking Suite per Windows $TAG"
+          git push -q origin main
+          if gh release view "$TAG" --repo "$VETRINA" >/dev/null 2>&1; then
+            gh release upload "$TAG" ../dist/*.msi ../dist/*.msi.sha256 Istruzioni-TD-Booking-Suite-Windows.pdf --repo "$VETRINA" --clobber
+          else
+            gh release create "$TAG" ../dist/*.msi ../dist/*.msi.sha256 Istruzioni-TD-Booking-Suite-Windows.pdf --repo "$VETRINA" --target main \
+              --title "TD Booking Suite per Windows $TAG" \
+              --notes "Un solo MSI per Un PC solo, per il server e per le postazioni: la scelta si fa durante l'installazione. 7 giorni di prova. Windows lo segnala perché non è ancora firmato: Ulteriori informazioni, poi Esegui comunque. Le istruzioni sono nel PDF allegato."
+          fi
 
   licenze:
     # TD Licenze.exe, the seller's window to make licences: never inside the customers' MSI
@@ -122,68 +180,8 @@ jobs:
           & windows/firma.ps1 -Nome "TD Licenze" -Files "dist-licenze/TD Licenze/TD Licenze.exe"
 
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: TD-Licenze
           path: dist-licenze/TD Licenze
           retention-days: 3  # download it within three days; every run made a new 17 MB copy (storage quota)
-
-  release:
-    # a tag v2.8.0, or Actions > Windows > Run workflow with "Pubblica il rilascio"
-    if: startsWith(github.ref, 'refs/tags/v') || inputs.rilascio
-    needs: msi
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', needs.msi.outputs.version) }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: TD-Booking-Suite-Windows
-          path: dist
-
-      # 2.14.0: the program checks the MSI it downloads for Aggiorna ora against this file (tdwin/aggiornamenti.py)
-      - name: SHA-256 dell'MSI
-        run: cd dist && for f in *.msi; do sha256sum "$f" > "$f.sha256"; done && cat *.sha256
-
-      - name: Rilascio con l'MSI allegato
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/*.msi dist/*.msi.sha256 --repo "$GITHUB_REPOSITORY" --clobber
-          else
-            gh release create "$TAG" dist/*.msi dist/*.msi.sha256 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-              --title "TD Booking Suite per Windows $TAG" \
-              --notes "MSI per server e postazioni. Windows lo segnala come app non riconosciuta perché non è firmato: Ulteriori informazioni, poi Esegui comunque."
-          fi
-
-      # the public showcase: README, screenshots and the MSI, never the code
-      - name: Vetrina pubblica
-        env:
-          GH_TOKEN: ${{ secrets.VETRINA_TOKEN }}
-          VETRINA: ${{ vars.VETRINA_REPO || 'Giuseppe-sciarra/TD-Booking-Suite-per-Windows' }}
-        run: |
-          if [ -z "$GH_TOKEN" ]; then echo "::notice::Manca il secret VETRINA_TOKEN: vetrina non aggiornata"; exit 0; fi
-          git clone -q "https://x-access-token:${GH_TOKEN}@github.com/${VETRINA}.git" vetrina-repo
-          mkdir -p vetrina-repo/screenshots
-          cp vetrina/README.md vetrina-repo/README.md
-          cp docs/screenshots/*.png vetrina-repo/screenshots/
-          # the customers' instructions; the TD Licenze one is internal and never leaves this repo
-          cp docs/Istruzioni-TD-Booking-Suite-Windows.pdf vetrina-repo/
-          cd vetrina-repo
-          git checkout -q -B main
-          git config user.name "TD Booking Suite"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --quiet || git commit -q -m "TD Booking Suite per Windows $TAG"
-          git push -q origin main
-          if gh release view "$TAG" --repo "$VETRINA" >/dev/null 2>&1; then
-            gh release upload "$TAG" ../dist/*.msi ../dist/*.msi.sha256 Istruzioni-TD-Booking-Suite-Windows.pdf --repo "$VETRINA" --clobber
-          else
-            gh release create "$TAG" ../dist/*.msi ../dist/*.msi.sha256 Istruzioni-TD-Booking-Suite-Windows.pdf --repo "$VETRINA" --target main \
-              --title "TD Booking Suite per Windows $TAG" \
-              --notes "Un solo MSI per Un PC solo, per il server e per le postazioni: la scelta si fa durante l'installazione. 7 giorni di prova. Windows lo segnala perché non è ancora firmato: Ulteriori informazioni, poi Esegui comunque. Le istruzioni sono nel PDF allegato."
-          fi
