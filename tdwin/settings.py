@@ -74,6 +74,7 @@ EDITION_LABEL="Windows"
 LOGIN_USERNAMES=True
 MFA_ENABLED=not TDWIN_STANDALONE
 MFA_REMINDER=""  # 2.20.5: no "Proteggi il tuo account" banner on the PC program, site linked or not; Authenticator stays in Account e sicurezza
+SHOP_MAILS=True  # 2.20.11: no agency here: the shop switches on, times and writes every email to its clients itself
 STATIC_ROOT=Path(__file__).resolve().parent.parent/"static-collected"  # made by windows/build.ps1
 # client import: the sealed file between the steps and the upload itself stay in a folder the web service may write
 IMPORT_DIR=str(DATA/"import")

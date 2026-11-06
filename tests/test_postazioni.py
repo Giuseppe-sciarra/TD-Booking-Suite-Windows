@@ -235,3 +235,8 @@ def test_program_state_writes_slow_pages_by_itself_and_hands_the_logs(admin,tria
     got=staff.get("/platform/stato/?scarica=1")
     assert "lente.log" in zipfile.ZipFile(io.BytesIO(got.content)).namelist()
     stato.path().unlink(missing_ok=True)
+
+def test_the_shop_owns_its_client_emails():
+    """2.20.11: no agency in the Windows program: the switches of the emails to the clients are the shop's."""
+    from django.conf import settings
+    assert settings.SHOP_MAILS is True
