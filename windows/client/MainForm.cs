@@ -170,6 +170,9 @@ namespace TDBookingSuite
             core.Settings.IsSwipeNavigationEnabled = false;
             // 2.20.11: confirmations and messages of the pages in a Windows window, not the browser's «localhost:8443 dice»
             core.Settings.AreDefaultScriptDialogsEnabled = false;
+            // no browser keys: Ctrl+P, Ctrl+F, F5, Ctrl+R, Ctrl+U, Alt+arrows, F12… (cut, copy, paste and undo keep working)
+            core.Settings.AreBrowserAcceleratorKeysEnabled = false;
+            core.Settings.IsPasswordAutosaveEnabled = false;
             core.ScriptDialogOpening += Dialog;
             // the pages print through this window, with the Windows print dialog (a window older than 2.20.11: the browser's)
             await core.AddScriptToExecuteOnDocumentCreatedAsync("window.tdwinPrint=1;");
@@ -373,16 +376,11 @@ namespace TDBookingSuite
         {
             var core = web.CoreWebView2;
             if (core == null) return;
-            var safe = Regex.Replace(name, @"[^\p{L}\p{N} ._-]", "").Trim();
-            if (safe.Length == 0) safe = "Report";
-            if (safe.Length > 80) safe = safe.Substring(0, 80).Trim();
-            var folder = Downloads;
-            var path = Path.Combine(folder, safe + ".pdf");
-            for (int i = 2; File.Exists(path); i++) path = Path.Combine(folder, $"{safe} ({i}).pdf");
+            var path = Free(name, ".pdf", "Report");
             var done = false;
             try
             {
-                Directory.CreateDirectory(folder);
+                Directory.CreateDirectory(Downloads);
                 var settings = core.Environment.CreatePrintSettings();
                 settings.ShouldPrintBackgrounds = true;
                 settings.ShouldPrintHeaderAndFooter = false;
@@ -390,41 +388,56 @@ namespace TDBookingSuite
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is COMException || ex is ArgumentException) { }
             web.CoreWebView2?.PostWebMessageAsString("tdwin-pdf-done:" + (done ? "ok" : ""));
-            if (done) Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            if (done) Show(path);
             else MessageBox.Show(this, "Non riesco a salvare il PDF nella cartella Download.", "TD Booking Suite", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         static string Downloads => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
 
-        /// <summary>2.20.11: a file the pages give (Excel, the logs, a backup, the certificate) is saved with the Windows
-        /// «Salva con nome» window, in Download unless you choose another folder; never the browser's download bar.</summary>
+        /// <summary>A name in Download not taken yet: «Report.pdf», then «Report (2).pdf»…</summary>
+        static string Free(string name, string ext, string fallback)
+        {
+            var safe = Regex.Replace(name, @"[^\p{L}\p{N} ._()-]", "").Trim();
+            if (safe.Length == 0) safe = fallback;
+            if (safe.Length > 80) safe = safe.Substring(0, 80).Trim();
+            var path = Path.Combine(Downloads, safe + ext);
+            for (int i = 2; File.Exists(path); i++) path = Path.Combine(Downloads, $"{safe} ({i}){ext}");
+            return path;
+        }
+
+        static readonly string[] Documents = { ".pdf", ".xlsx", ".xls", ".csv", ".ics", ".txt" };
+
+        /// <summary>A document opens with its program (Excel, the PDF reader, the calendar); any other file (logs, backup,
+        /// certificate) is shown selected in its folder, never opened: a certificate would start installing.</summary>
+        void Show(string path)
+        {
+            var ext = Path.GetExtension(path).ToLowerInvariant();
+            try
+            {
+                if (Array.IndexOf(Documents, ext) >= 0) { Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); return; }
+            }
+            catch (System.ComponentModel.Win32Exception) { }  // no program for it on this PC: the folder, below
+            try { Process.Start("explorer.exe", $"/select,\"{path}\""); } catch (System.ComponentModel.Win32Exception) { }
+        }
+
+        /// <summary>2.20.11: every file the pages give (Excel, logs, backup, certificate) goes straight into Download like the
+        /// PDF of a report, without asking, never the browser's download bar; then <see cref="Show"/>.</summary>
         void Download(object sender, CoreWebView2DownloadStartingEventArgs e)
         {
             downloading = true;
-            var later = e.GetDeferral();
+            var name = Path.GetFileName(e.ResultFilePath);
+            var path = Free(Path.GetFileNameWithoutExtension(name), Path.GetExtension(name), "File");
+            try { Directory.CreateDirectory(Downloads); } catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { }
+            e.ResultFilePath = path;
+            e.Handled = true;
             var operation = e.DownloadOperation;
-            BeginInvoke((Action)(() =>
+            operation.StateChanged += (o, x) =>
             {
-                try
-                {
-                    var name = Path.GetFileName(e.ResultFilePath);
-                    var ext = Path.GetExtension(name);
-                    using (var ask = new SaveFileDialog { Title = "Salva il file", FileName = name, InitialDirectory = Downloads, OverwritePrompt = true, AddExtension = ext.Length > 1 })
-                    {
-                        if (ext.Length > 1) ask.Filter = $"File {ext.Substring(1).ToUpperInvariant()} (*{ext})|*{ext}|Tutti i file (*.*)|*.*";
-                        if (ask.ShowDialog(this) != DialogResult.OK) { e.Cancel = true; return; }
-                        e.ResultFilePath = ask.FileName;
-                        e.Handled = true;
-                    }
-                    operation.StateChanged += (o, x) =>
-                    {
-                        if (operation.State == CoreWebView2DownloadState.Interrupted)
-                            BeginInvoke((Action)(() => MessageBox.Show(this, "Il file non si è salvato. Riprova, o scegli un'altra cartella.", "TD Booking Suite", MessageBoxButtons.OK, MessageBoxIcon.Warning)));
-                    };
-                }
-                catch (Exception ex) when (ex is IOException || ex is ArgumentException || ex is COMException) { e.Cancel = true; }
-                finally { later.Complete(); }
-            }));
+                var state = operation.State;
+                if (state == CoreWebView2DownloadState.Completed) BeginInvoke((Action)(() => Show(path)));
+                else if (state == CoreWebView2DownloadState.Interrupted)
+                    BeginInvoke((Action)(() => MessageBox.Show(this, "Il file non si è salvato nella cartella Download. Riprova.", "TD Booking Suite", MessageBoxButtons.OK, MessageBoxIcon.Warning)));
+            };
         }
 
         /// <summary>2.20.11: alert, confirm and the leave-the-page question of the pages as Windows windows.</summary>
