@@ -342,6 +342,21 @@
 </ol>
 <p>Su un'attività vuota il ripristino parte subito; se ci sono già dati chiede conferma. In ogni caso non crea doppioni. Il backup del capitolo 11 resta comunque da tenere: l'archivio sul sito non contiene licenza, chiavi e impostazioni del programma.</p>
 <p><strong>Il sito deve avere</strong> i permalink diversi da «Semplice» (<strong>Impostazioni › Permalink</strong>, per esempio <strong>Nome articolo</strong>) e la pagina dell'agenda esclusa dalla cache del server.</p>
+<h3>Il sito gestisce prenotazioni ed email</h3>
+<p>Con il sito come archivio centrale acceso, il sito può fare anche da <strong>centro di tutto</strong>: conferma da solo chi prenota online e manda tutte le email ai clienti e gli avvisi a voi, anche con il PC spento per giorni. Il programma <strong>non manda più le email delle prenotazioni</strong>: riceve le prenotazioni e quello che i clienti fanno dai link delle email. Restano dal programma solo le email che non riguardano le prenotazioni: inviti ai collaboratori, ripristino della password, copia dello scontrino, riepilogo serale.</p>
+<ul>
+  <li><strong>Chi prenota dal sito</strong> è confermato subito e riceve la conferma; per i servizi che confermate voi riceve «Richiesta ricevuta».</li>
+  <li><strong>Le email</strong>, scritte nel plugin: conferma, richiesta ricevuta, modifica, annullamento, promemoria e secondo promemoria con i tasti <strong>Confermo</strong> e <strong>Annulla</strong>, avvisi al titolare. Valgono anche per gli appuntamenti presi al banco, che arrivano al sito con l'archivio.</li>
+  <li><strong>Al programma arrivano</strong> le prenotazioni dal sito, gli annullamenti e le conferme dei clienti, anche se lo accendi il giorno dopo. Le prenotazioni dal sito si agganciano alla scheda del cliente con lo stesso nome e cognome, anche se lo scrive tutto minuscolo o maiuscolo; con due schede dallo stesso nome sceglie quella con lo stesso telefono o la stessa email, altrimenti ne fa una nuova.</li>
+  <li><strong>Un orario preso al banco</strong> mentre un cliente lo prenotava online: la prenotazione diventa una richiesta da confermare e il sito avvisa il cliente che lo ricontattate.</li>
+</ul>
+<ol class="steps">
+  <li>Nel programma, come amministratore, in <strong>Configura l'attività › Sito WordPress · modalità PC</strong> accendi anche <strong>Il sito gestisce prenotazioni ed email</strong> e premi <strong>Salva</strong>.</li>
+  <li>In WordPress, <strong>Impostazioni › TD Booking Suite › Email ai clienti</strong>: scrivi l'indirizzo per gli avvisi a voi, controlla i testi, scegli quante ore prima partono i promemoria e premi <strong>Salva le email</strong>. Manda un'<strong>email di prova</strong>.</li>
+  <li>Le email partono con la posta del sito: il plugin SMTP del sito deve valere per <strong>tutte</strong> le email di WordPress, non solo per i suoi moduli.</li>
+  <li>Nel server del sito aggiungi un cron ogni 5 minuti su <code>wp-cron.php</code> (in aaPanel: <strong>Cron › Accedi a URL</strong>): così i promemoria partono all'ora giusta anche quando nessuno apre il sito.</li>
+</ol>
+<p>Le email partono solo per quello che cambia dopo l'accensione, mai per lo storico. La pagina <strong>Notifiche</strong> del programma in questo caso non conta: lo dice in alto. Spegnendo l'interruttore il programma torna a mandare le email da solo.</p>
 <h3>Per il firewall del sito</h3>
 <p>Se davanti al sito c'è un firewall applicativo (WAF), le chiamate del PC vanno lasciate passare. Nella whitelist del WAF, tipo <strong>path</strong>, aggiungi due voci:</p>
 <table>
