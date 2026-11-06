@@ -168,6 +168,11 @@ namespace TDBookingSuite
             // and the right click offers only cut, copy and paste where there is something to cut, copy or paste
             core.Settings.IsBuiltInErrorPageEnabled = false;
             core.Settings.IsSwipeNavigationEnabled = false;
+            // 2.20.11: confirmations and messages of the pages in a Windows window, not the browser's «localhost:8443 dice»
+            core.Settings.AreDefaultScriptDialogsEnabled = false;
+            core.ScriptDialogOpening += Dialog;
+            // the pages print through this window, with the Windows print dialog (a window older than 2.20.11: the browser's)
+            await core.AddScriptToExecuteOnDocumentCreatedAsync("window.tdwinPrint=1;");
             // 2.14.0: the server tells a postazione whose window is older than itself to update
             var mine = typeof(MainForm).Assembly.GetName().Version;
             core.Settings.UserAgent += $" TDBookingSuite/{mine.Major}.{mine.Minor}.{mine.Build}";
@@ -199,7 +204,7 @@ namespace TDBookingSuite
             core.ProcessFailed += (s, e) => { if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited) Close(); else core.Reload(); };
             core.WebMessageReceived += Message;
             core.NavigationStarting += (s, e) => { downloading = false; if (config.SameOrigin(e.Uri)) target = e.Uri; };
-            core.DownloadStarting += (s, e) => { downloading = true; };
+            core.DownloadStarting += Download;
             core.NavigationCompleted += Completed;
             retry.Tick += (s, e) => { retry.Stop(); web.CoreWebView2?.Navigate(target ?? config.Server + "/"); };
             copyTimer.Tick += (s, e) => SaveCopy();
@@ -215,6 +220,12 @@ namespace TDBookingSuite
             string text;
             try { text = e.TryGetWebMessageAsString(); } catch (ArgumentException) { return; }
             if (text.StartsWith("tdwin-pdf:") && config.SameOrigin(e.Source)) { SavePdf(text.Substring(10)); return; }
+            if (text == "tdwin-print:" && config.SameOrigin(e.Source))
+            {
+                try { web.CoreWebView2?.ShowPrintUI(CoreWebView2PrintDialogKind.System); }
+                catch (Exception ex) when (ex is COMException || ex is InvalidOperationException) { }
+                return;
+            }
             if (text.StartsWith("tdwin-copia:") && config.SameOrigin(e.Source))
             {
                 // empty: a server older than 2.14.0, without the sheet; no more tries, there each one keeps the session awake
@@ -365,7 +376,7 @@ namespace TDBookingSuite
             var safe = Regex.Replace(name, @"[^\p{L}\p{N} ._-]", "").Trim();
             if (safe.Length == 0) safe = "Report";
             if (safe.Length > 80) safe = safe.Substring(0, 80).Trim();
-            var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            var folder = Downloads;
             var path = Path.Combine(folder, safe + ".pdf");
             for (int i = 2; File.Exists(path); i++) path = Path.Combine(folder, $"{safe} ({i}).pdf");
             var done = false;
@@ -381,6 +392,66 @@ namespace TDBookingSuite
             web.CoreWebView2?.PostWebMessageAsString("tdwin-pdf-done:" + (done ? "ok" : ""));
             if (done) Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
             else MessageBox.Show(this, "Non riesco a salvare il PDF nella cartella Download.", "TD Booking Suite", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
+        static string Downloads => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+
+        /// <summary>2.20.11: a file the pages give (Excel, the logs, a backup, the certificate) is saved with the Windows
+        /// «Salva con nome» window, in Download unless you choose another folder; never the browser's download bar.</summary>
+        void Download(object sender, CoreWebView2DownloadStartingEventArgs e)
+        {
+            downloading = true;
+            var later = e.GetDeferral();
+            var operation = e.DownloadOperation;
+            BeginInvoke((Action)(() =>
+            {
+                try
+                {
+                    var name = Path.GetFileName(e.ResultFilePath);
+                    var ext = Path.GetExtension(name);
+                    using (var ask = new SaveFileDialog { Title = "Salva il file", FileName = name, InitialDirectory = Downloads, OverwritePrompt = true, AddExtension = ext.Length > 1 })
+                    {
+                        if (ext.Length > 1) ask.Filter = $"File {ext.Substring(1).ToUpperInvariant()} (*{ext})|*{ext}|Tutti i file (*.*)|*.*";
+                        if (ask.ShowDialog(this) != DialogResult.OK) { e.Cancel = true; return; }
+                        e.ResultFilePath = ask.FileName;
+                        e.Handled = true;
+                    }
+                    operation.StateChanged += (o, x) =>
+                    {
+                        if (operation.State == CoreWebView2DownloadState.Interrupted)
+                            BeginInvoke((Action)(() => MessageBox.Show(this, "Il file non si è salvato. Riprova, o scegli un'altra cartella.", "TD Booking Suite", MessageBoxButtons.OK, MessageBoxIcon.Warning)));
+                    };
+                }
+                catch (Exception ex) when (ex is IOException || ex is ArgumentException || ex is COMException) { e.Cancel = true; }
+                finally { later.Complete(); }
+            }));
+        }
+
+        /// <summary>2.20.11: alert, confirm and the leave-the-page question of the pages as Windows windows.</summary>
+        void Dialog(object sender, CoreWebView2ScriptDialogOpeningEventArgs e)
+        {
+            var later = e.GetDeferral();
+            BeginInvoke((Action)(() =>
+            {
+                try
+                {
+                    switch (e.Kind)
+                    {
+                        case CoreWebView2ScriptDialogKind.Alert:
+                            MessageBox.Show(this, e.Message, "TD Booking Suite", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            e.Accept();
+                            break;
+                        case CoreWebView2ScriptDialogKind.Confirm:
+                            if (MessageBox.Show(this, e.Message, "TD Booking Suite", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) == DialogResult.OK) e.Accept();
+                            break;
+                        case CoreWebView2ScriptDialogKind.Beforeunload:
+                            if (MessageBox.Show(this, "Vuoi lasciare la pagina? Quello che non hai salvato si perde.", "TD Booking Suite", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes) e.Accept();
+                            break;
+                        // a prompt: no page of the program asks one; not accepted, as if cancelled
+                    }
+                }
+                finally { later.Complete(); }
+            }));
         }
 
         void Reply(string error) => web.CoreWebView2?.PostWebMessageAsString("tdwin-online-error:" + error);
