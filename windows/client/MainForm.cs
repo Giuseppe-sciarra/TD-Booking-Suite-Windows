@@ -93,6 +93,16 @@ namespace TDBookingSuite
             Load += async (s, e) => { FitScreen(); await Start(); };
             SystemEvents.UserPreferenceChanged += ThemeChanged;
             FormClosed += (s, e) => SystemEvents.UserPreferenceChanged -= ThemeChanged;
+            // 2.21.0: the keys to the page again whenever the window comes back to the front: after a Windows window of the
+            // program (a confirmation, a message, the print dialog) or another program, the page kept no keyboard focus
+            // and its fields took no more typing until a click outside the program
+            Activated += (s, e) => GiveFocus();
+        }
+
+        void GiveFocus()
+        {
+            if (web.CoreWebView2 == null || IsDisposed) return;
+            BeginInvoke((Action)(() => { if (!IsDisposed) web.Focus(); }));
         }
 
         /// <summary>The window fits the screen it opens on: 90% of it, centred, and maximized when the screen is small
@@ -463,7 +473,7 @@ namespace TDBookingSuite
                         // a prompt: no page of the program asks one; not accepted, as if cancelled
                     }
                 }
-                finally { later.Complete(); }
+                finally { later.Complete(); GiveFocus(); }
             }));
         }
 
