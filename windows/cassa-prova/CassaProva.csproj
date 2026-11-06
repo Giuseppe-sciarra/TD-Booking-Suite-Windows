@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 2.22.0: TD Cassa di prova, a register that prints nothing: it answers as an RCH Print!F or an Epson FP RT on the
+       network and shows each document it got. For trying the Cassa of TD Booking Suite without the real register. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>TD-Cassa-di-prova</AssemblyName>
+    <RootNamespace>TDCassaProva</RootNamespace>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <Product>TD Cassa di prova</Product>
+    <Company>Tastiere Digitali</Company>
+    <Copyright>Tastiere Digitali</Copyright>
+    <Version Condition="'$(Version)' == ''">2.22.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Xml.Linq" />
+  </ItemGroup>
+</Project>

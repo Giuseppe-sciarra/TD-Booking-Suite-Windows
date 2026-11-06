@@ -109,9 +109,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/*.msi dist/*.msi.sha256 --repo "$GITHUB_REPOSITORY" --clobber
+            gh release upload "$TAG" dist/*.msi dist/*.msi.sha256 dist/*.zip --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$TAG" dist/*.msi dist/*.msi.sha256 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            gh release create "$TAG" dist/*.msi dist/*.msi.sha256 dist/*.zip --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
               --title "TD Booking Suite per Windows $TAG" \
               --notes "MSI per server e postazioni. Windows lo segnala come app non riconosciuta perché non è firmato: Ulteriori informazioni, poi Esegui comunque."
           fi

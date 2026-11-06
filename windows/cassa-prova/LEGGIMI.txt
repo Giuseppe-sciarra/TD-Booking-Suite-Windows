@@ -1,0 +1,29 @@
+TD Cassa di prova 2.22.0 - una cassa finta: non stampa niente
+==============================================================
+
+Serve a provare la Cassa di TD Booking Suite senza il registratore vero.
+Risponde in rete come una RCH Print!F o una Epson FP-81II / FP-90III RT e
+mostra ogni documento che riceve, come sarebbe stato stampato.
+Non e' un registratore: niente va all'Agenzia delle Entrate.
+
+1. Copia TD-Cassa-di-prova.exe su un PC della stessa rete del programma
+   (va bene anche lo stesso PC del programma). Serve Windows 10 o 11.
+2. Avvialo. Se Windows dice "PC protetto da Windows": Ulteriori informazioni,
+   Esegui comunque. Se chiede il permesso del firewall: Consenti, reti private.
+3. In alto scegli il modello (RCH o Epson). In "Indirizzo da scrivere nel
+   programma" c'e' l'IP di questo PC, per esempio 192.168.1.23.
+4. In TD Booking Suite, Registratore di cassa: stesso modello, collegata in
+   Rete, scrivi quell'indirizzo (o premi Cerca la cassa), Salva.
+   Sullo stesso PC del programma scrivi 127.0.0.1.
+5. Prova collegamento, Stampa scontrino di prova, poi i conti dalla Cassa:
+   ogni documento compare nella finestra, con "Prova riuscita: stampato questo".
+
+"Risponde" fa provare anche i casi brutti:
+- Carta finita: per il programma lo scontrino e' Non emesso (Riprova).
+- Occupata, poi ok (solo RCH): il programma riprova da solo.
+- Non risponde: dopo 20 secondi il programma lo segna Da verificare e chiede
+  se lo scontrino e' uscito.
+
+Se la porta 80 e' gia' usata da un altro programma, scegli 8080 e nel
+programma scrivi l'indirizzo con :8080 (per esempio 192.168.1.23:8080).
+Solo in rete: la RCH con il cavo USB non si prova con questa cassa finta.

@@ -76,6 +76,7 @@ namespace TDBookingSuite
         [DllImport("user32.dll")] static extern IntPtr GetSystemMenu(IntPtr hWnd, bool revert);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern bool AppendMenu(IntPtr menu, int flags, int id, string text);
         [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+        [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)] static extern int AssocQueryString(int flags, int str, string assoc, string extra, StringBuilder outText, ref int outSize);
 
         public static Icon AppIcon()
         {
@@ -571,8 +572,26 @@ namespace TDBookingSuite
 
         static void OpenOutside(string url)
         {
+            // 2.22.0: a WhatsApp chat (Promemoria WhatsApp, the WhatsApp buttons) opens in WhatsApp for Windows with its
+            // text ready, when it is installed; otherwise wa.me in the browser, as before
+            var wa = Regex.Match(url, @"^https://wa\.me/(\d{6,15})(?:\?text=([^#]*))?$");
+            if (wa.Success && Handles("whatsapp"))
+            {
+                try { Process.Start(new ProcessStartInfo("whatsapp://send?phone=" + wa.Groups[1].Value + (wa.Groups[2].Success ? "&text=" + wa.Groups[2].Value : "")) { UseShellExecute = true }); return; }
+                catch (System.ComponentModel.Win32Exception) { }
+            }
             if (url.StartsWith("https://") || url.StartsWith("http://") || url.StartsWith("mailto:") || url.StartsWith("tel:"))
                 Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+
+        // a program that opens links of this kind (whatsapp:), also an app of the Microsoft Store
+        static bool Handles(string scheme)
+        {
+            const int IS_PROTOCOL = 0x1000, FRIENDLY_APP_NAME = 4;
+            var text = new StringBuilder(260); int size = text.Capacity;
+            try { return AssocQueryString(IS_PROTOCOL, FRIENDLY_APP_NAME, scheme, null, text, ref size) == 0 && text.Length > 0; }
+            catch (DllNotFoundException) { return false; }
+            catch (EntryPointNotFoundException) { return false; }
         }
     }
 }

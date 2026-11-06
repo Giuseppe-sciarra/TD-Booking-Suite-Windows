@@ -17,3 +17,5 @@ credenziali.tdc
 credenziali.tmp
 credenziali*.csv
 docs/manuali/cliente.html
+windows/cassa-prova/bin/
+windows/cassa-prova/obj/

@@ -97,11 +97,11 @@ Per togliere gli avvisi serve un certificato di firma del codice, che costa qual
 
 ```bat
 rem Un PC solo
-msiexec /i TD-Booking-Suite-2.21.0.msi MODALITA=standalone /qn
+msiexec /i TD-Booking-Suite-2.22.0.msi MODALITA=standalone /qn
 rem Server con postazioni, con porta e indirizzi
-msiexec /i TD-Booking-Suite-2.21.0.msi MODALITA=server PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 ALTRI_INDIRIZZI=192.168.1.10 /qn
+msiexec /i TD-Booking-Suite-2.22.0.msi MODALITA=server PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 ALTRI_INDIRIZZI=192.168.1.10 /qn
 rem Solo postazione
-msiexec /i TD-Booking-Suite-2.21.0.msi ADDLOCAL=Postazione /qn
+msiexec /i TD-Booking-Suite-2.22.0.msi ADDLOCAL=Postazione /qn
 ```
 
 Senza `MODALITA` l'installazione tiene il tipo che il PC aveva: solo la finestra se c'è solo la postazione, altrimenti quello ricordato nel registro. Un server della 2.8, o i dati di un server rimasti dopo averlo disinstallato, o un `INDIRIZZO` dato, fanno Server con postazioni; un PC nuovo parte come Un PC solo. `MODALITA=postazione` da sola non si usa: ferma l'installazione e dice di usare `ADDLOCAL=Postazione`.
@@ -253,7 +253,7 @@ Il codice resta in questa repo privata. Quello che vedono tutti sta in **[TD-Boo
 - istruzioni;
 - gli MSI da scaricare, con la prova di 7 giorni.
 
-Per pubblicare una versione apri **Actions → Windows → Run workflow**, spunta **Pubblica il rilascio** e premi **Run workflow**. Va bene anche un tag, per esempio `git tag v2.21.0 && git push origin v2.21.0`. La build fa i test, l'MSI e la prova di installazione. Poi copia nella vetrina `vetrina/README.md` e `docs/screenshots/`, e pubblica lì una Release con l'MSI. Per scrivere nella vetrina usa il secret `VETRINA_TOKEN`: un token fine-grained con *Contents: Read and write* solo su quella repo. Il testo della vetrina si cambia in `vetrina/README.md`. Le immagini di TD Licenze stanno in `docs/manuali/img-licenze`, mai in `docs/screenshots`, che va in pubblico.
+Per pubblicare una versione apri **Actions → Windows → Run workflow**, spunta **Pubblica il rilascio** e premi **Run workflow**. Va bene anche un tag, per esempio `git tag v2.22.0 && git push origin v2.22.0`. La build fa i test, l'MSI e la prova di installazione. Poi copia nella vetrina `vetrina/README.md` e `docs/screenshots/`, e pubblica lì una Release con l'MSI. Per scrivere nella vetrina usa il secret `VETRINA_TOKEN`: un token fine-grained con *Contents: Read and write* solo su quella repo. Il testo della vetrina si cambia in `vetrina/README.md`. Le immagini di TD Licenze stanno in `docs/manuali/img-licenze`, mai in `docs/screenshots`, che va in pubblico.
 
 ## Backup e ripristino
 
@@ -279,7 +279,7 @@ Ogni destinazione ha il pulsante **Prova**, e lo **storico** dice com'è andato 
 
 Per aggiornare, apri l'MSI nuovo sopra quello vecchio: tipo, servizi, porta, database e dati restano. Prima di applicare la versione nuova, l'installer salva una copia del database in `backup\prima-dell-aggiornamento.dump`. Se l'aggiornamento non riesce, Windows rimette la versione di prima e la fa ripartire.
 
-Per **cambiare tipo** apri di nuovo l'MSI (o Impostazioni › App › TD Booking Suite › Modifica), scegli di cambiare l'installazione e il tipo nuovo. Da riga di comando: `msiexec /i TD-Booking-Suite-2.21.0.msi MODALITA=standalone /qn`. I dati restano.
+Per **cambiare tipo** apri di nuovo l'MSI (o Impostazioni › App › TD Booking Suite › Modifica), scegli di cambiare l'installazione e il tipo nuovo. Da riga di comando: `msiexec /i TD-Booking-Suite-2.22.0.msi MODALITA=standalone /qn`. I dati restano.
 
 La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramData\TD Booking Suite`. Per cancellarli davvero, elimina quella cartella.
 
@@ -288,7 +288,7 @@ La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramDa
 - **Usa i dati di prima**, già scelto: il programma riparte da dove era, con le stesse attività, clienti e prenotazioni, e si entra con l'amministratore di allora;
 - **Ricomincia da zero**: un programma vuoto e al primo avvio si crea l'amministratore. I dati di prima non si cancellano: vanno, interi, in `C:\ProgramData\TD Booking Suite (dati del <giorno e ora>)`. Restano licenza, prova, codice installazione, indirizzi, porta e certificato, così la licenza vale ancora e le postazioni aprono il server come prima.
 
-Da riga di comando: `msiexec /i TD-Booking-Suite-2.21.0.msi MODALITA=standalone RICOMINCIA=1 /qn`. Senza `RICOMINCIA` usa i dati di prima. Un aggiornamento non lo chiede: i dati restano sempre.
+Da riga di comando: `msiexec /i TD-Booking-Suite-2.22.0.msi MODALITA=standalone RICOMINCIA=1 /qn`. Senza `RICOMINCIA` usa i dati di prima. Un aggiornamento non lo chiede: i dati restano sempre.
 
 Da zero anche senza disinstallare, da PowerShell come amministratore:
 
@@ -329,7 +329,7 @@ GitHub Actions (`.github/workflows/windows.yml`) gira a ogni push su `main`:
 3. lo installa davvero su Windows (`windows/smoke-test.ps1`): un server con i servizi e i loro account, HTTPS con il certificato, un backup fatto dal worker; poi l'aggiornamento di un server come quelli della 2.8, senza il tipo nel registro, che resta server con porta, dati e backup; poi la modifica verso Un PC solo (solo su 127.0.0.1, niente firewall); infine la disinstallazione che lascia i dati;
 4. lo mette tra gli *Artifacts* dell'esecuzione, per 30 giorni.
 
-Con un tag `v2.21.0` crea anche una **Release** con l'MSI allegato.
+Con un tag `v2.22.0` crea anche una **Release** con l'MSI allegato e, dalla 2.22.0, lo zip di **TD Cassa di prova** (`windows/cassa-prova/`): una cassa finta che risponde in rete come una RCH Print!F o una Epson FP RT, non stampa niente e mostra ogni documento ricevuto, per provare la Cassa senza il registratore. Si avvia su un PC della rete (o sullo stesso), si scrive il suo indirizzo in Registratore di cassa e si prova tutto: collegamento, scontrino di prova, conti, annulli, chiusura, anche carta finita e cassa che non risponde.
 
 ### Firma del codice
 
@@ -364,6 +364,7 @@ Le istruzioni in PDF si rifanno con `python docs/manuali/build.py` (Pillow e Pla
 | `tdwin/` | l'app Django dell'edizione Windows: licenza, postazioni, primo avvio, configurazione guidata, HTTPS, certificati, rete, backup e ripristino |
 | `licenze/` | TD Licenze, il programma per creare le licenze, solo per chi vende |
 | `windows/client/` | il programma per la postazione, C# .NET Framework 4.8 con WebView2 |
+| `windows/cassa-prova/` | TD Cassa di prova, la cassa finta per i test, C# .NET Framework 4.8 |
 | `windows/wix/` | l'MSI, WiX 5, con la finestra della scelta del tipo (`Modalita.wxs`) |
 | `windows/script/` | configurazione del server, rimozione, ripristino, recupero di un accesso, codice del primo avvio |
 | `windows/servizi/` | i servizi Windows, WinSW |

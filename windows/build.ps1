@@ -95,6 +95,12 @@ Invoke-Native dotnet @("build", (Join-Path $root "windows\client\TDBookingSuite.
 Get-ChildItem $postazione -Include "*.pdb", "Microsoft.Web.WebView2.Wpf.dll" -Recurse | Remove-Item -Force
 Copy-Item (Join-Path $root "windows\client\app.ico") $postazione
 
+# 5b. 2.22.0: TD Cassa di prova, the register that prints nothing, as a zip next to the MSI (not installed by it)
+$prova = Join-Path $stage "cassa-prova"
+Invoke-Native dotnet @("build", (Join-Path $root "windows\cassa-prova\CassaProva.csproj"), "-c", "Release", "-nologo", "-p:Version=$Version", "-o", $prova)
+Copy-Item (Join-Path $root "windows\cassa-prova\LEGGIMI.txt") $prova
+Compress-Archive -Path (Join-Path $prova "TD-Cassa-di-prova.exe"), (Join-Path $prova "TD-Cassa-di-prova.exe.config"), (Join-Path $prova "LEGGIMI.txt") -DestinationPath (Join-Path $dist "TD-Cassa-di-prova-$Version.zip") -Force
+
 # 2.14.0: our own code signed before it goes into the MSI, when the build has a certificate (windows/firma.ps1)
 $firma = Join-Path $PSScriptRoot "firma.ps1"
 if ($env:WINDOWS_CERT_PFX -or $env:ARTIFACT_SIGNING_ACCOUNT) {
