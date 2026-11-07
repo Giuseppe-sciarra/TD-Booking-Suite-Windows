@@ -265,7 +265,7 @@ namespace TDBookingSuite
             core.Settings.AreBrowserAcceleratorKeysEnabled = false;
             core.Settings.IsPasswordAutosaveEnabled = false;
             core.ScriptDialogOpening += Dialog;
-            // the pages print through this window, with the Windows print dialog (a window older than 2.20.11: the browser's)
+            // the pages print through this window: a PDF into Download, opened (2.22.0: no Windows print dialog)
             await core.AddScriptToExecuteOnDocumentCreatedAsync("window.tdwinPrint=1;");
             // 2.22.0: the page always counts as the focused one for the browser: after a popup of its own it kept thinking
             // it had lost the focus, and the fields took no typing although the keys reached the window
@@ -321,12 +321,9 @@ namespace TDBookingSuite
             string text;
             try { text = e.TryGetWebMessageAsString(); } catch (ArgumentException) { return; }
             if (text.StartsWith("tdwin-pdf:") && config.SameOrigin(e.Source)) { SavePdf(text.Substring(10)); return; }
-            if (text == "tdwin-print:" && config.SameOrigin(e.Source))
-            {
-                try { web.CoreWebView2?.ShowPrintUI(CoreWebView2PrintDialogKind.System); }
-                catch (Exception ex) when (ex is COMException || ex is InvalidOperationException) { }
-                return;
-            }
+            // 2.22.0: a page older than this window asking the Windows print dialog gets a PDF into Download instead:
+            // that dialog was one more Windows window the page could wait for with everything dead
+            if (text == "tdwin-print:" && config.SameOrigin(e.Source)) { SavePdf("Agenda"); return; }
             if (text.StartsWith("tdwin-copia:") && config.SameOrigin(e.Source))
             {
                 // empty: a server older than 2.14.0, without the sheet; no more tries, there each one keeps the session awake
