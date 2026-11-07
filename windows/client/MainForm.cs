@@ -77,6 +77,26 @@ namespace TDBookingSuite
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern bool AppendMenu(IntPtr menu, int flags, int id, string text);
         [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
         [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)] static extern int AssocQueryString(int flags, int str, string assoc, string extra, StringBuilder outText, ref int outSize);
+        [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] static extern IntPtr GetFocus();
+        [DllImport("user32.dll")] static extern bool IsChild(IntPtr parent, IntPtr child);
+        // 2.22.0: the keys back to the page after every popup the page itself opens (a dropdown, the colour or file window
+        // of Windows, a validation bubble): when such a window closes, the keyboard focus stays outside the browser and
+        // every field of the page looks dead. Activated does not fire for them, so this looks four times a second.
+        readonly Timer focusTimer = new Timer { Interval = 250 };
+        // 2.22.0: the watchdog of the window. Two ways the program looked dead until Gestione attività: a Windows window
+        // of the page (file, colour) ended up behind this one, which Windows keeps disabled until it closes; or the page
+        // itself stopped answering. Every 5 seconds: a hidden dialog is brought in front, a page silent three times is
+        // reloaded, and both are written in finestra.log for the assistance.
+        readonly Timer watchdog = new Timer { Interval = 5000 };
+        int silent; bool asking;
+        [DllImport("user32.dll")] static extern bool IsWindowEnabled(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr hWnd, uint cmd);
+        [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowsProc callback, IntPtr extra);
+        delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr extra);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
 
         public static Icon AppIcon()
         {
@@ -103,7 +123,67 @@ namespace TDBookingSuite
         void GiveFocus()
         {
             if (web.CoreWebView2 == null || IsDisposed) return;
-            BeginInvoke((Action)(() => { if (!IsDisposed) web.Focus(); }));
+            BeginInvoke((Action)(() => { if (!IsDisposed) RegainFocus(); }));
+        }
+
+        /// <summary>Focus() alone does nothing when the control already counts as focused while the browser inside it is
+        /// not: the focus leaves the control first, then comes back, and the control hands it to the browser.</summary>
+        void RegainFocus()
+        {
+            // never while a Windows window of the page (file, colour) is open: this window is disabled, and a focus
+            // taken now would leave that dialog behind, with everything looking dead
+            if (web.CoreWebView2 == null || IsDisposed || !IsWindowEnabled(Handle)) return;
+            ActiveControl = null;
+            web.Focus();
+        }
+
+        static string LogFile => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TD Booking Suite", "finestra.log");
+        static void Log(string text)
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(LogFile));
+                if (File.Exists(LogFile) && new FileInfo(LogFile).Length > 1_000_000) File.Delete(LogFile);
+                File.AppendAllText(LogFile, $"{DateTime.Now:dd/MM/yyyy HH:mm:ss}\t{text}\r\n");
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { }
+        }
+
+        async void Watch(object sender, EventArgs e)
+        {
+            var core = web.CoreWebView2;
+            if (core == null || IsDisposed) return;
+            if (!IsWindowEnabled(Handle))
+            {
+                // a dialog owns this window: if it is not in front, bring it (GW_OWNER = 4)
+                var front = GetForegroundWindow();
+                if (front == Handle || GetWindow(front, 4) != Handle)
+                {
+                    IntPtr found = IntPtr.Zero;
+                    EnumWindows((h, _) => { if (IsWindowVisible(h) && GetWindow(h, 4) == Handle) { found = h; return false; } return true; }, IntPtr.Zero);
+                    if (found != IntPtr.Zero)
+                    {
+                        var title = new StringBuilder(128); GetWindowText(found, title, 128);
+                        Log($"finestra di dialogo rimasta dietro, riportata davanti: {title} ({core.Source})");
+                        SetForegroundWindow(found);
+                    }
+                }
+                silent = 0; return;
+            }
+            if (asking || GetForegroundWindow() != Handle) { silent = 0; return; }
+            var answer = core.ExecuteScriptAsync("1");
+            if (await Task.WhenAny(answer, Task.Delay(4000)) == answer) { silent = 0; return; }
+            if (++silent < 3) return;
+            silent = 0;
+            Log($"pagina senza risposta per 15 secondi, ricaricata: {core.Source}");
+            core.Reload();
+        }
+
+        void WatchFocus(object sender, EventArgs e)
+        {
+            if (IsDisposed || web.CoreWebView2 == null || GetForegroundWindow() != Handle) return;
+            var focus = GetFocus();
+            if (focus == IntPtr.Zero || focus != web.Handle && !IsChild(web.Handle, focus)) RegainFocus();
         }
 
         /// <summary>The window fits the screen it opens on: 90% of it, centred, and maximized when the screen is small
@@ -187,6 +267,13 @@ namespace TDBookingSuite
             core.ScriptDialogOpening += Dialog;
             // the pages print through this window, with the Windows print dialog (a window older than 2.20.11: the browser's)
             await core.AddScriptToExecuteOnDocumentCreatedAsync("window.tdwinPrint=1;");
+            // 2.22.0: the page always counts as the focused one for the browser: after a popup of its own it kept thinking
+            // it had lost the focus, and the fields took no typing although the keys reached the window
+            try { await core.CallDevToolsProtocolMethodAsync("Emulation.setFocusEmulationEnabled", "{\"enabled\":true}"); } catch (COMException) { }
+            focusTimer.Tick += WatchFocus;
+            focusTimer.Start();
+            watchdog.Tick += Watch;
+            watchdog.Start();
             // 2.14.0: the server tells a postazione whose window is older than itself to update
             var mine = typeof(MainForm).Assembly.GetName().Version;
             core.Settings.UserAgent += $" TDBookingSuite/{mine.Major}.{mine.Minor}.{mine.Build}";
@@ -203,7 +290,7 @@ namespace TDBookingSuite
             core.ServerCertificateErrorDetected += CertificateError;
             core.NavigationStarting += (s, e) =>
             {
-                if (config.SameOrigin(e.Uri) || e.Uri.StartsWith("about:") || e.Uri.StartsWith("data:")) return;
+                if (config.SameOrigin(e.Uri) || e.Uri.StartsWith("about:") || e.Uri.StartsWith("data:") || Signin(e.Uri)) return;
                 e.Cancel = true;
                 if (e.Uri == CopyLink) BeginInvoke((Action)ShowCopy);
                 else if (Regex.IsMatch(e.Uri, "^" + Regex.Escape(Releases) + @"v\d+\.\d+\.\d+/TD-Booking-Suite-\d+\.\d+\.\d+\.msi$")) BeginInvoke((Action)(() => Update(e.Uri)));
@@ -222,7 +309,7 @@ namespace TDBookingSuite
             core.NavigationCompleted += Completed;
             retry.Tick += (s, e) => { retry.Stop(); web.CoreWebView2?.Navigate(target ?? config.Server + "/"); };
             copyTimer.Tick += (s, e) => SaveCopy();
-            FormClosed += (s, e) => { retry.Dispose(); copyTimer.Dispose(); };
+            FormClosed += (s, e) => { retry.Dispose(); copyTimer.Dispose(); focusTimer.Dispose(); watchdog.Dispose(); };
             core.Navigate(config.Server + "/");
         }
 
@@ -395,6 +482,12 @@ namespace TDBookingSuite
                 var settings = core.Environment.CreatePrintSettings();
                 settings.ShouldPrintBackgrounds = true;
                 settings.ShouldPrintHeaderAndFooter = false;
+                // 2.22.0: A4 with 15 mm of margin, as the pages are laid out (the default was Letter with 1 cm, everything stuck to the edges)
+                settings.PageWidth = 8.27; settings.PageHeight = 11.69;
+                settings.MarginTop = settings.MarginBottom = settings.MarginLeft = settings.MarginRight = 0.59;
+                // 2.22.0: A4 with real margins (the browser's default was Letter with 1 cm, the sheet came out cramped)
+                settings.PageWidth = 8.27; settings.PageHeight = 11.69;
+                settings.MarginTop = settings.MarginBottom = 0.63; settings.MarginLeft = settings.MarginRight = 0.59;
                 done = await core.PrintToPdfAsync(path, settings);
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is COMException || ex is ArgumentException) { }
@@ -455,6 +548,7 @@ namespace TDBookingSuite
         void Dialog(object sender, CoreWebView2ScriptDialogOpeningEventArgs e)
         {
             var later = e.GetDeferral();
+            asking = true;
             BeginInvoke((Action)(() =>
             {
                 try
@@ -474,7 +568,7 @@ namespace TDBookingSuite
                         // a prompt: no page of the program asks one; not accepted, as if cancelled
                     }
                 }
-                finally { later.Complete(); GiveFocus(); }
+                finally { later.Complete(); asking = false; GiveFocus(); }
             }));
         }
 
@@ -569,6 +663,15 @@ namespace TDBookingSuite
             }
             finally { Cursor = Cursors.Default; }
         }
+
+        /// <summary>2.22.0: the consent pages of Google and Microsoft (Invio email with Gmail, the calendars) stay in this
+        /// window: Google comes back to localhost with the code, and only this window has the program's session and
+        /// trusts its certificate. Opened in Edge, the return landed on a login page and "Collegamento scaduto".</summary>
+        // shortcut: Google refuses embedded browsers it recognises by the user agent; WebView2 presents Edge's, so it passes today.
+        // If Google ever answers disallowed_useragent, the way out is a loopback flow that finishes without the session.
+        static readonly string[] SigninHosts = { "accounts.google.com", "accounts.youtube.com", "login.microsoftonline.com", "login.live.com", "login.microsoft.com" };
+        static bool Signin(string url) =>
+            Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https" && Array.IndexOf(SigninHosts, uri.Host) >= 0;
 
         static void OpenOutside(string url)
         {
