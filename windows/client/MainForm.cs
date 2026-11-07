@@ -473,6 +473,10 @@ namespace TDBookingSuite
             if (core == null) return;
             var path = Free(name, ".pdf", "Report");
             var done = false;
+            // 2.22.0: the PDF's margins are painted with the window's default background: in the dark theme they came out
+            // black around a white page. White while printing, the theme's colour back after
+            var was = web.DefaultBackgroundColor;
+            web.DefaultBackgroundColor = Color.White;
             try
             {
                 Directory.CreateDirectory(Downloads);
@@ -488,6 +492,7 @@ namespace TDBookingSuite
                 done = await core.PrintToPdfAsync(path, settings);
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is COMException || ex is ArgumentException) { }
+            finally { web.DefaultBackgroundColor = was; }
             web.CoreWebView2?.PostWebMessageAsString("tdwin-pdf-done:" + (done ? "ok" : ""));
             if (done) Show(path);
             else MessageBox.Show(this, "Non riesco a salvare il PDF nella cartella Download.", "TD Booking Suite", MessageBoxButtons.OK, MessageBoxIcon.Warning);
