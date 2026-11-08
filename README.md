@@ -97,11 +97,11 @@ Per togliere gli avvisi serve un certificato di firma del codice, che costa qual
 
 ```bat
 rem Un PC solo
-msiexec /i TD-Booking-Suite-2.22.5.msi MODALITA=standalone /qn
+msiexec /i TD-Booking-Suite-2.22.6.msi MODALITA=standalone /qn
 rem Server con postazioni, con porta e indirizzi
-msiexec /i TD-Booking-Suite-2.22.5.msi MODALITA=server PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 ALTRI_INDIRIZZI=192.168.1.10 /qn
+msiexec /i TD-Booking-Suite-2.22.6.msi MODALITA=server PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 ALTRI_INDIRIZZI=192.168.1.10 /qn
 rem Solo postazione
-msiexec /i TD-Booking-Suite-2.22.5.msi ADDLOCAL=Postazione /qn
+msiexec /i TD-Booking-Suite-2.22.6.msi ADDLOCAL=Postazione /qn
 ```
 
 Senza `MODALITA` l'installazione tiene il tipo che il PC aveva: solo la finestra se c'è solo la postazione, altrimenti quello ricordato nel registro. Un server della 2.8, o i dati di un server rimasti dopo averlo disinstallato, o un `INDIRIZZO` dato, fanno Server con postazioni; un PC nuovo parte come Un PC solo. `MODALITA=postazione` da sola non si usa: ferma l'installazione e dice di usare `ADDLOCAL=Postazione`.
@@ -279,7 +279,7 @@ Ogni destinazione ha il pulsante **Prova**, e lo **storico** dice com'è andato 
 
 Per aggiornare, apri l'MSI nuovo sopra quello vecchio: tipo, servizi, porta, database e dati restano. Prima di applicare la versione nuova, l'installer salva una copia del database in `backup\prima-dell-aggiornamento.dump`. Se l'aggiornamento non riesce, Windows rimette la versione di prima e la fa ripartire.
 
-Per **cambiare tipo** apri di nuovo l'MSI (o Impostazioni › App › TD Booking Suite › Modifica), scegli di cambiare l'installazione e il tipo nuovo. Da riga di comando: `msiexec /i TD-Booking-Suite-2.22.5.msi MODALITA=standalone /qn`. I dati restano.
+Per **cambiare tipo** apri di nuovo l'MSI (o Impostazioni › App › TD Booking Suite › Modifica), scegli di cambiare l'installazione e il tipo nuovo. Da riga di comando: `msiexec /i TD-Booking-Suite-2.22.6.msi MODALITA=standalone /qn`. I dati restano.
 
 La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramData\TD Booking Suite`. Per cancellarli davvero, elimina quella cartella.
 
@@ -288,7 +288,7 @@ La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramDa
 - **Usa i dati di prima**, già scelto: il programma riparte da dove era, con le stesse attività, clienti e prenotazioni, e si entra con l'amministratore di allora;
 - **Ricomincia da zero**: un programma vuoto e al primo avvio si crea l'amministratore. I dati di prima non si cancellano: vanno, interi, in `C:\ProgramData\TD Booking Suite (dati del <giorno e ora>)`. Restano licenza, prova, codice installazione, indirizzi, porta e certificato, così la licenza vale ancora e le postazioni aprono il server come prima.
 
-Da riga di comando: `msiexec /i TD-Booking-Suite-2.22.5.msi MODALITA=standalone RICOMINCIA=1 /qn`. Senza `RICOMINCIA` usa i dati di prima. Un aggiornamento non lo chiede: i dati restano sempre.
+Da riga di comando: `msiexec /i TD-Booking-Suite-2.22.6.msi MODALITA=standalone RICOMINCIA=1 /qn`. Senza `RICOMINCIA` usa i dati di prima. Un aggiornamento non lo chiede: i dati restano sempre.
 
 Da zero anche senza disinstallare, da PowerShell come amministratore:
 
