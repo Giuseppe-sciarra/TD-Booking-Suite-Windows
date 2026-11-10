@@ -28,7 +28,7 @@ public abstract class Page : UserControl
 public sealed class MainWindow : Window
 {
     public bool Replaced;
-    public JsonNode Me { get; }
+    public JsonNode Me { get; private set; }
     public JsonNode Business { get; private set; }
     readonly ContentControl content = new();
     readonly DockPanel bar = new() { Width = 228 };
@@ -61,10 +61,16 @@ public sealed class MainWindow : Window
     public bool Can(string p) => Business != null && Business.A("permessi").Any(x => x.ToString() == p);
     public Page CurrentPage => currentPage;
 
+    /// <summary>The page to open first, instead of the agenda (the guided setup after the first start).</summary>
+    public string StartKey { get; init; }
+    /// <summary>tdwin setup_done: a licence or the trial, and at least one business: the menu keeps only what is used.</summary>
+    bool SetupDone => Me["licenza"].S("kind") != "bloccato" && Me.A("attivita").Any();
+
     async Task Enter()
     {
         var list = Me.A("attivita").ToList();
-        if (list.Count == 0) { Build(); Show(Me.Bo("staff") ? "licenza" : "account"); return; }
+        if (list.Count == 0) { Build(); Show(Me.Bo("staff") ? (SetupDone ? "licenza" : "inizia") : "account"); return; }
+        if (StartKey != null && list.Count >= 1) { await Open(list[0].S("slug"), StartKey); return; }
         var slug = list[0].S("slug");
         if (list.Count > 1)
         {
@@ -89,8 +95,8 @@ public sealed class MainWindow : Window
     /// <summary>After something of the business changed (logo, colour, type, till): its data read again, the menu rebuilt, the page shown.</summary>
     public async Task Refresh(string key)
     {
-        Business = await Api.Current.Call("attivita.io");
-        Palette.Brand(Business.S("colore"), Business.S("coloreScuro"));
+        Me = await Api.Current.Call("sessione.io");  // the licence and the businesses too: the menu follows them
+        if (!string.IsNullOrEmpty(Api.Current.Business)) { Business = await Api.Current.Call("attivita.io"); Palette.Brand(Business.S("colore"), Business.S("coloreScuro")); }
         Build(); Show(key);
     }
 
@@ -215,6 +221,7 @@ public sealed class MainWindow : Window
             Add("programma", "grid", "Dashboard", () => new ProgramDashboardPage());
             Add("attivita", "briefcase", "Clienti", () => new ProgramClientsPage());
             Add("generali", "sliders", "Impostazioni generali", () => new GeneralPage());
+            Add("inizia", "compass", "Configurazione guidata", () => new SetupGuidePage(), !SetupDone || StartKey == "inizia");
             Add("licenza", "key", "Licenza", () => new LicencePage());
             Add("postazioni", "monitor", "Postazioni", () => new WorkstationsPage(), !Me.Bo("standalone"));
             Add("backup", "archive", "Backup", () => new BackupPage());

@@ -239,25 +239,12 @@ public static class Agenzia
         var id = Guid.NewGuid(); using var s = c.S.Db.Tenant(id);
         if (slug != "" && s.Scalar<long>("SELECT count(*) FROM core_tenant WHERE slug=@slug", new { slug }) > 0) p.Error("slug", "Tenant con questo Indirizzo breve esiste già.");
         if (p.Errors.Count > 0) throw new FormErrors(p.Errors);
-        // platform.private_guard: one creation at a time, within the licence's number of businesses
-        s.Execute("SELECT pg_advisory_xact_lock(80561239)");
-        if (s.Scalar<long>("SELECT count(*) FROM core_tenant") >= c.S.TenantLimit)
-            throw new BookingException(c.S.Edition == "private" ? "L'edizione Private gestisce una sola attività con più utenti." : $"Puoi gestire al massimo {c.S.TenantLimit} attività. Per più attività serve una licenza Portale con più attività: la inserisci da Licenza.");
+        Guard(c, s);
         var (trial, _) = Prefill(c, s);
         var t = Blank(s, new JsonObject()); t.Id = id; t.Slug = slug; t.Name = p.Text("name"); t.WrappedKey = c.S.Crypto.NewTenantKey(id);
         s.Insert(t); store(s, id);
         t = s.Get<Tenant>(id); var x = new Ctx(s, c.S.Crypto, t) { Actor = c.User.Id, PublicOrigin = c.PublicOrigin, Out = Outbox.Instance, Edition = c.S.Edition };
-        // platform.seed_tenant: the type's real catalog, the same Configura l'attività applies; a generic appointment without a type
-        var preset = c.Str("preset");
-        if (Presets.All.ContainsKey(preset)) new Profile(x).Apply(preset, new List<string> { "Sede principale" });
-        else
-        {
-            var location = new Location { TenantId = id, Name = "Sede principale" }; s.Insert(location);
-            var resource = new Resource { TenantId = id, LocationId = location.Id, Name = "Operatore 1" }; s.Insert(resource);
-            var service = new Service { TenantId = id, LocationId = location.Id, Name = "Appuntamento", Kind = "resource" }; s.Insert(service);
-            s.Insert(new Serviceresource { TenantId = id, ServiceId = service.Id, ResourceId = resource.Id });
-            for (short d = 0; d < 5; d++) s.Insert(new Schedule { TenantId = id, Weekday = d, Start = TimeSpan.FromHours(9), End = TimeSpan.FromHours(18) });
-        }
+        Seed(x, c.Str("preset"));
         var (user, created) = acc.AccountFor(s, c.Str("username"), email, id);
         // an account not activated yet stays its owner's: the administrator would get the link or set the password
         if (!created && !Passwords.Usable(user.Password)) throw new BookingException("Questo account non è ancora attivo: deve attivarlo dal suo invito, poi lo aggiungi.");
@@ -281,6 +268,88 @@ public static class Agenzia
             creato = Mark(after.Get<Tenant>(id)), link, mailPronta = ready, puoCreare = after.Scalar<long>("SELECT count(*) FROM core_tenant") < c.S.TenantLimit,
             testo = "Cliente creato. " + (password != "" ? "L'amministratore dell'attività può già accedere con la password che hai scelto." : link != "" ? "L'invito è valido per 24 ore." : "L'amministratore dell'attività aveva già un accesso: trova la nuova attività nel suo portale."),
         };
+    }
+
+    /// <summary>platform.private_guard: one creation at a time, within the licence's number of businesses.</summary>
+    static void Guard(Call c, Scope s)
+    {
+        s.Execute("SELECT pg_advisory_xact_lock(80561239)");
+        if (s.Scalar<long>("SELECT count(*) FROM core_tenant") >= c.S.TenantLimit)
+            throw new BookingException(c.S.Edition == "private" ? "L'edizione Private gestisce una sola attività con più utenti." : $"Puoi gestire al massimo {c.S.TenantLimit} attività. Per più attività serve una licenza Portale con più attività: la inserisci da Licenza.");
+    }
+    /// <summary>platform.seed_tenant: the type's real catalog, the same Configura l'attività applies; a generic appointment without a type.</summary>
+    static void Seed(Ctx x, string preset)
+    {
+        var s = x.S; var id = x.Tenant.Id;
+        if (Presets.All.ContainsKey(preset ?? "")) { new Profile(x).Apply(preset, new List<string> { "Sede principale" }); return; }
+        var location = new Location { TenantId = id, Name = "Sede principale" }; s.Insert(location);
+        var resource = new Resource { TenantId = id, LocationId = location.Id, Name = "Operatore 1" }; s.Insert(resource);
+        var service = new Service { TenantId = id, LocationId = location.Id, Name = "Appuntamento", Kind = "resource" }; s.Insert(service);
+        s.Insert(new Serviceresource { TenantId = id, ServiceId = service.Id, ResourceId = resource.Id });
+        for (short d = 0; d < 5; d++) s.Insert(new Schedule { TenantId = id, Weekday = d, Start = TimeSpan.FromHours(9), End = TimeSpan.FromHours(18) });
+    }
+
+    // ---------- tdwin/views.py: Configurazione guidata: licence, the business and its owner, backups, workstations, then work
+    [Rpc("inizia", Tenant = false, Staff = true)]
+    public static object Guide(Call c)
+    {
+        var st = c.S.Licensing.Apply(true); using var g = c.S.Db.Global();
+        var businesses = g.Query<Tenant>("SELECT * FROM core_tenant ORDER BY created").ToList().Select(t =>
+        {
+            var owner = g.One<User>("SELECT u.* FROM core_membership m JOIN core_user u ON u.id=m.user_id WHERE m.tenant_id=@t AND m.role='owner' ORDER BY m.id LIMIT 1", new { t = t.Id });
+            return new { slug = t.Slug, nome = t.Name, titolare = owner != null ? c.S.Identity.LoginName(owner) : "", io = owner != null && owner.Id == c.User.Id };
+        }).ToList();
+        var backup = new Work.Backup(c.S).Row(); var l = st.Licence;
+        return new
+        {
+            standalone = c.S.Standalone, io = c.S.Identity.LoginName(c.User), ufficio = c.S.Config.Origin, attivita = businesses, altre = st.Attivita > businesses.Count,
+            tipi = Presets.Choices.Skip(1).Select(x => new { id = x.Key, nome = x.Label }),
+            licenza = new
+            {
+                stato = st.Kind, id = l?.Id ?? "", intestatario = l?.Intestatario ?? "", tipo = l != null && TD.Core.Win.Licensing.TIPI.TryGetValue(l.Tipo ?? "", out var kind) ? kind : "", scadenza = l?.Scadenza?.ToString("dd/MM/yyyy") ?? "",
+                fine = st.Fine.HasValue ? Local(st.Fine.Value).ToString("dd/MM/yyyy HH:mm") : "", provaDisponibile = c.S.Licensing.TrialStart() == null && st.Kind != "licenza",
+            },
+            passi = new { licenza = st.Kind != "bloccato", attivita = businesses.Count > 0, backup = backup.Attivo && backup.Chiave != "", postazioni = g.Scalar<long>("SELECT count(*) FROM tdwin_postazione WHERE token IS NOT NULL") > 0 },
+            oraBackup = backup.Ora.ToString(@"hh\:mm"),
+        };
+    }
+
+    /// <summary>create_business: the business and its owner, with the password typed now: what Clienti, Nuovo cliente does, in one step.
+    /// "io": the administrator works in the business too, one account for everything (a program used by its owner).</summary>
+    [Rpc("inizia.attivita", Tenant = false, Staff = true, Fresh = true)]
+    public static object GuideBusiness(Call c)
+    {
+        var me = c.Str("chi") == "io"; var password = c.Str("password"); var acc = new Accounts(c.S.Db, c.S.Crypto);
+        if (!me && password != c.Str("password2")) throw new BookingException("Le due password del titolare non coincidono.");
+        var name = string.Join(" ", c.Str("nome").Split((char[])null, StringSplitOptions.RemoveEmptyEntries));
+        if (name == "") throw new BookingException("Scrivi il nome dell'attività.");
+        if (name.Length > 100) name = name[..100];
+        var id = Guid.NewGuid(); using var s = c.S.Db.Tenant(id);
+        var slug0 = Regex.Replace(Regex.Replace(new string(name.Normalize(System.Text.NormalizationForm.FormKD).Where(ch => ch < 128).ToArray()).ToLowerInvariant(), @"[^\w\s-]", ""), @"[-\s]+", "-").Trim('-', '_');
+        if (slug0.Length > 40) slug0 = slug0[..40]; slug0 = slug0.Trim('-'); if (slug0 == "") slug0 = "attivita";
+        var slug = slug0; for (var n = 2; s.Scalar<long>("SELECT count(*) FROM core_tenant WHERE slug=@slug", new { slug }) > 0; n++) slug = $"{slug0}-{n}";
+        Guard(c, s);
+        var t = Blank(s, new JsonObject()); t.Id = id; t.Slug = slug; t.Name = name; t.WrappedKey = c.S.Crypto.NewTenantKey(id); s.Insert(t);
+        var x = new Ctx(s, c.S.Crypto, t) { Actor = c.User.Id, PublicOrigin = c.PublicOrigin, Out = Outbox.Instance, Edition = c.S.Edition };
+        Seed(x, c.Str("tipo"));
+        var user = c.User;
+        if (!me)
+        {
+            bool created; (user, created) = acc.AccountFor(s, c.Str("username"), c.Str("email"), id);
+            if (user.IsStaff) throw new BookingException("È l'account dell'amministratore del programma: per lavorare tu con questo account scegli «Io, con questo account»; il titolare ne ha uno suo.");
+            // someone else's account not activated yet stays his: a password typed here would take it over
+            if (!created && !Passwords.Usable(user.Password)) throw new BookingException("Questo account non è ancora attivo: deve attivarlo dal suo invito.");
+        }
+        s.Execute("INSERT INTO core_membership (tenant_id, user_id, role, can_schedule, locations, resources) VALUES (@t, @u, 'owner', true, '[]'::jsonb, '[]'::jsonb)", new { t = id, u = user.Id });
+        // someone who already has an account keeps their password: one typed here would be ignored, better say it
+        if (!me && Passwords.Usable(user.Password) && password != "") throw new BookingException("Questo account ha già una password, che resta quella: lascia vuoti i campi della password.");
+        if (!me && !Passwords.Usable(user.Password))
+        {
+            if (password != password.Trim() || password == "") throw new BookingException("Scegli la password del titolare.");
+            acc.GrantAccess(s, user, password, c.PublicOrigin);
+        }
+        x.Audit("tenant.created", id); x.Commit(); c.S.EditionChanged();
+        return new { slug, testo = me ? $"{name} è pronta: lavori tu, con questo account." : $"{name} è pronta, con il suo titolare." };
     }
 
     static Tenant Find(Scope g, string slug) => g.One<Tenant>("SELECT * FROM core_tenant WHERE slug=@slug", new { slug }) ?? throw new KeyNotFoundException();

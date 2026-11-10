@@ -86,8 +86,33 @@ public sealed class Server
         return cert;
     }
 
+    bool configured;
+    /// <summary>tdwin middleware.configured: the program has its administrator.</summary>
+    public bool Configured()
+    {
+        if (!configured) { using var g = Db.Global(); configured = g.Scalar<long>("SELECT count(*) FROM core_user WHERE is_staff") > 0; }
+        return configured;
+    }
+    public string FirstRunFile => Path.Combine(Config.DataFolder, "licenza", "primo-avvio.txt");
+    /// <summary>A one-time code for the first start, in the data folder: only Windows administrators read that folder, so a
+    /// normal user signed in on the server PC cannot create the program's administrator. Made once, by the web service,
+    /// in the licence folder, the one part of the data folder it may write.</summary>
+    public string FirstRunCode()
+    {
+        try { return File.ReadAllText(FirstRunFile).Trim(); }
+        catch (IOException)
+        {
+            const string letters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";  // no look-alike O/0, I/1
+            var code = string.Join("-", Enumerable.Range(0, 2).Select(_ => new string(Enumerable.Range(0, 4).Select(_ => letters[System.Security.Cryptography.RandomNumberGenerator.GetInt32(letters.Length)]).ToArray())));
+            Directory.CreateDirectory(Path.GetDirectoryName(FirstRunFile)!); File.WriteAllText(FirstRunFile, code + "\n"); return code;
+        }
+    }
+
     public object Info(HttpContext h) => new
     {
+        configurato = Configured(),
+        // the first start: where the code is, on the server PC only (the file is made now)
+        primoAvvio = !Configured() && Web.Gate.IsServerPc(h) && FirstRunCode() != "" ? FirstRunFile : "",
         versione = Version,
         standalone = Standalone,
         online = Online,

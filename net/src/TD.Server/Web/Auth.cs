@@ -47,6 +47,41 @@ public static class Auth
             catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 429); }
         });
 
+        // tdwin first_run: the program's administrator, only from the server PC, only while none exists, with the code
+        // from the admin-only data folder. Whoever just chose the password is already in.
+        app.MapPost("/api/primo-avvio", (Server s, HttpContext h, JsonObject body) =>
+        {
+            if (s.Configured()) return Results.Json(new { error = "L'amministratore del programma esiste già: entra con il suo username." }, statusCode: 409);
+            if (h.Items["server_pc"] is not true) return Results.Json(new { error = "Il primo avvio si fa dal PC server." }, statusCode: 403);
+            try
+            {
+                s.Identity.Throttle("login-ip", Address(h), 50);
+                static string Plain(string v) => new string((v ?? "").Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+                if (!System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(System.Text.Encoding.UTF8.GetBytes(Plain(body.Str("codice"))), System.Text.Encoding.UTF8.GetBytes(Plain(s.FirstRunCode()))))
+                    throw new BookingException("Codice del primo avvio sbagliato: aprilo come indicato sotto e ricopialo.");
+                var username = Accounts.CleanUsername(body.Str("username")); if (username == "") throw new BookingException("Scegli lo username dell'amministratore.");
+                var email = Crypto.CaseFold(body.Str("email").Trim()); if (email != "") Accounts.ValidateEmail(email);
+                var password = body.Str("password"); if (password != body.Str("password2")) throw new BookingException("Le due password non coincidono.");
+                Accounts.ValidatePassword(password);
+                User admin;
+                using (var g = s.Db.Global())
+                {
+                    g.Execute("SELECT pg_advisory_xact_lock(80561240)");
+                    if (g.Scalar<long>("SELECT count(*) FROM core_user WHERE is_staff") > 0) return Results.Json(new { error = "L'amministratore del programma esiste già: entra con il suo username." }, statusCode: 409);
+                    admin = new Accounts(s.Db, s.Crypto).Create(g, email, username, true);
+                    admin.Password = Passwords.Make(password); g.Update(admin, "password");
+                    // the core's neutral default
+                    if (g.Scalar<long>("SELECT count(*) FROM core_sitesettings") == 0) g.Insert(new Sitesettings { Name = "TD Booking Suite" });
+                    else g.Execute("UPDATE core_sitesettings SET name='TD Booking Suite' WHERE name='Booking Suite'");
+                    g.Commit();
+                }
+                try { File.Delete(s.FirstRunFile); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+                return Finish(s, h, admin, Json.Truthy(body["remember"]), body.Str("device"));
+            }
+            catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 429); }
+            catch (BookingException ex) { return Results.Json(new { error = ex.Message }, statusCode: 400); }
+        });
+
         app.MapPost("/api/login/quick", (Server s, HttpContext h, JsonObject body) =>
         {
             try { s.Identity.Throttle("login-ip", Address(h), 50); } catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 429); }

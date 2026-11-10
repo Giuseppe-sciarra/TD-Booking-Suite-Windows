@@ -44,9 +44,20 @@ public sealed class Shell
             catch (NeedsPairing) { if (!await Pair()) return; }
             catch (ApiError) { Api.Current.Token = ""; ClientConfig.WriteSecret(true, ""); }
         }
+        // tdwin first_run: no administrator yet: he is created now, on the server PC, and goes straight on with the guided setup
+        JsonNode info = null; try { info = await Api.Current.Get("/api/info"); } catch (ApiError) { }
+        if (info != null && info["configurato"] != null && !info.Bo("configurato"))
+        {
+            if (info.S("primoAvvio") == "") { Say("Il primo avvio si fa dal PC server."); Application.Current.Shutdown(); return; }
+            var first = new FirstRunWindow(info);
+            if (first.ShowDialog() != true) { Application.Current.Shutdown(); return; }
+            Api.Current.Token = first.Token; if (first.Remember) ClientConfig.WriteSecret(true, first.Token);
+            try { Me = await Api.Current.Call("sessione.io"); Open("inizia"); main.Flash("Amministratore del programma creato. Ora la licenza e la tua attività."); return; }
+            catch (ApiError ex) { Say(ex.Message); }
+        }
         while (true)
         {
-            var login = new LoginWindow();
+            var login = new LoginWindow(prefill); prefill = "";
             if (login.ShowDialog() != true) { Application.Current.Shutdown(); return; }
             if (login.NeedsPairing) { if (!await Pair()) return; continue; }
             Api.Current.Token = login.Token;
@@ -64,10 +75,18 @@ public sealed class Shell
         return true;
     }
 
-    void Open()
+    /// <summary>After the businesses changed (the guided setup made one): the session read again, the window opened on that page.</summary>
+    public async Task Reopen(string key)
+    {
+        Me = await Api.Current.Call("sessione.io");
+        if (main != null) { main.Replaced = true; }
+        Open(key);
+    }
+
+    void Open(string key = null)
     {
         main?.Close();
-        main = new MainWindow(Me);
+        main = new MainWindow(Me) { StartKey = key };
         Application.Current.MainWindow = main;
         main.Closed += (_, _) => { if (main != null && !main.Replaced) Application.Current.Shutdown(); };
         main.Show();
@@ -77,6 +96,12 @@ public sealed class Shell
     /// <summary>A file the program has just put in the Download folder: the same line everywhere, with Apri.</summary>
     public void Saved(string path) =>
         main?.Flash($"Salvato nella cartella Download: {System.IO.Path.GetFileName(path)}", false, "Apri", () => { try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true }); } catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or System.IO.IOException) { } });
+
+    /// <summary>A line on top of the window that is open now.</summary>
+    public void Say(string text, bool error = false) => main?.Flash(text, error);
+    string prefill = "";
+    /// <summary>tdwin leave_as: Esci ed entra come titolare: the administrator's session ends, the sign in already has the owner's username.</summary>
+    public void LeaveAs(string login) { prefill = login ?? ""; SignedOut(true); }
 
     public async void SignedOut(bool byUser = false)
     {
@@ -162,8 +187,10 @@ public sealed class LoginWindow : Window
     public bool NeedsPairing { get; private set; }
     readonly StackPanel body = new();
 
-    public LoginWindow()
+    readonly string prefill;
+    public LoginWindow(string prefill = "")
     {
+        this.prefill = prefill;
         Title = "TD Booking Suite"; Width = 440; SizeToContent = SizeToContent.Height; WindowStartupLocation = WindowStartupLocation.CenterScreen; ResizeMode = ResizeMode.CanMinimize;
         Content = new Border { Child = body, Padding = new Thickness(32) };
         Password();
@@ -172,7 +199,7 @@ public sealed class LoginWindow : Window
     async void Password()
     {
         body.Children.Clear();
-        var login = Box(""); var pw = new PasswordBox(); var remember = new CheckBox { Content = "Resta collegato su questo PC", IsChecked = true };
+        var login = Box(prefill); var pw = new PasswordBox(); var remember = new CheckBox { Content = "Resta collegato su questo PC", IsChecked = true };
         var error = T("", color: Res("Danger"));
         var go = BA("Entra", async () =>
         {
@@ -189,7 +216,7 @@ public sealed class LoginWindow : Window
         go.IsDefault = true; go.HorizontalAlignment = HorizontalAlignment.Stretch;
         body.Children.Add(Col(T("TD Booking Suite", "H1"), T("Entra con il tuo username o la tua email.", "MutedText").M(0, 0, 0, 18),
             Field("Username o email", login), Field("Password", pw), remember.M(0, 0, 0, 12), error.M(0, 0, 0, 8), go));
-        login.Focus();
+        if (prefill != "") pw.Focus(); else login.Focus();
         try
         {
             var quick = await Api.Current.Get("/api/login/quick") as JsonArray;
@@ -227,5 +254,46 @@ public sealed class LoginWindow : Window
         body.Children.Add(Col(T("Codice di verifica", "H1"), T("Scrivi il codice di 6 cifre dell'app Authenticator, o uno dei codici di recupero.", "MutedText").M(0, 0, 0, 18),
             Field("Codice", code), error.M(0, 0, 0, 8), Row(go, B("Indietro", Password, "Ghost").M(8, 0, 0, 0))));
         code.Focus();
+    }
+}
+
+/// <summary>tdwin/primo_avvio.html: the program's administrator, created once from the server PC with the code only a Windows administrator reads.</summary>
+public sealed class FirstRunWindow : Window
+{
+    public string Token { get; private set; } = "";
+    public bool Remember { get; private set; }
+
+    public FirstRunWindow(JsonNode info)
+    {
+        Title = "TD Booking Suite · Primo avvio"; Width = 520; SizeToContent = SizeToContent.Height; WindowStartupLocation = WindowStartupLocation.CenterScreen; ResizeMode = ResizeMode.CanMinimize;
+        var code = Box(""); code.MaxLength = 20; code.CharacterCasing = CharacterCasing.Upper; code.Tag = "ABCD-EFGH"; AgendaPage.Hint(code);
+        var username = Box(""); username.MaxLength = 40; username.Tag = "mario"; AgendaPage.Hint(username);
+        var email = Box(""); email.MaxLength = 254; var pw = new PasswordBox(); var pw2 = new PasswordBox();
+        var remember = new CheckBox { Content = "Resta collegato su questo PC", IsChecked = true };
+        var error = T("", color: Res("Danger")); error.TextWrapping = TextWrapping.Wrap;
+        var go = BA("Crea l'amministratore", async () =>
+        {
+            error.Text = "";
+            try
+            {
+                var r = await Api.Current.Post("/api/primo-avvio", new JsonObject { ["codice"] = code.Text, ["username"] = username.Text, ["email"] = email.Text, ["password"] = pw.Password, ["password2"] = pw2.Password, ["remember"] = remember.IsChecked == true, ["device"] = Environment.MachineName });
+                Remember = remember.IsChecked == true; Token = r.S("token"); DialogResult = true;
+            }
+            catch (ApiError ex) { error.Text = ex.Message; }
+        }, "Primary");
+        go.IsDefault = true; go.HorizontalAlignment = HorizontalAlignment.Stretch;
+        TextBlock P(string text) { var t = T(text, "MutedText"); t.TextWrapping = TextWrapping.Wrap; return t; }
+        var path = new TextBox { Text = info.S("primoAvvio"), IsReadOnly = true, TextWrapping = TextWrapping.Wrap, BorderThickness = new Thickness(0), Background = System.Windows.Media.Brushes.Transparent, Padding = new Thickness(0), FontFamily = new System.Windows.Media.FontFamily("Consolas"), FontSize = 12.5 };
+        var notice = F.Notice(Col(T("Codice del primo avvio", size: 14, bold: true),
+            P("Per sicurezza solo un amministratore di Windows di questo PC può creare l'amministratore del programma. Apri il menu Start, TD Booking Suite, Codice del primo avvio: Windows chiede il permesso di amministratore e mostra il codice da scrivere qui. Il codice sta anche nel file").M(0, 4, 0, 4), path));
+        Content = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Content = Col(T("Primo avvio", "H1"),
+                P("Crea l'amministratore del programma: configura licenza, attività" + (info.Bo("standalone") ? "" : ", postazioni") + " e backup. Usa una password lunga e conservala bene: se la perdi si recupera solo da questo PC, dal menu Start, TD Booking Suite, Recupera accesso.").M(0, 0, 0, 14),
+                notice.M(0, 0, 0, 12), Field("Codice del primo avvio", code), Field("Username", username, "Con questo entri nel programma: lettere, numeri, punto e trattino"), Field("Email, facoltativa", email),
+                Field("Password, almeno 12 caratteri", pw), Field("Ripeti la password", pw2), remember.M(0, 0, 0, 12), error.M(0, 0, 0, 8), go).M(32),
+        };
+        Loaded += (_, _) => code.Focus();
     }
 }

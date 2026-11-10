@@ -166,3 +166,112 @@ sealed class Relay(Action run) : System.Windows.Input.ICommand
     public bool CanExecute(object p) => true;
     public void Execute(object p) => run();
 }
+
+/// <summary>tdwin/inizia.html: Configurazione guidata: every step says if it is done and leads to it.</summary>
+public sealed class SetupGuidePage : Page
+{
+    public override async Task Load() => Draw(await Api.Current.Call("inizia", new { }));
+
+    static Border Step(int n, string title, Border pill, params UIElement[] body)
+    {
+        var num = T(n.ToString(), size: 14, bold: true, color: System.Windows.Media.Brushes.White); num.HorizontalAlignment = HorizontalAlignment.Center; num.VerticalAlignment = VerticalAlignment.Center;
+        var head = new DockPanel(); if (pill != null) { pill.VerticalAlignment = VerticalAlignment.Center; DockPanel.SetDock(pill, Dock.Right); head.Children.Add(pill); }
+        head.Children.Add(Row(new Border { Width = 28, Height = 28, CornerRadius = new CornerRadius(14), Background = Res("Brand"), Child = num, Margin = new Thickness(0, 0, 10, 0) }, T(title, "H2")));
+        var card = Col(head); foreach (var e in body) if (e != null) card.Children.Add(e);
+        return F.Card(card);
+    }
+    static Border Done(bool done, string otherwise, string kind) => done ? MainWindow.Pill("Fatto", "ok") : MainWindow.Pill(otherwise, kind);
+    static TextBlock P(params object[] parts)
+    {
+        var t = new TextBlock { FontSize = 14, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0) };
+        foreach (var p in parts) t.Inlines.Add(p is string s ? new System.Windows.Documents.Run(s) : new System.Windows.Documents.Run(((ValueTuple<string>)p).Item1) { FontWeight = FontWeights.Bold });
+        return t;
+    }
+    static ValueTuple<string> Strong(string s) => ValueTuple.Create(s);
+
+    void Draw(JsonNode d)
+    {
+        var standalone = d.Bo("standalone"); var steps = d["passi"]; var lic = d["licenza"]; var kind = lic.S("stato"); var businesses = d.A("attivita").ToList();
+        var page = Col(F.Heading(null, "Configurazione guidata", (standalone ? "Un PC solo" : "Server con postazioni") + ". Pochi passi con l'amministratore del programma, poi al lavoro: con questo stesso account o con quello del titolare, lo scegli al passo 2"));
+
+        // 1. Licenza
+        var trial = lic.Bo("provaDisponibile");
+        var text = kind == "licenza" ? P("Licenza ", Strong(lic.S("id")), $", {lic.S("tipo")}, intestata a ", Strong(lic.S("intestatario")), (lic.S("scadenza") != "" ? ", fino al " + lic.S("scadenza") : "") + ".")
+            : kind == "prova" ? P("Prova attiva fino al ", Strong(lic.S("fine")), ". Prima della fine inserisci la licenza: prenotazioni e clienti restano.")
+            : !trial ? P("La prova è finita, o la licenza è scaduta: inserisci la licenza per il codice di questa installazione. Prenotazioni e clienti sono al sicuro, e i backup attivi continuano.")
+            : P("Senza licenza il programma non parte. Attiva la prova di 7 giorni per provarlo subito, oppure inserisci la licenza che ti abbiamo mandato per il codice di questa installazione.");
+        var actions = Row(); actions.Margin = new Thickness(0, 14, 0, 0);
+        if (trial) actions.Children.Add(BA("Attiva la prova di 7 giorni", async () => { var r = await Api.Current.Call("licenza.azione", new { azione = "prova" }); await Shell.Instance.Reopen("inizia"); Shell.Instance.Say(r.S("testo"), r.Bo("errore")); }, steps.Bo("licenza") ? null : "Primary").M(0, 0, 10, 0));
+        actions.Children.Add(B(kind == "licenza" ? "Apri Licenza" : "Inserisci la licenza", () => Main.Show("licenza"), steps.Bo("licenza") && kind == "licenza" ? "Ghost" : null));
+        page.Children.Add(Step(1, "Licenza", Done(steps.Bo("licenza"), "Da fare", "danger"), text, actions));
+
+        // 2. La tua attività e chi ci lavora
+        var second = new List<UIElement>();
+        if (businesses.Count > 0)
+        {
+            foreach (var b in businesses) second.Add(Col(T(b.S("nome"), size: 14, bold: true), Prog.Muted(b.Bo("io") ? "Lavori tu, con questo account" : "Titolare: " + (b.S("titolare") != "" ? b.S("titolare") : "nessuno"), 13)).M(0, 10, 0, 0));
+            if (d.Bo("altre")) second.Add(Prog.Left(B("Aggiungi un'altra attività", () => Main.ShowPage(new NewClientPage()), "Ghost")));
+        }
+        else if (!steps.Bo("licenza")) second.Add(Prog.Muted("Prima la licenza o la prova, al passo 1.").M(0, 10, 0, 0));
+        else
+        {
+            var name = Box(); name.MaxLength = 100; name.Tag = "Salone Bella"; AgendaPage.Hint(name);
+            var types = d.A("tipi").Select(x => (Id: x.S("id"), Name: x.S("nome"))).Append((Id: "", Name: "Altro")).ToList();
+            var type = new ComboBox { ItemsSource = types.Select(x => x.Name).ToList(), SelectedIndex = 0 };
+            var username = Box(); username.MaxLength = 40; username.Tag = "titolare"; AgendaPage.Hint(username); var email = Box(); email.MaxLength = 254; var pw = new PasswordBox(); var pw2 = new PasswordBox();
+            var owner = Col(F.Grid2(F.Field("Username del titolare", username), F.Field("Sua email, facoltativa", email), F.Field("Password del titolare, almeno 12 caratteri", pw), F.Field("Ripeti la password", pw2)),
+                Prog.Muted("Il titolare cambia la sua password da Account e sicurezza e aggiunge chi lavora con lui da Persone e permessi.").M(0, 10, 0, 0));
+            RadioButton Tile(string strong, string small, bool on)
+            {
+                var s = Prog.Muted(small, 13); var r = new RadioButton { GroupName = "chi", IsChecked = on, Margin = new Thickness(0, 0, 0, 10), Content = Col(T(strong, size: 14, bold: true), s) };
+                r.Checked += (_, _) => owner.Visibility = strong.StartsWith("Io") ? Visibility.Collapsed : Visibility.Visible; return r;
+            }
+            var me = Tile("Io, con questo account", "Un solo account configura e lavora: agenda, clienti e anche licenza e backup. Comodo se il programma lo usi tu.", standalone);
+            var other = Tile("Il titolare, con un suo account", "Lui vede agenda e clienti, tu solo la configurazione: quando installi il programma per qualcun altro.", !standalone);
+            owner.Visibility = standalone ? Visibility.Collapsed : Visibility.Visible;
+            second.Add(F.Grid2(F.Field("Nome dell'attività", name), F.Field("Tipo di attività", type)));
+            second.Add(T("Chi lavora nell'attività", size: 14, bold: true).M(0, 16, 0, 8)); second.Add(F.Cols(2, 20, me, other)); second.Add(owner);
+            second.Add(Prog.Muted("Il tipo di attività prepara servizi, orari e domande giuste per quel lavoro: si cambiano dopo, in Configura l'attività.").M(0, 12, 0, 0));
+            second.Add(Prog.Left(BA("Crea l'attività", async () =>
+            {
+                var r = await Api.Current.Call("inizia.attivita", new { nome = name.Text, tipo = types[Math.Max(0, type.SelectedIndex)].Id, chi = me.IsChecked == true ? "io" : "altro", username = username.Text, email = email.Text, password = pw.Password, password2 = pw2.Password });
+                await Shell.Instance.Reopen("inizia"); Shell.Instance.Say(r.S("testo"));
+            }, "Primary")));
+        }
+        page.Children.Add(Step(2, "La tua attività e chi ci lavora", Done(steps.Bo("attivita"), "Da fare", "danger"), second.ToArray()));
+
+        // 3. Backup
+        page.Children.Add(Step(3, "Backup", Done(steps.Bo("backup"), "Consigliato", "warn"),
+            P(steps.Bo("backup") ? $"Ogni notte alle {d.S("oraBackup")} il programma fa una copia cifrata dei dati." : "Se il PC si rompe, senza backup si perdono prenotazioni e clienti. Imposta la password dei backup, attiva il backup di ogni notte e aggiungi una destinazione fuori dal PC: disco esterno, NAS, FTP o SFTP."),
+            Prog.Left(B("Apri Backup", () => Main.Show("backup"), steps.Bo("backup") ? "Ghost" : null))));
+
+        // 4. Postazioni e accesso da fuori
+        if (!standalone)
+            page.Children.Add(Step(4, "Postazioni e accesso da fuori", Done(steps.Bo("postazioni"), "Facoltativo", ""),
+                P("Sugli altri PC dell'ufficio installa lo stesso MSI scegliendo ", Strong("Solo postazione"), " e scrivi l'indirizzo ", Strong(d.S("ufficio")), ". Poi da ", Strong("Postazioni"),
+                    " generi il codice di 6 cifre per ognuno; anche tablet e telefoni si registrano così, dal browser. Per usare il programma fuori dall'ufficio o ricevere le prenotazioni dal sito c'è ", Strong("Rete e certificato"), "."),
+                Row(B("Apri Postazioni", () => Main.Show("postazioni")), B("Rete e certificato", () => Main.Show("rete"), "Ghost").M(10, 0, 0, 0)).M(0, 14, 0, 0)));
+
+        // Al lavoro
+        var mine = businesses.Count > 0 && businesses[0].Bo("io");
+        var last = new List<UIElement>
+        {
+            mine ? P("La configurazione finisce qui. Lavori con questo account: nel menu a sinistra trovi l'agenda e i clienti dell'attività, e sotto la configurazione del programma.")
+                : P("La configurazione finisce qui. Da ora si entra con lo username e la password del titolare: si vedono agenda, prenotazioni e clienti. Per tornare a questa pagina esci e rientra con ", Strong(d.S("io")), "."),
+        };
+        if (businesses.Count > 0)
+        {
+            var go = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
+            for (int i = 0; i < businesses.Count; i++)
+            {
+                var b = businesses[i]; var slug = b.S("slug"); var who = b.S("titolare"); var many = businesses.Count > 1;
+                if (b.Bo("io")) go.Children.Add(BA("Vai all'agenda" + (many ? " di " + b.S("nome") : ""), () => Main.Open(slug, "agenda"), i == 0 ? "Primary" : null).M(0, 0, 10, 8));
+                else if (who != "") go.Children.Add(B($"Esci ed entra come {who}" + (many ? $" ({b.S("nome")})" : ""), () => Shell.Instance.LeaveAs(who), i == 0 ? "Primary" : null).M(0, 0, 10, 8));
+            }
+            last.Add(go);
+        }
+        else last.Add(Prog.Muted("Il pulsante compare quando l'attività è pronta, al passo 2.").M(0, 10, 0, 0));
+        page.Children.Add(Step(standalone ? 4 : 5, "Al lavoro", null, last.ToArray()));
+        Content = F.Page(1180, page);
+    }
+}
