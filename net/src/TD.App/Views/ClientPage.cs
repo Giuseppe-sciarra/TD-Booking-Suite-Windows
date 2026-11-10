@@ -120,7 +120,7 @@ public sealed class ClientPage(string id) : Page
             var acts = Col(); acts.Margin = new Thickness(0, 8, 0, 0);
             acts.Children.Add(Wide(B("Nuova prenotazione", () => Main.ShowPage(new BookingPage { PrefillClient = id }), "Primary")));
             if (spec != null) acts.Children.Add(Wide(B($"Registra {spec.S("uno")}", async () => { tab = "scheda"; openNew = true; await Guard(Load); })));
-            acts.Children.Add(Wide(B("Metti in lista d'attesa", () => Main.Show("attesa"), "Ghost")));
+            acts.Children.Add(Wide(B("Metti in lista d'attesa", () => Main.ShowPage(new WaitlistPage { Client = id }), "Ghost")));
             acts.Children.Add(Wide(B("Nuovo preventivo", () => Main.ShowPage(new QuoteFormPage { Client = id }), "Ghost")));
             if (d["note"] != null) acts.Children.Add(Wide(B("Storico in PDF", () => Main.ShowPage(new ClientHistoryPage(id)), "Ghost")));
             who.Children.Add(acts);

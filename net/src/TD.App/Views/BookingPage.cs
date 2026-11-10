@@ -15,7 +15,7 @@ namespace TD.App.Views;
 /// service chosen from one list (every pick after the first adds a service to the same visit), notes and questions.</summary>
 public sealed class BookingPage : Page
 {
-    public string PrefillResource = "", PrefillDate = "", PrefillTime = "", PrefillClient = "";
+    public string PrefillResource = "", PrefillDate = "", PrefillTime = "", PrefillClient = "", PrefillService = "";
     public bool Walkin;
     /// <summary>Moving: the booking's detail (prenotazione.dettaglio), with its «modifica».</summary>
     public JsonNode Moving;
@@ -220,6 +220,7 @@ public sealed class BookingPage : Page
             await LoadSlots();
         }
         else if (services.Count == 1) { await ChangeService(); }
+        else if (PrefillService != "" && services.Any(x => x.S("id") == PrefillService)) { loading = true; Set(service, PrefillService); loading = false; await ChangeService(); }
         else if (PrefillTime != "") await LoadSlots();
         if (PrefillClient != "")
         {

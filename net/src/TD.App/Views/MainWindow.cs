@@ -182,7 +182,7 @@ public sealed class MainWindow : Window
             Add("promemoria", "bell", "Configurazione promemoria", () => new Placeholder("Configurazione promemoria"), Can("users.manage"));
             Add("api", "plug", "API e webhook", () => new Placeholder("API e webhook"), Can("users.manage") && t.Bo("api") && !staff);
             Section("La tua attività");
-            Add("attesa", "hourglass", "Lista d'attesa", () => new Placeholder("Lista d'attesa"), Can("booking.read"));
+            Add("attesa", "hourglass", "Lista d'attesa", () => new WaitlistPage(), Can("booking.read"));
             Add("report", "list", "Report", () => new Placeholder("Report"), Can("booking.read"));
             Add("configura", "shop", "Configura l'attività", () => new Placeholder("Configura l'attività"), Can("catalog.write"));
             Add("registratore", "sliders", "Registratore di cassa", () => new Placeholder("Registratore di cassa"), Can("catalog.write") && t.Bo("cassaTitolare") && t.S("ruolo") == "owner" && !staff);
