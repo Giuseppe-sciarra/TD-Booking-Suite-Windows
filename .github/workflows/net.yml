@@ -21,8 +21,9 @@ jobs:
         shell: pwsh
         run: |
           $exe = "net/src/TD.App/bin/Release/net8.0-windows/TDBookingSuite.exe"
-          $p = Start-Process $exe -ArgumentList "--demo", "$PWD/net/tests/demo", "--shot", "$PWD/shots" -PassThru
+          $p = Start-Process $exe -ArgumentList "--demo", "$PWD/net/tests/demo", "--shot", "$PWD/shots" -PassThru -RedirectStandardError err.txt -RedirectStandardOutput out.txt
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "le finestre non si sono chiuse" }
+          "uscita: $($p.ExitCode)"; Get-Content err.txt, out.txt -ErrorAction SilentlyContinue
           $log = Join-Path $env:TEMP "TDBookingSuite-errore.txt"
           if (Test-Path $log) { Get-Content $log; New-Item -ItemType Directory -Force shots | Out-Null; Copy-Item $log shots/ }
           Get-ChildItem shots
