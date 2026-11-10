@@ -81,6 +81,7 @@ builder.WebHost.ConfigureKestrel(k =>
     k.Listen(ip, config.Port, l => l.UseHttps(h => h.ServerCertificateSelector = (_, _) => app0.Certificate()));
 });
 var app = builder.Build();
+app0.Certificate();  // the authority and the certificate exist as soon as the service starts: the installer trusts ca.crt right after
 app.Use(Gate.Handle);
 Auth.Map(app);
 RpcHost.Map(app);
