@@ -12,7 +12,14 @@ using TD.Server.Work;
 // TDBookingServer.exe worker     email, reminders, site, backups, licence (service TDBookingWorker)
 // TDBookingServer.exe ripristina  a .tdbk backup back in place (Menu Start, Ripristina backup)
 // TDBookingServer.exe migrate    tables and rights, with db-admin.json (the worker does it at every start too)
+// TDBookingServer.exe prepara    the configuration files of a new installation; recupera <login>: a forgotten password
 var mode = args.FirstOrDefault(a => !a.StartsWith("-")) ?? "web";
+// TDBookingServer.exe prepara --data <folder> ...   the configuration files, before anything else exists (setup-server.ps1)
+if (mode == "prepara")
+{
+    try { Console.WriteLine(SetupFiles.Main(args)); } catch (ArgumentException ex) { Console.Error.WriteLine(ex.Message); Environment.ExitCode = 2; }
+    return;
+}
 var folder = Environment.GetEnvironmentVariable("TDBS_DATA") ?? AppConfig.DefaultFolder;
 var config = AppConfig.Load(folder);
 var admin = Admin.Read(folder);
@@ -20,6 +27,19 @@ var admin = Admin.Read(folder);
 if (mode == "migrate")
 {
     Console.WriteLine("Migrazioni: " + string.Join(", ", Migrations.Apply(AppConfig.ToNpgsql(admin.Url), admin.AppPassword)));
+    return;
+}
+
+// TDBookingServer.exe recupera <username o email>   a forgotten password (Menu Start, Recupera accesso)
+if (mode == "recupera")
+{
+    var who = args.SkipWhile(a => a != "recupera").Skip(1).FirstOrDefault() ?? "";
+    try
+    {
+        var (staff, link) = new TD.Core.Domain.Accounts(new Db(AppConfig.ToNpgsql(config.DatabaseUrl)), new Crypto(config.KeysJson, config.ActiveKey)).Recover(who, config.Origin);
+        Console.WriteLine((staff ? "amministratore " : "utente ") + link);
+    }
+    catch (TD.Core.Domain.BookingException ex) { Console.Error.WriteLine(ex.Message); Environment.ExitCode = 1; }
     return;
 }
 
@@ -36,6 +56,7 @@ if (mode == "ripristina")
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args, ContentRootPath = AppContext.BaseDirectory });
 builder.Host.UseWindowsService(o => o.ServiceName = mode == "worker" ? "TDBookingWorker" : "TDBookingWeb");
 builder.Logging.AddSimpleConsole(o => { o.SingleLine = true; o.TimestampFormat = "yyyy-MM-dd HH:mm:ss "; });
+builder.Logging.AddProvider(new FileLog(Path.Combine(folder, "log", (mode == "worker" ? "TDBookingWorker" : "TDBookingWeb") + ".log")));
 builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
 builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Information);
 var app0 = new Server(config, admin);

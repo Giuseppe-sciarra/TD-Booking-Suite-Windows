@@ -14,6 +14,7 @@ public static partial class Jobs
         Job Make(string name, int first, int every, Action run) => new(name, TimeSpan.FromSeconds(first), TimeSpan.FromSeconds(every), async _ => { await Task.Run(run); return null; });
         list.Add(Make("coda", 3, 10, () =>
         {
+            _ = s.Edition;  // read again every minute: the contexts of every job follow the licence
             if (W().Waiting() > 0) log.LogInformation("Avvisi della lista d'attesa accodati.");
             var r = W().Outgoing(); if (r.Values.Any(v => v > 0)) log.LogInformation("Invii: {Esito}", string.Join(", ", r.Select(x => $"{x.Key} {x.Value}")));
         }));

@@ -180,3 +180,25 @@ compila soltanto (`dotnet build src/TD.App`, `src/TD.Server`) e si provano le ch
 - L'installer dovrà: lanciare `ripristina` da ripristina-backup.ps1 (poi `migrate`), mostrare il codice del primo avvio dal menu Start (file licenza\primo-avvio.txt), mettere script\setup-server.ps1 accanto al programma (Online e sito).
 - Da fare, nell'ordine: Importa clienti e Importa appuntamenti, Stampa del giorno, Iscritti e presenze, Alloggi (stays.py, ospiti, Alloggiati Web), pagine pubbliche (/book, /action, /invite, /privacy, /prova, /prezzi, feed, API v1, ponte cassa, /api/wordpress),
   Google/Outlook sugli operatori e i loro lavori (feeds, gcal, mscal, stays.run), passkey, Richieste di prova/Prezzi/Plugin, installer MSI, una sola build CI alla fine e confronto delle schermate.
+
+## Stato al 10/11/2026 (sera): programma completo, prima build unica
+- Fatti dopo la nota qui sopra e provati contro il Python:
+  - Importa clienti e Importa appuntamenti, Stampa del giorno, Iscritti e presenze, Alloggi (ospiti, Alloggiati Web, Ross1000, tassa di soggiorno, calendari dei portali).
+  - Pagine pubbliche (TD.Server/Web): escono dagli stessi template del Python con un piccolo motore dei template (`Templates.cs`), quindi l'HTML è lo stesso.
+    `/book/` con orari, invio e Avvisami se si libera; `/action/` (gestisci, sposta, annulla, promemoria, consenso, disiscrizione, check-in, .ics); calendario dell'operatore e dell'alloggio;
+    Privacy, Prezzi e versioni, Perché sceglierci, `/prova/`, `/invite/`; API v1; ponte della cassa; `/api/wordpress/connect/` e configurazione del plugin.
+  - Pagine del Portale: Richieste di prova (con l'email all'amministratore dal worker), Prezzi e versioni, Plugin WordPress.
+  - Calendari degli operatori (`TD.Core/Domain/Calendars.cs`): calendario esterno .ics, Google Calendar e Outlook nei due sensi, dalla scheda dell'operatore; lavoro `calendari` del worker.
+  - Passkey dalla finestra: la pagina che la crea o la usa si apre nel browser con un biglietto di cinque minuti (`Web/AuthPasskeys.cs`, `Passkeys.cs`): aggiungi, entra, secondo fattore, Conferma che sei tu.
+  - Installer (`net/installer`): `build.ps1` fa l'MSI con lo stesso pacchetto WiX della 2.x (`windows/wix`), quindi si installa sopra come aggiornamento; `script/*.ps1` per il programma in C#
+    (`TDBookingServer.exe prepara | migrate | recupera | ripristina`, servizi registrati con sc.exe senza WinSW); `smoke-test.ps1` è la prova di installazione della build.
+- Provato qui: HTML uguale a Django (Privacy, Prezzi, Perché sceglierci, Prova, Prenota in italiano e inglese, Gestisci, Sposta, check-in, invito); API v1 uguale;
+  lettura del calendario .ics uguale a `feeds.py` (test); Google e Outlook contro servizi finti: stesse richieste, stesso stato, stessi orari occupati del Python;
+  passkey verificate come py_webauthn (test) e giro completo con un autenticatore software; file di configurazione uguali a `setup_files.py`.
+- Non provabile da qui: le finestre WPF e l'MSI (li prova la build su Windows), Google/Microsoft/SMTP/SMS veri, Alloggiati Web vero.
+- Diverso da Python, apposta:
+  - nella pagina prenotazioni gli operatori sono in ordine di nome (in Python l'ordine non è definito);
+  - la firma degli eventi scritti su Google/Outlook è del nostro JSON: uno stato scritto dal Python aggiorna ogni evento una volta sola, poi niente;
+  - `/` e `/login/` dicono «Si entra dal programma»: l'accesso web del Python qui è la finestra;
+  - il collegamento «TD Booking Suite nel browser» del menu Start non c'è più (l'aggiornamento lo toglie).
+- Da dire a Giuseppe: la passkey usa il browser del PC, quindi il certificato del server deve essere fidato da Windows su quel PC (sul PC server lo mette l'installazione; sulle postazioni dipende da come sono state collegate).

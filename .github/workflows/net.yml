@@ -1,5 +1,6 @@
 name: net (programma in C#)
-# The C# rewrite on its own branch: build on Windows, the tests, and the windows on recorded answers as screenshots.
+# The C# rewrite on its own branch: build on Windows, the tests, the windows on recorded answers as screenshots,
+# then the MSI and its installation test. Nothing is published: the MSI is an artifact of the run.
 # Only by hand (Actions → Run workflow, or gh workflow run net.yml --ref net-rewrite): not at every push.
 on:
   workflow_dispatch:
@@ -28,3 +29,32 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: screenshot, path: shots }
+      # the MSI of the C# program and the same test a client's installation goes through (net/installer)
+      - name: Cache dei download
+        uses: actions/cache@v4
+        with:
+          path: build/cache
+          key: downloads-net-${{ hashFiles('net/installer/build.ps1') }}
+      - name: MSI
+        env:
+          # code signing only with these secrets (windows/firma.ps1); without them the MSI is not signed
+          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARTIFACT_SIGNING_ENDPOINT: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          ARTIFACT_SIGNING_ACCOUNT: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          ARTIFACT_SIGNING_PROFILE: ${{ secrets.ARTIFACT_SIGNING_PROFILE }}
+        run: pwsh net/installer/build.ps1
+      - name: Prova di installazione
+        run: pwsh net/installer/smoke-test.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TD-Booking-Suite-3-Windows
+          path: |
+            dist/*.msi
+            dist/*.zip
+            *.log
+          retention-days: 7

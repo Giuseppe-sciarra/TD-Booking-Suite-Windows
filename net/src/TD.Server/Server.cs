@@ -60,7 +60,7 @@ public sealed class Server
         {
             if (edition.Value != null && DateTime.UtcNow - edition.At < TimeSpan.FromSeconds(60)) return edition.Value;
             using var g = Db.Global(); var portal = Licensing.Apply().Attivita > 1 || g.Scalar<long>("SELECT count(*) FROM core_tenant") > 1;
-            edition = (DateTime.UtcNow, portal ? "cloud" : "private"); return edition.Value;
+            edition = (DateTime.UtcNow, portal ? "cloud" : "private"); Ctx.DefaultEdition = edition.Value; return edition.Value;
         }
     }
     public void EditionChanged() => edition = default;

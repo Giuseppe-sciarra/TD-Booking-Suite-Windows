@@ -21,7 +21,8 @@ public sealed class Shell
         var demo = Array.IndexOf(args, "--demo");
         if (demo >= 0 && args.Length > demo + 1) { Demo.Run(args[demo + 1], args); return; }
         Application.Current.DispatcherUnhandledException += (_, e) => { Say("Errore inatteso: " + e.Exception.Message); e.Handled = true; };
-        var config = ClientConfig.Load();
+        // Menu Start, Cambia server della postazione (--configura): the choice again, also with a server already set
+        var config = args.Contains("--configura") ? null : ClientConfig.Load();
         if (config == null && !Setup.Choose(out config)) { Application.Current.Shutdown(); return; }
         Api.Current = new Api(config); Api.Confirm = ConfirmDialog.Ask;
         try { await Api.Current.Get("/api/info"); }

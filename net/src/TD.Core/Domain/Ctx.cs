@@ -31,7 +31,10 @@ public sealed class Ctx : IDisposable
     /// <summary>The site's agenda (wpsync STAFF): the desk's rules without a user of this program.</summary>
     public bool Desk { get; set; }
     /// <summary>"private" on the Windows edition: no trial or subscription stops the bookings.</summary>
-    public string Edition { get; set; } = "private";
+    /// <summary>The edition every new context starts with: the server keeps it as the licence says (Server.Edition), so
+    /// the worker's contexts know it too.</summary>
+    public static string DefaultEdition = "private";
+    public string Edition { get; set; } = DefaultEdition;
     /// <summary>The language of the client's page (it, en...), for the emails that follow.</summary>
     public string Language { get; set; } = "it";
     public string PublicOrigin { get; set; } = "";

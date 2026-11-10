@@ -82,6 +82,21 @@ public sealed class Accounts(Db db, Crypto crypto)
         return origin.TrimEnd('/') + "/invite/" + token + "/";
     }
 
+    /// <summary>recupera_accesso: a forgotten password, from the server PC as a Windows administrator: sessions,
+    /// Authenticator and passkeys revoked, and the link, valid 24 hours, to choose the new password.</summary>
+    public (bool Staff, string Link) Recover(string login, string origin)
+    {
+        using var g = db.Global();
+        var u = new Identity(db, crypto).ByLogin(g, login); if (u is not { IsActive: true }) throw new BookingException("Nessun account con questo username o email.");
+        u = g.One<User>("SELECT * FROM core_user WHERE id=@id FOR UPDATE", new { id = u.Id });
+        u.AuthVersion++; u.Totp = ""; u.Recovery = "[]"; u.Password = "!" + Bookings.TokenUrlSafe(30); g.Update(u, "auth_version", "totp", "recovery", "password");
+        g.Execute("DELETE FROM core_passkey WHERE user_id=@u", new { u = u.Id });
+        var link = Invitation(g, u, origin); var tenants = g.Query<Guid>("SELECT tenant_id FROM core_membership WHERE user_id=@u", new { u = u.Id }).ToList(); g.Commit();
+        // in the Registro attività of each business: whoever picks the new password is not the one who had it
+        foreach (var t in tenants) { using var c = new Ctx(db, crypto, t); c.Audit("member.password_reset", u.Id, new { via = "console" }); c.Commit(); }
+        return (u.IsStaff, link);
+    }
+
     /// <summary>Two ways in: an invitation link, or a password the administrator types now.</summary>
     public string GrantAccess(Scope s, User u, string password, string origin)
     {
