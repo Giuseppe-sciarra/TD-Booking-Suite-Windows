@@ -10,6 +10,7 @@ using TD.Server.Work;
 
 // TDBookingServer.exe            the program in HTTPS (service TDBookingWeb)
 // TDBookingServer.exe worker     email, reminders, site, backups, licence (service TDBookingWorker)
+// TDBookingServer.exe ripristina  a .tdbk backup back in place (Menu Start, Ripristina backup)
 // TDBookingServer.exe migrate    tables and rights, with db-admin.json (the worker does it at every start too)
 var mode = args.FirstOrDefault(a => !a.StartsWith("-")) ?? "web";
 var folder = Environment.GetEnvironmentVariable("TDBS_DATA") ?? AppConfig.DefaultFolder;
@@ -19,6 +20,16 @@ var admin = Admin.Read(folder);
 if (mode == "migrate")
 {
     Console.WriteLine("Migrazioni: " + string.Join(", ", Migrations.Apply(AppConfig.ToNpgsql(admin.Url), admin.AppPassword)));
+    return;
+}
+
+// TDBookingServer.exe ripristina <file.tdbk> [--password-file <file>]   with the services stopped, as administrator
+if (mode == "ripristina")
+{
+    var rest = args.Where(a => a != "ripristina").ToList(); var pf = rest.IndexOf("--password-file");
+    var passwordFile = pf >= 0 && pf + 1 < rest.Count ? rest[pf + 1] : null; if (pf >= 0) rest.RemoveRange(pf, Math.Min(2, rest.Count - pf));
+    Environment.ExitCode = rest.Count == 1 ? Backup.Restore(config, admin, rest[0], passwordFile, Console.Out) : 2;
+    if (rest.Count != 1) Console.WriteLine("Uso: TDBookingServer.exe ripristina <file.tdbk> [--password-file <file>]");
     return;
 }
 

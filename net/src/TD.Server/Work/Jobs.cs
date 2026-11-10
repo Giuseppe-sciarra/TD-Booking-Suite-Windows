@@ -35,6 +35,9 @@ public static partial class Jobs
             try { if (Updates.Get(s).Modo != "spento") await Updates.Check(s); return null; }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or System.Text.Json.JsonException) { return TimeSpan.FromHours(1); }
         }));
+        // tdwin backup.loop: destination tests, "Esegui ora" and the nightly backup
+        var backup = new Backup(s); backup.CleanWork();
+        list.Add(Make("backup", 15, 15, () => backup.Tick(log)));
         list.Add(Make("ora", 60, 3600, () =>
         {
             W().Turns();

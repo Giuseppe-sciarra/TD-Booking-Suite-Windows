@@ -217,7 +217,7 @@ public sealed class MainWindow : Window
             Add("generali", "sliders", "Impostazioni generali", () => new Placeholder("Impostazioni generali"));
             Add("licenza", "key", "Licenza", () => new LicencePage());
             Add("postazioni", "monitor", "Postazioni", () => new WorkstationsPage(), !Me.Bo("standalone"));
-            Add("backup", "archive", "Backup", () => new Placeholder("Backup"));
+            Add("backup", "archive", "Backup", () => new BackupPage());
             Add("rete", "globe", Me.Bo("standalone") ? "Online e sito" : "Rete e certificato", () => new NetworkPage());
             Add("stato", "list", "Stato del programma", () => new StatePage());
         }
