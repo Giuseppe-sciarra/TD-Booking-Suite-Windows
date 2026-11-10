@@ -251,7 +251,7 @@ public sealed partial class Bookings
         var actor = c.Actor;
         c.Lock(); Fresh();
         if (!c.Operational()) throw new BookingException("Prenotazioni non disponibili.");
-        if (actor == null && !late && c.Tenant.ReceiveSchedule && !c.Cal.Fits(c.Now, c.Now.AddSeconds(1), purpose: "receive"))
+        if (actor == null && !c.Desk && !late && c.Tenant.ReceiveSchedule && !c.Cal.Fits(c.Now, c.Now.AddSeconds(1), purpose: "receive"))
             throw new BookingException("Le richieste online sono accettate soltanto negli orari indicati dall'attività.");
         var key = data["request_key"]?.ToString() ?? "";
         if (!Regex.IsMatch(key, "^[A-Za-z0-9_-]{20,64}$")) throw new BookingException("Identificativo richiesta mancante.");
@@ -264,7 +264,7 @@ public sealed partial class Bookings
         }
         if (Json.Truthy(data["extra"]) && visit == null) return CreateVisit(data, origin, source, wait, allowed);
         var service = visit != null ? visit.Piece.Service : ActiveService(data["service"]);
-        var staff = actor != null;
+        var staff = actor != null || c.Desk;
         var walkin = staff && IsTrue(data["walkin"]);
         var pii = Personal(data, visit != null ? visit.First : service, staff, walkin);
         var wl = new Waitlist(c);
@@ -489,7 +489,7 @@ public sealed partial class Bookings
     {
         if (IsTrue(data["walkin"]) || IsTrue(data["force"])) throw new BookingException("Più servizi insieme si prenotano su un orario libero, senza forzare.");
         var first = ActiveService(data["service"]);
-        var plan = VisitPlan(first, Details(first, data["option"]).Item1, data["extra"], data, desk: c.Actor != null, allowed: allowed);
+        var plan = VisitPlan(first, Details(first, data["option"]).Item1, data["extra"], data, desk: c.Actor != null || c.Desk, allowed: allowed);
         var vid = Guid.NewGuid(); var key = data["request_key"].ToString(); var made = new List<Booking>();
         for (int i = 0; i < plan.Count; i++)
         {

@@ -201,7 +201,7 @@ public sealed class MainWindow : Window
             {
                 Section("Gestione tecnica");
                 Add("persone", "badge", "Persone e permessi", () => new PeoplePage());
-                Add("impostazioni", "globe", "Impostazioni e sito", () => new Placeholder("Impostazioni e sito"));
+                Add("impostazioni", "globe", "Impostazioni e sito", () => new SettingsPage());
                 Add("smtp", "mail", "Invio email", () => new Placeholder("Invio email"));
                 Add("promemoria", "bell", "Configurazione promemoria", () => new NotificationsPage(), !Can("users.manage"));
                 Add("testi", "bell", "SMS, WhatsApp e calendari", () => new Placeholder("SMS, WhatsApp e calendari"));

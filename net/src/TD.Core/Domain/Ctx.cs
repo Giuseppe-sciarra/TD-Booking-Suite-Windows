@@ -28,6 +28,8 @@ public sealed class Ctx : IDisposable
     public DateTime Now => DateTime.SpecifyKind(Clock(), DateTimeKind.Utc);
     /// <summary>Who acts: the user's id, null for the client on the public page and for the worker.</summary>
     public Guid? Actor { get; set; }
+    /// <summary>The site's agenda (wpsync STAFF): the desk's rules without a user of this program.</summary>
+    public bool Desk { get; set; }
     /// <summary>"private" on the Windows edition: no trial or subscription stops the bookings.</summary>
     public string Edition { get; set; } = "private";
     /// <summary>The language of the client's page (it, en...), for the emails that follow.</summary>

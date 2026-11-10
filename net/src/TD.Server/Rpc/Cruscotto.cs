@@ -133,7 +133,7 @@ public static class Cruscotto
     /// <summary>wpsync.banner: the site fed by this PC: in progress, done with how many new bookings, or the error.</summary>
     static object Site(Call c)
     {
-        var t = c.Tenant; if (Json.Obj(t.WpSync).Count == 0) return null;
+        var t = c.Tenant; if (string.IsNullOrEmpty(t.WpSync)) return null;
         var s = Json.Obj(t.WpState); DateTime? When(string k) => DateTime.TryParse(s.Str(k), null, System.Globalization.DateTimeStyles.RoundtripKind, out var d) ? d.ToUniversalTime() : null;
         if (When("running") is DateTime r && c.C.Now - r < TimeSpan.FromMinutes(10)) return new { inCorso = true };
         if (When("at") is not DateTime at) return null;

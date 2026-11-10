@@ -47,16 +47,18 @@ public sealed class FormView
                     c.Checked += (_, _) => Changed?.Invoke(); c.Unchecked += (_, _) => Changed?.Invoke(); it.Box = c; it.Read = () => c.IsChecked == true; it.Label = null; break;
                 }
             case "photo":
+            case "logo":
                 {
+                    var isLogo = it.Type == "logo";  // site.clean_brand: a PNG of 800 x 300 at most, its empty margins cut
                     // branding.clean_photo: turned upright, 800 px at most, on white, a JPEG
-                    string data = ""; var preview = new Border { Width = 72, Height = 72, CornerRadius = new CornerRadius(12), Background = Res("BrandSoft"), Margin = new Thickness(0, 0, 12, 0) };
-                    void Show(byte[] jpeg) { try { preview.Background = new System.Windows.Media.ImageBrush(Views.SetupPage.PictureOf(jpeg)) { Stretch = System.Windows.Media.Stretch.UniformToFill }; } catch (Exception ex) when (ex is NotSupportedException or System.IO.IOException) { } }
+                    string data = ""; var preview = new Border { Width = isLogo ? 160 : 72, Height = 72, CornerRadius = new CornerRadius(12), Background = Res("BrandSoft"), Margin = new Thickness(0, 0, 12, 0) };
+                    void Show(byte[] jpeg) { try { preview.Background = new System.Windows.Media.ImageBrush(Views.SetupPage.PictureOf(jpeg)) { Stretch = isLogo ? System.Windows.Media.Stretch.Uniform : System.Windows.Media.Stretch.UniformToFill }; } catch (Exception ex) when (ex is NotSupportedException or System.IO.IOException) { } }
                     if (text != "") try { Show(Convert.FromBase64String(text)); } catch (FormatException) { }
-                    var pick = Small(B(text != "" ? "Cambia la foto" : "Scegli la foto", () =>
+                    var pick = Small(B(isLogo ? "Scegli il logo" : text != "" ? "Cambia la foto" : "Scegli la foto", () =>
                     {
                         var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "Immagini (PNG, JPEG, WebP)|*.png;*.jpg;*.jpeg;*.webp" };
                         if (dlg.ShowDialog(Application.Current.MainWindow) != true) return;
-                        try { var jpeg = Views.Pictures.Photo(dlg.FileName); data = Convert.ToBase64String(jpeg); Show(jpeg); it.Error.Text = ""; it.Error.Visibility = Visibility.Collapsed; }
+                        try { var jpeg = isLogo ? Views.SetupPage.CleanLogo(dlg.FileName) : Views.Pictures.Photo(dlg.FileName); data = Convert.ToBase64String(jpeg); Show(jpeg); it.Error.Text = ""; it.Error.Visibility = Visibility.Collapsed; }
                         catch (Net.ApiError ex) { it.Error.Text = ex.Message; it.Error.Visibility = Visibility.Visible; }
                     }));
                     it.Box = Row(preview, pick); it.Read = () => data; break;

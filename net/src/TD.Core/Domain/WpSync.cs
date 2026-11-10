@@ -62,6 +62,24 @@ public static partial class WpSync
         finally { busy = wasBusy; }
     }
 
+    /// <summary>wpconnect.valid_origin: https://host[:port] with nothing else, lower case; empty when it is not.</summary>
+    public static string ValidOrigin(string value)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(value ?? "", @"^https://([A-Za-z0-9.-]+(:[0-9]{1,5})?)/?\z", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return m.Success ? "https://" + m.Groups[1].Value.ToLowerInvariant() : "";
+    }
+    /// <summary>panel(): what the card shows: never the secret, only whether there is one.</summary>
+    public static JsonObject Panel(Ctx c)
+    {
+        var conf = Conf(c); var s = Json.Obj(c.Tenant.WpState); var a = s["archive"] as JsonObject ?? new JsonObject();
+        return new JsonObject
+        {
+            ["url"] = conf.Str("url"), ["days"] = conf["days"] != null ? Till.Int(conf["days"]) : 30, ["on"] = Json.Truthy(conf["on"]), ["secret"] = Json.Truthy(conf["secret"]),
+            ["at"] = s.Str("at"), ["new"] = Till.Int(s["new"]), ["error"] = s.Str("error"), ["archive"] = c.Tenant.WpArchive, ["mails"] = Json.Truthy(conf["mails"]),
+            ["queue"] = c.S.Scalar<long>("SELECT count(*) FROM core_siteoutbox"), ["archive_at"] = a.Str("at"), ["records"] = Till.Int(a["records"]),
+            ["size"] = Math.Round((a["size"] != null ? double.Parse(a["size"].ToString(), System.Globalization.CultureInfo.InvariantCulture) : 0) / 1048576, 1, MidpointRounding.ToEven), ["archive_error"] = a.Str("error"),
+        };
+    }
     public static JsonObject Conf(Ctx c) => string.IsNullOrEmpty(c.Tenant.WpSync) ? new JsonObject() : c.Decrypt(c.Tenant.WpSync, "wp-sync");
     public static void Store(Ctx c, JsonObject conf) { c.Tenant.WpSync = c.Encrypt(conf, "wp-sync"); c.S.Update(c.Tenant, "wp_sync"); }
 

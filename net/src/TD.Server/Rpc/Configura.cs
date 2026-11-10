@@ -134,6 +134,21 @@ public static class Configura
         return new { testo = text + "." };
     }
 
+    /// <summary>site.clean_brand, the check: the window already cut the empty margins and made it a PNG of 800 x 300 at most.</summary>
+    internal static (byte[] Png, double Ratio) Logo(string base64, Action<string> error)
+    {
+        if (base64 == "") return (null, 1);
+        byte[] logo; try { logo = Convert.FromBase64String(base64); } catch (FormatException) { logo = Array.Empty<byte>(); }
+        if (logo.Length > 1024 * 1024) error("Logo massimo 1 MB.");
+        else if (logo.Length < 24 || !logo.AsSpan(0, 8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A })) error("Usa un'immagine PNG, JPEG o WebP valida.");
+        else
+        {
+            int w = logo[16] << 24 | logo[17] << 16 | logo[18] << 8 | logo[19], h = logo[20] << 24 | logo[21] << 16 | logo[22] << 8 | logo[23];
+            if (w is < 1 or > 800 || h is < 1 or > 300) error("Usa un'immagine PNG, JPEG o WebP valida."); else return (logo, Math.Round((double)w / Math.Max(h, 1), 3, MidpointRounding.ToEven));
+        }
+        return (logo, 1);
+    }
+
     [Rpc("configura.aspetto", Perm = "catalog.write")]
     public static object Brand(Call c)
     {
@@ -144,19 +159,7 @@ public static class Configura
         if (site != "" && !(Uri.TryCreate(site, UriKind.Absolute, out var su) && su.Scheme is "http" or "https" && su.Host.Contains('.') && site.Length <= 200)) errors.Add("Inserisci un URL valido.");
         var thanks = c.Str("thanks_url").Trim(); if (thanks != "" && !thanks.Contains("://")) thanks = "http://" + thanks;
         if (thanks != "" && !(Uri.TryCreate(thanks, UriKind.Absolute, out _) && thanks.Length <= 500)) errors.Add("Inserisci un URL valido."); else if (thanks != "" && !thanks.StartsWith("https://")) errors.Add("Usa un indirizzo HTTPS.");
-        byte[] logo = null; double ratio = 1;
-        if (c.Str("logo") != "")
-        {
-            // the window already cut the empty margins and made it a PNG of 800 x 300 at most (site.clean_brand)
-            try { logo = Convert.FromBase64String(c.Str("logo")); } catch (FormatException) { logo = Array.Empty<byte>(); }
-            if (logo.Length > 1024 * 1024) errors.Add("Logo massimo 1 MB.");
-            else if (logo.Length < 24 || !logo.AsSpan(0, 8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A })) errors.Add("Usa un'immagine PNG, JPEG o WebP valida.");
-            else
-            {
-                int w = logo[16] << 24 | logo[17] << 16 | logo[18] << 8 | logo[19], h = logo[20] << 24 | logo[21] << 16 | logo[22] << 8 | logo[23];
-                if (w is < 1 or > 800 || h is < 1 or > 300) errors.Add("Usa un'immagine PNG, JPEG o WebP valida."); else ratio = Math.Round((double)w / Math.Max(h, 1), 3, MidpointRounding.ToEven);
-            }
-        }
+        var (logo, ratio) = Logo(c.Str("logo"), errors.Add);
         if (errors.Count > 0) throw new BookingException(string.Join(" ", errors));
         x.S.Execute("SELECT 1 FROM core_tenant WHERE id=@t FOR UPDATE", new { t = t.Id });
         if (logo != null) x.S.Execute("UPDATE core_tenant SET logo=@l, logo_ratio=@r WHERE id=@t", new { l = logo, r = ratio, t = t.Id });
