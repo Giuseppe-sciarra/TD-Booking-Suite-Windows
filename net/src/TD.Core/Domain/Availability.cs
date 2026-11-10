@@ -475,6 +475,8 @@ public static class Times
         var s = local.ToString(frac == 0 ? "yyyy-MM-dd'T'HH:mm:ss" : "yyyy-MM-dd'T'HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
         return s + (off < TimeSpan.Zero ? "-" : "+") + off.Duration().ToString(@"hh\:mm");
     }
+    /// <summary>timezone.now().isoformat(): the instant in UTC, +00:00.</summary>
+    public static string PyIso(DateTime utc) => Iso(utc, TimeZoneInfo.Utc);
     /// <summary>datetime.fromisoformat for aware times: the UTC instant, null without an offset (naive) or invalid.</summary>
     public static DateTime? ParseAware(string s, out bool naive)
     {
