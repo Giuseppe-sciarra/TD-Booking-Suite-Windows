@@ -83,6 +83,7 @@ public sealed class FormView
                     foreach (var b in boxes) p.Children.Add(b);
                     it.Box = p; it.Read = () => (string)boxes.FirstOrDefault(b => b.IsChecked == true)?.Tag ?? ""; break;
                 }
+            case "password": { var pw = new PasswordBox(); if (f.I("max") > 0) pw.MaxLength = f.I("max"); it.Box = pw; it.Read = () => pw.Password; break; }
             case "date":
                 {
                     var d = new DatePicker { SelectedDate = DateTime.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day) ? day : null };

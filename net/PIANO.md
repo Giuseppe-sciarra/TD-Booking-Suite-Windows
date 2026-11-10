@@ -55,27 +55,27 @@ Legenda: ☐ da fare · ◐ in corso · ☑ fatto e provato
 - ◐ Agenda WPF: giorno (colonne per operatore, trascina/allunga, quarti liberi cliccabili), settimana, mese, elenco, blocca orario ☑; turni ☐; stampa ☐
 - ☑ Motore prenotazioni (Calendar, Availability, BookingWrites, Tables, Waitlist.Holds, Stays.Restricted): identico al Python, vedi «Come si prova»
 - ◐ Prenotazioni WPF: nuova (operatore/giorno/ora, più servizi, cliente cercato o nuovo, Forza), dettaglio, stati, annulla con motivo, sposta, ripeti ☑; soggiorni, eventi con iscritti, tavoli, senza appuntamento ☐
-- ☐ Clienti: elenco, ricerca, scheda (panoramica, prenotazioni, trattamenti, foto, consensi e privacy), unisci, import
-- ☐ Scheda cliente (trattamenti), foto (4 al giorno), storico in PDF
+- ◐ Clienti: elenco, ricerca, scheda (panoramica, prenotazioni, trattamenti, foto, consensi e privacy), unisci, import — fatto tutto tranne Importa/Esporta
+- ☑ Scheda cliente (trattamenti), foto (4 al giorno), storico in PDF
 - ☑ Lista d'attesa, richiami
 - ☑ Promemoria WhatsApp e grazie con recensione (con l'avviso in cima alle pagine)
-- ☐ Cassa: conto, operatori, mattonelle, Parcheggio/Stand-by, Da pagare, gift card, non nello scontrino, storico,
+- ◐ Cassa: conto, operatori, mattonelle, Parcheggio/Stand-by, Da pagare, gift card, non nello scontrino, storico,
       riepilogo PDF, chiusura, annulli, registratore RCH ed Epson (rete e USB), conto che resta
-- ☐ Gift card, preventivi (PDF)
+- ☑ Gift card, preventivi (PDF)
 - ◐ Report (fatto, Excel e PDF), registro attività (fatto); esportazioni da fare
 
 ### Attività e impostazioni
-- ☐ Configurazione guidata, attività, sedi, orari, festivi, servizi e catalogo, operatori (foto, colori, calendari)
-- ☐ Persone e ruoli, testi ed email ai clienti, SMTP, SMS/WhatsApp, notifiche
-- ☐ Ristoranti: tavoli, sale, turni, allergeni
+- ◐ Configurazione guidata, attività, sedi, orari, festivi, servizi e catalogo, operatori (foto, colori, calendari) — fatti: Configura, catalogo completo con moduli, festivi, importa servizi; mancano i calendari Google/Outlook sugli operatori
+- ◐ Persone e ruoli, testi ed email ai clienti, SMTP, SMS/WhatsApp, notifiche — fatti: Persone e permessi, Accesso amministratore, Configurazione promemoria, Invio email (SMTP/Google/Microsoft 365, MailKit); manca SMS/WhatsApp e calendari (texts)
+- ◐ Ristoranti: tavoli, sale, turni, allergeni — allergeni e turni fatti; mancano Sale e tavoli
 - ☐ Strutture ricettive: soggiorni, ospiti, Alloggiati Web
 - ☐ Marketing: campagne, iscritti
 - ☐ Google Calendar e Outlook sugli operatori
-- ☐ API e webhook
+- ☑ API e webhook (pagina; gli indirizzi /api/v1 sono nelle URL pubbliche)
 
 ### Programma Windows
 - ☐ Licenza (TD Licenze), postazioni, rete e certificato, backup e ripristino, stato del programma, aggiornamenti
-- ☐ Servizio: sito WordPress, email e promemoria, cassa, backup, conservazione, controllo licenza
+- ◐ Servizio: sito WordPress, email e promemoria, cassa, backup, conservazione, controllo licenza — fatto il motore del sito WordPress (WpSite: sync, archivio, ripristina, unisci, provato con un sito finto che firma come il Python: snapshot, agenda e 55 record identici); da agganciare al worker con gli altri lavori
 - ☐ URL pubbliche: pagina di prenotazione, conferme/annulli, feed, API, collegamento WordPress, ponte cassa
 - ☐ Installer MSI (WiX) che aggiorna il 2.22.x tenendo i dati
 
@@ -156,3 +156,10 @@ compila soltanto (`dotnet build src/TD.App`, `src/TD.Server`) e si provano le ch
 - Diverso da Python, apposta: Salva nel Registratore di cassa tiene lo scarto dei documenti imparato (`doc_offset`); Python lo azzera.
 - Report: a parità di data, Elenco dei trattamenti e I servizi più fatti seguono l'ora di inserimento (in Python l'ordine a parità di data è casuale).
 - Conferma che sei tu: manca la passkey (WebAuthn di Windows).
+
+
+## Stato al 10/11/2026 (sera)
+- Fatte in questa tornata: Configurazione promemoria, Impostazioni e sito (modulo attività + pannelli WordPress + scarica plugin), sincronizzazione sito, Invio email.
+- Restano come segnaposto in MainWindow: tavoli, alloggi, marketing, testi (SMS/WhatsApp/calendari), programma/attività/generali/licenza/postazioni/backup/rete/stato, guida, account.
+- Poi: iscritti e presenze, agenda Stampa/Importa, clienti Importa/Esporta, pagine pubbliche (/book, /action, feed, API v1, ponte cassa, invito, /api/wordpress), lavori del worker (email in uscita con Mail.Send, promemoria, lista d'attesa, sito ogni 2 minuti con WpSite.Run, backup, licenza, conservazione, calendari), Google/Outlook, installer MSI, una sola build CI alla fine.
+- Non provato dal vivo: la sessione SMTP di MailKit (dalla sandbox non si esce sulla 465/587), Google OAuth e Graph; le finestre WPF (si compilano, non girano su Linux).
