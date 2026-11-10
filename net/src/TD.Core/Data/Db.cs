@@ -94,6 +94,7 @@ public sealed class Scope : IDisposable
     /// <summary>INSERT of every column of the table that the entity has (jsonb and inet cast as such).</summary>
     public T Insert<T>(T row) where T : class
     {
+        (row as IJsonColumns)?.Flush();
         var table = Table<T>();
         var cols = Schema.Columns[table];
         var props = Props<T>();
@@ -116,6 +117,7 @@ public sealed class Scope : IDisposable
     /// <summary>UPDATE of the given columns (all of them when none) of the row with that id.</summary>
     public int Update<T>(T row, params string[] columns) where T : class
     {
+        (row as IJsonColumns)?.Flush();
         var table = Table<T>();
         var types = Schema.Columns[table].ToDictionary(c => c.Column, c => c.Type);
         var props = Props<T>();
@@ -133,8 +135,8 @@ public sealed class Scope : IDisposable
 
     public int Delete<T>(object id) where T : class => Connection.Execute($"DELETE FROM {Table<T>()} WHERE id=@id", new { id }, Transaction);
 
-    static string Cast(string type) => type switch { "jsonb" => "::jsonb", "inet" => "::inet", _ => "" };
-    static string Quote(string col) => col is "order" or "user" or "group" or "key" ? "\"" + col + "\"" : col;
+    static string Cast(string type) => type switch { "jsonb" => "::jsonb", "inet" => "::inet", "date" => "::date", "time without time zone" => "::time", _ => "" };
+    static string Quote(string col) => "\"" + col + "\"";
 
     static readonly Dictionary<Type, Dictionary<string, PropertyInfo>> propCache = new();
     static Dictionary<string, PropertyInfo> Props<T>()

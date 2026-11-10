@@ -1,0 +1,942 @@
+{
+"auth_permission": {},
+"auth_group": {},
+"django_content_type": {},
+"django_session": {},
+"core_user": {
+"is_superuser": {
+"bool": false
+},
+"id": {
+"uuid": true
+},
+"is_active": {
+"bool": true
+},
+"is_staff": {
+"bool": false
+},
+"auth_version": {
+"num": "1"
+},
+"last_totp": {
+"num": "-1"
+},
+"recovery": {
+"json": "[]"
+},
+"quick_login": {
+"bool": false
+}
+},
+"core_passkey": {
+"id": {
+"uuid": true
+},
+"sign_count": {
+"num": "0"
+},
+"name": {
+"str": "Passkey"
+},
+"created": {
+"now": true
+}
+},
+"core_ceremony": {
+"id": {
+"uuid": true
+},
+"used": {
+"bool": false
+}
+},
+"core_invitation": {
+"used": {
+"bool": false
+}
+},
+"core_ratebucket": {
+"count": {
+"num": "0"
+}
+},
+"core_tenant": {
+"id": {
+"uuid": true
+},
+"timezone": {
+"str": "Europe/Rome"
+},
+"status": {
+"str": "active"
+},
+"maintenance": {
+"bool": false
+},
+"marketing_enabled": {
+"bool": false
+},
+"marketing_requested": {
+"bool": false
+},
+"export_enabled": {
+"bool": false
+},
+"client_mails_enabled": {
+"bool": false
+},
+"client_mails": {
+"json": "{}"
+},
+"force_all": {
+"bool": false
+},
+"notify_operators": {
+"bool": false
+},
+"wait_mode": {
+"str": "all"
+},
+"wait_minutes": {
+"num": "60"
+},
+"absences_request": {
+"num": "0"
+},
+"client_categories": {
+"json": "[]"
+},
+"texts_daily_limit": {
+"num": "100"
+},
+"alloggiati_self": {
+"bool": false
+},
+"till_self": {
+"bool": false
+},
+"till_operators": {
+"bool": false
+},
+"till_on": {
+"bool": false
+},
+"smtp_daily_limit": {
+"num": "500"
+},
+"smtp_hourly_limit": {
+"num": "100"
+},
+"logo_ratio": {
+"num": "1"
+},
+"allergens": {
+"json": "[]"
+},
+"allergens_on": {
+"bool": false
+},
+"brand_color": {
+"str": "#7a55ad"
+},
+"embed_origins": {
+"json": "[]"
+},
+"privacy_text": {
+"str": "I dati sono utilizzati per gestire la prenotazione. Contatta l'attività per l'informativa completa."
+},
+"consent_text": {
+"str": "Acconsento a ricevere novità e offerte via email. Posso revocare il consenso in qualsiasi momento."
+},
+"retention_days": {
+"num": "730"
+},
+"receive_schedule": {
+"bool": false
+},
+"api_enabled": {
+"bool": false
+},
+"wp_state": {
+"json": "{}"
+},
+"wp_archive": {
+"bool": false
+},
+"wp_seq": {
+"num": "0"
+},
+"created": {
+"now": true
+}
+},
+"core_membership": {
+"role": {
+"str": "operator"
+},
+"can_schedule": {
+"bool": false
+},
+"locations": {
+"json": "[]"
+},
+"resources": {
+"json": "[]"
+}
+},
+"core_location": {
+"id": {
+"uuid": true
+},
+"active": {
+"bool": true
+},
+"capacity": {
+"num": "0"
+},
+"tax_nights": {
+"num": "0"
+},
+"tax_age": {
+"num": "0"
+},
+"tax_rules": {
+"json": "[]"
+},
+"tax_year_nights": {
+"num": "0"
+},
+"tax_escort": {
+"num": "25"
+},
+"tax_reduction": {
+"num": "0"
+},
+"assign": {
+"str": "alpha"
+},
+"min_gap": {
+"num": "0"
+},
+"visit_split": {
+"str": "need"
+},
+"visit_wait": {
+"num": "15"
+},
+"tables": {
+"str": "off"
+},
+"tables_online": {
+"bool": false
+},
+"till": {
+"json": "{}"
+}
+},
+"core_receipt": {
+"id": {
+"uuid": true
+},
+"rows": {
+"num": "0"
+}
+},
+"core_area": {
+"id": {
+"uuid": true
+},
+"capacity": {
+"num": "0"
+}
+},
+"core_table": {
+"id": {
+"uuid": true
+},
+"min_covers": {
+"num": "1"
+},
+"max_covers": {
+"num": "4"
+},
+"priority": {
+"num": "0"
+},
+"joins": {
+"json": "[]"
+},
+"x": {
+"num": "5"
+},
+"y": {
+"num": "5"
+}
+},
+"core_resource": {
+"id": {
+"uuid": true
+},
+"capacity": {
+"num": "0"
+},
+"active": {
+"bool": true
+},
+"feed": {
+"num": "0"
+},
+"feed_names": {
+"bool": false
+},
+"limits": {
+"json": "{}"
+},
+"housekeeping": {
+"str": "clean"
+},
+"secondary": {
+"bool": false
+},
+"auto_excluded": {
+"bool": false
+},
+"priority": {
+"num": "0"
+}
+},
+"core_resourcephoto": {
+"id": {
+"uuid": true
+}
+},
+"core_service": {
+"id": {
+"uuid": true
+},
+"kind": {
+"str": "resource"
+},
+"duration": {
+"num": "60"
+},
+"interval": {
+"num": "30"
+},
+"capacity": {
+"num": "1"
+},
+"max_party": {
+"num": "1"
+},
+"buffer_before": {
+"num": "0"
+},
+"buffer_after": {
+"num": "0"
+},
+"lead_minutes": {
+"num": "60"
+},
+"horizon_days": {
+"num": "180"
+},
+"checkin": {
+"str": "15:00"
+},
+"checkout": {
+"str": "10:00"
+},
+"max_days": {
+"num": "30"
+},
+"min_days": {
+"num": "1"
+},
+"cancel_cutoff_minutes": {
+"num": "0"
+},
+"turnover": {
+"bool": true
+},
+"last_arrival": {
+"num": "0"
+},
+"request_all": {
+"bool": false
+},
+"request_above": {
+"num": "0"
+},
+"request_allergies": {
+"bool": false
+},
+"pace_covers": {
+"num": "0"
+},
+"pace_bookings": {
+"num": "0"
+},
+"pace_desk": {
+"bool": false
+},
+"online_capacity": {
+"num": "0"
+},
+"party_durations": {
+"json": "[]"
+},
+"pause_start": {
+"num": "0"
+},
+"pause_minutes": {
+"num": "0"
+},
+"client_picks": {
+"bool": true
+},
+"recall_days": {
+"num": "0"
+},
+"test_days": {
+"num": "0"
+},
+"fields": {
+"json": "[]"
+},
+"active": {
+"bool": true
+},
+"stay_rules": {
+"json": "[]"
+},
+"limits": {
+"json": "{}"
+}
+},
+"core_serviceresource": {
+"id": {
+"uuid": true
+}
+},
+"core_option": {
+"id": {
+"uuid": true
+},
+"duration": {
+"num": "60"
+},
+"active": {
+"bool": true
+}
+},
+"core_schedule": {
+"id": {
+"uuid": true
+},
+"purpose": {
+"str": "service"
+},
+"every_weeks": {
+"num": "1"
+}
+},
+"core_exceptionday": {
+"id": {
+"uuid": true
+},
+"purpose": {
+"str": "service"
+},
+"closed": {
+"bool": true
+}
+},
+"core_occurrence": {
+"id": {
+"uuid": true
+},
+"capacity": {
+"num": "1"
+},
+"active": {
+"bool": true
+}
+},
+"core_shiftrule": {
+"id": {
+"uuid": true
+},
+"capacity": {
+"num": "30"
+},
+"active": {
+"bool": true
+}
+},
+"core_timeblock": {
+"id": {
+"uuid": true
+},
+"weekly": {
+"bool": false
+},
+"reason": {
+"str": "break"
+},
+"created": {
+"now": true
+}
+},
+"core_contact": {
+"id": {
+"uuid": true
+},
+"consent": {
+"str": "none"
+},
+"suppressed": {
+"bool": false
+},
+"discount": {
+"num": "0"
+},
+"notices": {
+"bool": true
+},
+"vip": {
+"bool": false
+},
+"online_blocked": {
+"bool": false
+},
+"created": {
+"now": true
+}
+},
+"core_booking": {
+"id": {
+"uuid": true
+},
+"more": {
+"json": "[]"
+},
+"party": {
+"num": "1"
+},
+"status": {
+"str": "confirmed"
+},
+"tables": {
+"json": "[]"
+},
+"snapshot": {
+"json": "{}"
+},
+"created": {
+"now": true
+}
+},
+"core_waitentry": {
+"id": {
+"uuid": true
+},
+"party": {
+"num": "1"
+},
+"status": {
+"str": "waiting"
+},
+"due": {
+"bool": false
+},
+"snapshot": {
+"json": "{}"
+},
+"created": {
+"now": true
+}
+},
+"core_treatment": {
+"id": {
+"uuid": true
+},
+"created": {
+"now": true
+}
+},
+"core_clientphoto": {
+"id": {
+"uuid": true
+},
+"created": {
+"now": true
+}
+},
+"core_consentevent": {
+"id": {
+"uuid": true
+},
+"purpose": {
+"str": "email_marketing"
+},
+"at": {
+"now": true
+}
+},
+"core_siteoutbox": {
+"id": {
+"uuid": true
+}
+},
+"core_actiontoken": {
+"id": {
+"uuid": true
+},
+"used": {
+"bool": false
+}
+},
+"core_supportgrant": {
+"id": {
+"uuid": true
+},
+"revoked": {
+"bool": false
+},
+"created": {
+"now": true
+}
+},
+"core_campaign": {
+"id": {
+"uuid": true
+},
+"status": {
+"str": "draft"
+},
+"filters": {
+"json": "{}"
+},
+"created": {
+"now": true
+}
+},
+"core_delivery": {
+"id": {
+"uuid": true
+},
+"channel": {
+"str": "email"
+},
+"status": {
+"str": "pending"
+},
+"attempts": {
+"num": "0"
+},
+"created": {
+"now": true
+}
+},
+"core_clientprofile": {
+"id": {
+"uuid": true
+},
+"updated": {
+"now": true
+}
+},
+"core_sale": {
+"id": {
+"uuid": true
+},
+"kind": {
+"str": "sale"
+},
+"status": {
+"str": "queued"
+},
+"total": {
+"num": "0"
+},
+"due": {
+"num": "0"
+},
+"created": {
+"now": true
+}
+},
+"core_product": {
+"id": {
+"uuid": true
+},
+"active": {
+"bool": true
+},
+"created": {
+"now": true
+}
+},
+"core_giftcard": {
+"id": {
+"uuid": true
+},
+"status": {
+"str": "pending"
+},
+"created": {
+"now": true
+}
+},
+"core_giftmove": {
+"id": {
+"uuid": true
+},
+"created": {
+"now": true
+}
+},
+"core_parked": {
+"id": {
+"uuid": true
+},
+"total": {
+"num": "0"
+},
+"created": {
+"now": true
+}
+},
+"core_standby": {
+"id": {
+"uuid": true
+},
+"total": {
+"num": "0"
+},
+"created": {
+"now": true
+}
+},
+"core_quote": {
+"id": {
+"uuid": true
+},
+"total": {
+"num": "0"
+},
+"created": {
+"now": true
+},
+"updated": {
+"now": true
+}
+},
+"core_audit": {
+"id": {
+"uuid": true
+},
+"detail": {
+"json": "{}"
+},
+"created": {
+"now": true
+}
+},
+"core_sitesettings": {
+"name": {
+"str": "Booking Suite"
+},
+"owner_name": {
+"str": "Tastiere Digitali"
+},
+"owner_url": {
+"str": "https://www.tastieredigitali.it"
+},
+"brand_color": {
+"str": "#7a55ad"
+},
+"default_theme": {
+"str": "auto"
+},
+"logo_ratio": {
+"num": "1"
+},
+"logo_dark_ratio": {
+"num": "1"
+},
+"login_title": {
+"str": "Agenda, clienti e prenotazioni della tua attività, in un posto solo"
+},
+"login_text": {
+"str": "Il portale di Tastiere Digitali per le attività che ricevono prenotazioni online"
+},
+"trial_enabled": {
+"bool": true
+},
+"trial_days": {
+"num": "14"
+},
+"pricing_enabled": {
+"bool": false
+},
+"pricing_title": {
+"str": "Prezzi e versioni"
+},
+"pricing_intro": {
+"str": "Un prezzo chiaro, senza commissioni sulle prenotazioni. Il portale lo configuriamo noi, collegato al tuo sito"
+},
+"pricing_highlights": {
+"str": "Nessuna commissione | Paghi un canone fisso: più prenotazioni non vogliono dire più costi\nIl cliente resta tuo | Si prenota sul tuo sito, con il tuo logo, senza un portale che mostra i concorrenti\nDati protetti | Ogni attività ha i suoi dati cifrati e separati dalle altre\nTutti i tipi di prenotazione | Tavoli a turni, appuntamenti, camere, eventi, più sedi\nTe lo configuriamo noi | Sedi, orari, servizi e plugin sul sito: parti già pronto\nAssistenza vera | Persone che rispondono, in italiano"
+},
+"pricing_faq": {
+"str": "Ci sono commissioni sulle prenotazioni? | No. Paghi solo il piano scelto, qualunque sia il numero di prenotazioni\nPosso provarlo prima? | Sì: compila la richiesta di prova e prepariamo il portale per il tuo tipo di attività\nFunziona con il mio sito? | Sì: con WordPress usi il nostro plugin, con gli altri siti basta un link o un pulsante\nQual è la differenza tra Cloud e Private? | Cloud gira sui nostri server e pensiamo a tutto noi. Private si installa su un server tuo, per chi deve tenere i dati in casa"
+},
+"pricing_note": {
+"str": "Prezzi IVA esclusa"
+},
+"why_enabled": {
+"bool": false
+},
+"why_title": {
+"str": "Perché sceglierci"
+},
+"why_intro": {
+"str": "Ci sono tanti modi di ricevere prenotazioni online. Ecco cosa cambia con il nostro, punto per punto"
+},
+"why_points": {
+"str": "Più prenotazioni, stessi costi | Con un canone fisso il successo non ti costa di più: niente percentuali sui nuovi clienti, niente euro a coperto\nIl tuo sito lavora per te | Il cliente prenota dove ti ha cercato, con il tuo logo e i tuoi colori. Nessun elenco di concorrenti a due righe di distanza\nI clienti restano tuoi | Nomi, contatti e consensi sono dell'attività. Puoi scrivergli quando vuoi, e solo tu\nUn partner, non solo un software | Configuriamo tutto noi, colleghiamo il sito e rispondiamo quando serve. Le stesse persone che seguono il tuo sito e i tuoi social\nDati al sicuro | Ogni attività ha i suoi dati cifrati e separati. E se devi tenerli in casa, c'è la versione Private\nUn solo strumento per tutto | Tavoli a turni, appuntamenti con l'operatore, camere, eventi, più sedi: non serve cambiare programma se l'attività cresce"
+},
+"why_columns": {
+"str": "TD Booking Suite | Portali con commissione | Agende online fai da te"
+},
+"why_rows": {
+"str": "Costo | Canone fisso | Commissione su prenotazioni, coperti o nuovi clienti | Canone, spesso con un limite di prenotazioni al mese\nDove prenota il cliente | Sul tuo sito, con il tuo marchio | Sul portale, accanto ad altre attività | Su una pagina del fornitore o nel tuo sito\nDi chi sono i contatti | Tuoi | Condivisi con il portale | Tuoi\nConfigurazione | La facciamo noi | Fai da te, con il supporto del portale | Fai da te\nTipi di prenotazione | Tavoli, appuntamenti, camere, eventi, più sedi | Di solito un solo settore | Soprattutto appuntamenti\nAssistenza | Persone che conosci, in italiano | Centro assistenza del portale | Email o chat del fornitore\nSul tuo server | Sì, con la versione Private | No | Di solito no"
+},
+"why_note": {
+"str": "Il confronto è per categorie di servizi e descrive le condizioni più comuni: i singoli servizi possono avere piani e condizioni diverse"
+},
+"default_timezone": {
+"str": "Europe/Rome"
+},
+"default_brand_color": {
+"str": "#7a55ad"
+},
+"default_privacy_text": {
+"str": "I dati sono utilizzati per gestire la prenotazione. Contatta l'attività per l'informativa completa."
+},
+"default_consent_text": {
+"str": "Acconsento a ricevere novità e offerte via email. Posso revocare il consenso in qualsiasi momento."
+},
+"default_retention_days": {
+"num": "730"
+},
+"default_daily_limit": {
+"num": "500"
+},
+"default_hourly_limit": {
+"num": "100"
+},
+"updated": {
+"now": true
+}
+},
+"core_trialrequest": {
+"id": {
+"uuid": true
+},
+"status": {
+"str": "new"
+},
+"attempts": {
+"num": "0"
+},
+"created": {
+"now": true
+}
+},
+"core_pricingplan": {
+"edition": {
+"str": "cloud"
+},
+"highlighted": {
+"bool": false
+},
+"active": {
+"bool": true
+},
+"order": {
+"num": "10"
+},
+"free_months": {
+"num": "0"
+}
+},
+"tdwin_prova": {},
+"tdwin_orologio": {},
+"tdwin_postazione": {
+"id": {
+"uuid": true
+},
+"tentativi": {
+"num": "0"
+},
+"creata": {
+"now": true
+}
+},
+"tdwin_impostazionibackup": {
+"attivo": {
+"bool": false
+},
+"ora": {
+"time": "01:30:00"
+},
+"conserva_locali": {
+"num": "7"
+}
+},
+"tdwin_destinazione": {
+"id": {
+"uuid": true
+},
+"attiva": {
+"bool": true
+},
+"conserva": {
+"num": "14"
+},
+"creata": {
+"now": true
+}
+},
+"tdwin_esecuzione": {
+"esito": {
+"str": "in corso"
+},
+"dimensione": {
+"num": "0"
+},
+"manuale": {
+"bool": false
+}
+},
+"tdwin_rete": {
+"certificato": {
+"str": "interno"
+},
+"info": {
+"json": "{}"
+},
+"aggiornata": {
+"now": true
+}
+},
+"tdwin_aggiornamenti": {
+"modo": {
+"str": "avvisa"
+}
+}
+}

@@ -5,9 +5,9 @@ namespace TD.Core.Data;
 [Table("core_actiontoken")]
 public partial class Actiontoken
 {
-    public Guid Id { get; set; }
-    public string Digest { get; set; }
-    public string Kind { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Digest { get; set; } = "";
+    public string Kind { get; set; } = "";
     public DateTime Expires { get; set; }
     public bool Used { get; set; }
     public Guid? BookingId { get; set; }
@@ -18,8 +18,8 @@ public partial class Actiontoken
 [Table("core_area")]
 public partial class Area
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
     public int Capacity { get; set; }
     public Guid LocationId { get; set; }
     public Guid TenantId { get; set; }
@@ -28,30 +28,30 @@ public partial class Area
 [Table("core_audit")]
 public partial class Audit
 {
-    public Guid Id { get; set; }
-    public string Actor { get; set; }
-    public string Action { get; set; }
-    public string Target { get; set; }
-    public string Detail { get; set; }
-    public DateTime Created { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Actor { get; set; } = "";
+    public string Action { get; set; } = "";
+    public string Target { get; set; } = "";
+    public string Detail { get; set; } = "{}";
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid TenantId { get; set; }
 }
 
 [Table("core_booking")]
 public partial class Booking
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime Start { get; set; }
     public DateTime End { get; set; }
     public DateTime BusyStart { get; set; }
     public DateTime BusyEnd { get; set; }
-    public int Party { get; set; }
-    public string Status { get; set; }
-    public string Pii { get; set; }
-    public string Snapshot { get; set; }
-    public string RequestKey { get; set; }
-    public string RequestFingerprint { get; set; }
-    public DateTime Created { get; set; }
+    public int Party { get; set; } = 1;
+    public string Status { get; set; } = "confirmed";
+    public string Pii { get; set; } = "";
+    public string Snapshot { get; set; } = "{}";
+    public string RequestKey { get; set; } = "";
+    public string RequestFingerprint { get; set; } = "";
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid? ContactId { get; set; }
     public Guid LocationId { get; set; }
     public Guid? OccurrenceId { get; set; }
@@ -59,39 +59,39 @@ public partial class Booking
     public Guid? ResourceId { get; set; }
     public Guid ServiceId { get; set; }
     public Guid TenantId { get; set; }
-    public string Origin { get; set; }
-    public string Source { get; set; }
+    public string Origin { get; set; } = "";
+    public string Source { get; set; } = "";
     public DateTime? GapEnd { get; set; }
     public DateTime? GapStart { get; set; }
     public Guid? SecondaryId { get; set; }
     public Guid? Series { get; set; }
-    public string Tables { get; set; }
+    public string Tables { get; set; } = "[]";
     public Guid? AreaId { get; set; }
     public Guid? Visit { get; set; }
-    public string More { get; set; }
+    public string More { get; set; } = "[]";
     public DateTime? Updated { get; set; }
 }
 
 [Table("core_campaign")]
 public partial class Campaign
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; }
-    public string Subject { get; set; }
-    public string Body { get; set; }
-    public string Status { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
+    public string Subject { get; set; } = "";
+    public string Body { get; set; } = "";
+    public string Status { get; set; } = "draft";
     public DateTime? Scheduled { get; set; }
-    public DateTime Created { get; set; }
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid TenantId { get; set; }
-    public string Filters { get; set; }
+    public string Filters { get; set; } = "{}";
 }
 
 [Table("core_ceremony")]
 public partial class Ceremony
 {
-    public Guid Id { get; set; }
-    public string Kind { get; set; }
-    public string Challenge { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Kind { get; set; } = "";
+    public string Challenge { get; set; } = "";
     public DateTime Expires { get; set; }
     public bool Used { get; set; }
     public Guid? UserId { get; set; }
@@ -100,11 +100,11 @@ public partial class Ceremony
 [Table("core_clientphoto")]
 public partial class Clientphoto
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime Date { get; set; }
     public byte[] Image { get; set; }
     public byte[] Thumb { get; set; }
-    public DateTime Created { get; set; }
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid? BookingId { get; set; }
     public Guid ContactId { get; set; }
     public Guid TenantId { get; set; }
@@ -113,23 +113,23 @@ public partial class Clientphoto
 [Table("core_clientprofile")]
 public partial class Clientprofile
 {
-    public Guid Id { get; set; }
-    public string Data { get; set; }
-    public DateTime Updated { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Data { get; set; } = "";
+    public DateTime Updated { get; set; } = DateTime.UtcNow;
     public Guid TenantId { get; set; }
 }
 
 [Table("core_consentevent")]
 public partial class Consentevent
 {
-    public Guid Id { get; set; }
-    public string Kind { get; set; }
-    public string Purpose { get; set; }
-    public string Channel { get; set; }
-    public string TextHash { get; set; }
-    public string Ref { get; set; }
-    public string Actor { get; set; }
-    public DateTime At { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Kind { get; set; } = "";
+    public string Purpose { get; set; } = "email_marketing";
+    public string Channel { get; set; } = "";
+    public string TextHash { get; set; } = "";
+    public string Ref { get; set; } = "";
+    public string Actor { get; set; } = "";
+    public DateTime At { get; set; } = DateTime.UtcNow;
     public Guid ContactId { get; set; }
     public Guid TenantId { get; set; }
     public DateTime? Updated { get; set; }
@@ -138,78 +138,78 @@ public partial class Consentevent
 [Table("core_contact")]
 public partial class Contact
 {
-    public Guid Id { get; set; }
-    public string EmailIndex { get; set; }
-    public string Pii { get; set; }
-    public string Consent { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string EmailIndex { get; set; } = "";
+    public string Pii { get; set; } = "";
+    public string Consent { get; set; } = "none";
     public DateTime? ConsentAt { get; set; }
-    public string ConsentProof { get; set; }
+    public string ConsentProof { get; set; } = "";
     public bool Suppressed { get; set; }
-    public DateTime Created { get; set; }
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid TenantId { get; set; }
     public decimal Discount { get; set; }
-    public string DiscountKind { get; set; }
-    public bool Notices { get; set; }
-    public string BirthdayIndex { get; set; }
+    public string DiscountKind { get; set; } = "";
+    public bool Notices { get; set; } = true;
+    public string BirthdayIndex { get; set; } = "";
     public Guid? MergedIntoId { get; set; }
-    public string NameIndex { get; set; }
+    public string NameIndex { get; set; } = "";
     public bool OnlineBlocked { get; set; }
-    public string PhoneIndex { get; set; }
-    public string TagIndex { get; set; }
+    public string PhoneIndex { get; set; } = "";
+    public string TagIndex { get; set; } = "";
     public bool Vip { get; set; }
-    public string Channel { get; set; }
+    public string Channel { get; set; } = "";
     public DateTime? Updated { get; set; }
 }
 
 [Table("core_delivery")]
 public partial class Delivery
 {
-    public Guid Id { get; set; }
-    public string Payload { get; set; }
-    public string Status { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Payload { get; set; } = "";
+    public string Status { get; set; } = "pending";
     public int Attempts { get; set; }
     public DateTime NextAttempt { get; set; }
     public DateTime? SentAt { get; set; }
     public DateTime? ClaimedAt { get; set; }
-    public string LastCode { get; set; }
-    public DateTime Created { get; set; }
+    public string LastCode { get; set; } = "";
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid? CampaignId { get; set; }
     public Guid? ContactId { get; set; }
     public Guid TenantId { get; set; }
-    public string Channel { get; set; }
+    public string Channel { get; set; } = "email";
     public Guid? BookingId { get; set; }
-    public string Receipt { get; set; }
-    public string Ref { get; set; }
+    public string Receipt { get; set; } = "";
+    public string Ref { get; set; } = "";
 }
 
 [Table("core_exceptionday")]
 public partial class Exceptionday
 {
-    public Guid Id { get; set; }
-    public string Purpose { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Purpose { get; set; } = "service";
     public DateTime Date { get; set; }
-    public bool Closed { get; set; }
+    public bool Closed { get; set; } = true;
     public TimeSpan? Start { get; set; }
     public TimeSpan? End { get; set; }
-    public string Label { get; set; }
+    public string Label { get; set; } = "";
     public Guid? LocationId { get; set; }
     public Guid? ResourceId { get; set; }
     public Guid? ServiceId { get; set; }
     public Guid TenantId { get; set; }
     public DateTime? Until { get; set; }
-    public string Feed { get; set; }
+    public string Feed { get; set; } = "";
 }
 
 [Table("core_giftcard")]
 public partial class Giftcard
 {
-    public Guid Id { get; set; }
-    public string Code { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Code { get; set; } = "";
     public decimal Amount { get; set; }
     public decimal Balance { get; set; }
     public DateTime? Expires { get; set; }
-    public string Status { get; set; }
-    public DateTime Created { get; set; }
+    public string Status { get; set; } = "pending";
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid? ContactId { get; set; }
     public Guid? SaleId { get; set; }
     public Guid TenantId { get; set; }
@@ -218,9 +218,9 @@ public partial class Giftcard
 [Table("core_giftmove")]
 public partial class Giftmove
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public int Cents { get; set; }
-    public DateTime Created { get; set; }
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid CardId { get; set; }
     public Guid? SaleId { get; set; }
     public Guid TenantId { get; set; }
@@ -229,7 +229,7 @@ public partial class Giftmove
 [Table("core_invitation")]
 public partial class Invitation
 {
-    public string Token { get; set; }
+    public string Token { get; set; } = "";
     public DateTime Expires { get; set; }
     public bool Used { get; set; }
     public Guid UserId { get; set; }
@@ -238,55 +238,55 @@ public partial class Invitation
 [Table("core_location")]
 public partial class Location
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; }
-    public bool Active { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
+    public bool Active { get; set; } = true;
     public Guid TenantId { get; set; }
-    public string Address { get; set; }
-    public string Phone { get; set; }
+    public string Address { get; set; } = "";
+    public string Phone { get; set; } = "";
     public int Capacity { get; set; }
-    public string Assign { get; set; }
+    public string Assign { get; set; } = "alpha";
     public int MinGap { get; set; }
-    public string Cin { get; set; }
-    public string Cir { get; set; }
-    public string RossCode { get; set; }
+    public string Cin { get; set; } = "";
+    public string Cir { get; set; } = "";
+    public string RossCode { get; set; } = "";
     public short TaxAge { get; set; }
     public short TaxNights { get; set; }
     public decimal? TaxRate { get; set; }
-    public string Tables { get; set; }
+    public string Tables { get; set; } = "off";
     public bool TablesOnline { get; set; }
-    public string VisitSplit { get; set; }
-    public short VisitWait { get; set; }
-    public string TaxCategory { get; set; }
-    public short TaxEscort { get; set; }
+    public string VisitSplit { get; set; } = "need";
+    public short VisitWait { get; set; } = 15;
+    public string TaxCategory { get; set; } = "";
+    public short TaxEscort { get; set; } = 25;
     public short TaxReduction { get; set; }
-    public string TaxRules { get; set; }
+    public string TaxRules { get; set; } = "[]";
     public short TaxYearNights { get; set; }
-    public string Till { get; set; }
+    public string Till { get; set; } = "{}";
     public DateTime? TillSeen { get; set; }
-    public string TillToken { get; set; }
+    public string TillToken { get; set; } = "";
 }
 
 [Table("core_membership")]
 public partial class Membership
 {
     public long Id { get; set; }
-    public string Role { get; set; }
+    public string Role { get; set; } = "operator";
     public bool CanSchedule { get; set; }
     public Guid UserId { get; set; }
     public Guid TenantId { get; set; }
-    public string Locations { get; set; }
-    public string Resources { get; set; }
+    public string Locations { get; set; } = "[]";
+    public string Resources { get; set; } = "[]";
 }
 
 [Table("core_occurrence")]
 public partial class Occurrence
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime Start { get; set; }
     public DateTime End { get; set; }
-    public int Capacity { get; set; }
-    public bool Active { get; set; }
+    public int Capacity { get; set; } = 1;
+    public bool Active { get; set; } = true;
     public Guid ServiceId { get; set; }
     public Guid? RuleId { get; set; }
     public Guid TenantId { get; set; }
@@ -296,10 +296,10 @@ public partial class Occurrence
 [Table("core_option")]
 public partial class Option
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; }
-    public int Duration { get; set; }
-    public bool Active { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
+    public int Duration { get; set; } = 60;
+    public bool Active { get; set; } = true;
     public Guid ServiceId { get; set; }
     public Guid TenantId { get; set; }
     public decimal? Price { get; set; }
@@ -308,12 +308,12 @@ public partial class Option
 [Table("core_parked")]
 public partial class Parked
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public decimal Total { get; set; }
-    public string Key { get; set; }
-    public string Actor { get; set; }
-    public string Pii { get; set; }
-    public DateTime Created { get; set; }
+    public string Key { get; set; } = "";
+    public string Actor { get; set; } = "";
+    public string Pii { get; set; } = "";
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid? BookingId { get; set; }
     public Guid? ContactId { get; set; }
     public Guid LocationId { get; set; }
@@ -323,12 +323,12 @@ public partial class Parked
 [Table("core_passkey")]
 public partial class Passkey
 {
-    public Guid Id { get; set; }
-    public string CredentialId { get; set; }
-    public string PublicKey { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string CredentialId { get; set; } = "";
+    public string PublicKey { get; set; } = "";
     public long SignCount { get; set; }
-    public string Name { get; set; }
-    public DateTime Created { get; set; }
+    public string Name { get; set; } = "Passkey";
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid UserId { get; set; }
 }
 
@@ -336,45 +336,45 @@ public partial class Passkey
 public partial class Pricingplan
 {
     public long Id { get; set; }
-    public string Edition { get; set; }
-    public string Name { get; set; }
-    public string Badge { get; set; }
-    public string Price { get; set; }
-    public string Period { get; set; }
-    public string PriceNote { get; set; }
-    public string Description { get; set; }
-    public string Features { get; set; }
-    public string CtaLabel { get; set; }
-    public string CtaUrl { get; set; }
+    public string Edition { get; set; } = "cloud";
+    public string Name { get; set; } = "";
+    public string Badge { get; set; } = "";
+    public string Price { get; set; } = "";
+    public string Period { get; set; } = "";
+    public string PriceNote { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string Features { get; set; } = "";
+    public string CtaLabel { get; set; } = "";
+    public string CtaUrl { get; set; } = "";
     public bool Highlighted { get; set; }
-    public bool Active { get; set; }
-    public short Order { get; set; }
+    public bool Active { get; set; } = true;
+    public short Order { get; set; } = 10;
     public short FreeMonths { get; set; }
 }
 
 [Table("core_product")]
 public partial class Product
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
     public decimal? Price { get; set; }
-    public bool Active { get; set; }
-    public DateTime Created { get; set; }
+    public bool Active { get; set; } = true;
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid TenantId { get; set; }
 }
 
 [Table("core_quote")]
 public partial class Quote
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public short Year { get; set; }
     public int Number { get; set; }
     public decimal Total { get; set; }
     public DateTime? ValidUntil { get; set; }
-    public string Actor { get; set; }
-    public string Pii { get; set; }
-    public DateTime Created { get; set; }
-    public DateTime Updated { get; set; }
+    public string Actor { get; set; } = "";
+    public string Pii { get; set; } = "";
+    public DateTime Created { get; set; } = DateTime.UtcNow;
+    public DateTime Updated { get; set; } = DateTime.UtcNow;
     public Guid? ContactId { get; set; }
     public Guid TenantId { get; set; }
 }
@@ -382,7 +382,7 @@ public partial class Quote
 [Table("core_ratebucket")]
 public partial class Ratebucket
 {
-    public string Key { get; set; }
+    public string Key { get; set; } = "";
     public int Count { get; set; }
     public DateTime Ends { get; set; }
 }
@@ -390,7 +390,7 @@ public partial class Ratebucket
 [Table("core_receipt")]
 public partial class Receipt
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime Day { get; set; }
     public int Rows { get; set; }
     public byte[] Pdf { get; set; }
@@ -400,44 +400,44 @@ public partial class Receipt
 [Table("core_resource")]
 public partial class Resource
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; }
-    public bool Active { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
+    public bool Active { get; set; } = true;
     public Guid LocationId { get; set; }
     public Guid TenantId { get; set; }
     public int Capacity { get; set; }
-    public string Description { get; set; }
-    public string PhotoUrl { get; set; }
+    public string Description { get; set; } = "";
+    public string PhotoUrl { get; set; } = "";
     public DateTime? PhotoAt { get; set; }
     public bool AutoExcluded { get; set; }
     public int Priority { get; set; }
     public bool Secondary { get; set; }
-    public string Housekeeping { get; set; }
+    public string Housekeeping { get; set; } = "clean";
     public DateTime? IcalAt { get; set; }
-    public string IcalError { get; set; }
-    public string IcalIn { get; set; }
-    public string Busy { get; set; }
+    public string IcalError { get; set; } = "";
+    public string IcalIn { get; set; } = "";
+    public string Busy { get; set; } = "";
     public DateTime? BusyAt { get; set; }
-    public string BusyError { get; set; }
+    public string BusyError { get; set; } = "";
     public int Feed { get; set; }
     public bool FeedNames { get; set; }
-    public string Google { get; set; }
+    public string Google { get; set; } = "";
     public DateTime? GoogleAt { get; set; }
-    public string GoogleError { get; set; }
-    public string Group { get; set; }
+    public string GoogleError { get; set; } = "";
+    public string Group { get; set; } = "";
     public Guid? AwayById { get; set; }
     public DateTime? AwayFrom { get; set; }
     public DateTime? AwayUntil { get; set; }
-    public string Limits { get; set; }
-    public string Microsoft { get; set; }
+    public string Limits { get; set; } = "{}";
+    public string Microsoft { get; set; } = "";
     public DateTime? MicrosoftAt { get; set; }
-    public string MicrosoftError { get; set; }
+    public string MicrosoftError { get; set; } = "";
 }
 
 [Table("core_resourcephoto")]
 public partial class Resourcephoto
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public byte[] Data { get; set; }
     public Guid ResourceId { get; set; }
     public Guid TenantId { get; set; }
@@ -446,21 +446,21 @@ public partial class Resourcephoto
 [Table("core_sale")]
 public partial class Sale
 {
-    public Guid Id { get; set; }
-    public string Kind { get; set; }
-    public string Status { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Kind { get; set; } = "sale";
+    public string Status { get; set; } = "queued";
     public decimal Total { get; set; }
-    public string Number { get; set; }
-    public string Z { get; set; }
-    public string Serial { get; set; }
+    public string Number { get; set; } = "";
+    public string Z { get; set; } = "";
+    public string Serial { get; set; } = "";
     public DateTime? Printed { get; set; }
-    public string Error { get; set; }
+    public string Error { get; set; } = "";
     public DateTime? Claimed { get; set; }
     public DateTime? Mailed { get; set; }
-    public string Key { get; set; }
-    public string Actor { get; set; }
-    public string Pii { get; set; }
-    public DateTime Created { get; set; }
+    public string Key { get; set; } = "";
+    public string Actor { get; set; } = "";
+    public string Pii { get; set; } = "";
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid? BookingId { get; set; }
     public Guid? ContactId { get; set; }
     public Guid LocationId { get; set; }
@@ -469,14 +469,14 @@ public partial class Sale
     public DateTime? Updated { get; set; }
     public decimal Due { get; set; }
     public DateTime? Settled { get; set; }
-    public string SettledWith { get; set; }
+    public string SettledWith { get; set; } = "";
 }
 
 [Table("core_schedule")]
 public partial class Schedule
 {
-    public Guid Id { get; set; }
-    public string Purpose { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Purpose { get; set; } = "service";
     public short Weekday { get; set; }
     public TimeSpan Start { get; set; }
     public TimeSpan End { get; set; }
@@ -486,65 +486,65 @@ public partial class Schedule
     public Guid? ResourceId { get; set; }
     public Guid? ServiceId { get; set; }
     public Guid TenantId { get; set; }
-    public short EveryWeeks { get; set; }
+    public short EveryWeeks { get; set; } = 1;
 }
 
 [Table("core_service")]
 public partial class Service
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; }
-    public string Kind { get; set; }
-    public string Description { get; set; }
-    public int Duration { get; set; }
-    public int Interval { get; set; }
-    public int Capacity { get; set; }
-    public int MaxParty { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
+    public string Kind { get; set; } = "resource";
+    public string Description { get; set; } = "";
+    public int Duration { get; set; } = 60;
+    public int Interval { get; set; } = 30;
+    public int Capacity { get; set; } = 1;
+    public int MaxParty { get; set; } = 1;
     public int BufferBefore { get; set; }
     public int BufferAfter { get; set; }
-    public int LeadMinutes { get; set; }
-    public int HorizonDays { get; set; }
-    public TimeSpan Checkin { get; set; }
-    public TimeSpan Checkout { get; set; }
-    public int MaxDays { get; set; }
-    public string Fields { get; set; }
-    public bool Active { get; set; }
+    public int LeadMinutes { get; set; } = 60;
+    public int HorizonDays { get; set; } = 180;
+    public TimeSpan Checkin { get; set; } = TimeSpan.Parse("15:00");
+    public TimeSpan Checkout { get; set; } = TimeSpan.Parse("10:00");
+    public int MaxDays { get; set; } = 30;
+    public string Fields { get; set; } = "[]";
+    public bool Active { get; set; } = true;
     public Guid LocationId { get; set; }
     public Guid TenantId { get; set; }
     public int CancelCutoffMinutes { get; set; }
-    public int MinDays { get; set; }
-    public string Preset { get; set; }
-    public string ResourceLabel { get; set; }
-    public bool Turnover { get; set; }
+    public int MinDays { get; set; } = 1;
+    public string Preset { get; set; } = "";
+    public string ResourceLabel { get; set; } = "";
+    public bool Turnover { get; set; } = true;
     public decimal? Price { get; set; }
     public int LastArrival { get; set; }
     public bool RequestAll { get; set; }
     public int RequestAbove { get; set; }
     public bool RequestAllergies { get; set; }
-    public string Instructions { get; set; }
+    public string Instructions { get; set; } = "";
     public int OnlineCapacity { get; set; }
     public int PaceBookings { get; set; }
     public int PaceCovers { get; set; }
     public bool PaceDesk { get; set; }
-    public string PartyDurations { get; set; }
-    public bool ClientPicks { get; set; }
+    public string PartyDurations { get; set; } = "[]";
+    public bool ClientPicks { get; set; } = true;
     public int PauseMinutes { get; set; }
     public int PauseStart { get; set; }
-    public string StayRules { get; set; }
+    public string StayRules { get; set; } = "[]";
     public int RecallDays { get; set; }
-    public string RemoteUrl { get; set; }
+    public string RemoteUrl { get; set; } = "";
     public int TestDays { get; set; }
-    public string DescriptionEn { get; set; }
-    public string NameEn { get; set; }
-    public string Limits { get; set; }
-    public string Secret { get; set; }
-    public string ThanksUrl { get; set; }
+    public string DescriptionEn { get; set; } = "";
+    public string NameEn { get; set; } = "";
+    public string Limits { get; set; } = "{}";
+    public string Secret { get; set; } = "";
+    public string ThanksUrl { get; set; } = "";
 }
 
 [Table("core_serviceresource")]
 public partial class Serviceresource
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid ResourceId { get; set; }
     public Guid ServiceId { get; set; }
     public Guid TenantId { get; set; }
@@ -557,15 +557,15 @@ public partial class Serviceresource
 [Table("core_shiftrule")]
 public partial class Shiftrule
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
     public short Weekday { get; set; }
     public TimeSpan Start { get; set; }
     public TimeSpan End { get; set; }
-    public int Capacity { get; set; }
+    public int Capacity { get; set; } = 30;
     public DateTime? ValidFrom { get; set; }
     public DateTime? ValidUntil { get; set; }
-    public bool Active { get; set; }
+    public bool Active { get; set; } = true;
     public Guid ServiceId { get; set; }
     public Guid TenantId { get; set; }
 }
@@ -573,9 +573,9 @@ public partial class Shiftrule
 [Table("core_siteoutbox")]
 public partial class Siteoutbox
 {
-    public Guid Id { get; set; }
-    public string Kind { get; set; }
-    public string Ref { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Kind { get; set; } = "";
+    public string Ref { get; set; } = "";
     public long Seq { get; set; }
     public Guid TenantId { get; set; }
 }
@@ -584,62 +584,62 @@ public partial class Siteoutbox
 public partial class Sitesettings
 {
     public long Id { get; set; }
-    public string Name { get; set; }
-    public string OwnerName { get; set; }
-    public string BrandColor { get; set; }
+    public string Name { get; set; } = "Booking Suite";
+    public string OwnerName { get; set; } = "Tastiere Digitali";
+    public string BrandColor { get; set; } = "#7a55ad";
     public byte[] Logo { get; set; }
     public byte[] Favicon { get; set; }
-    public string LoginTitle { get; set; }
-    public string LoginText { get; set; }
-    public string SupportEmail { get; set; }
-    public string SupportPhone { get; set; }
-    public string Smtp { get; set; }
-    public string DefaultTimezone { get; set; }
-    public string DefaultBrandColor { get; set; }
-    public string DefaultPrivacyText { get; set; }
-    public string DefaultConsentText { get; set; }
-    public int DefaultRetentionDays { get; set; }
-    public int DefaultDailyLimit { get; set; }
-    public int DefaultHourlyLimit { get; set; }
-    public DateTime Updated { get; set; }
-    public short TrialDays { get; set; }
-    public string TrialEmail { get; set; }
-    public bool TrialEnabled { get; set; }
-    public string DataLocation { get; set; }
-    public string LegalAddress { get; set; }
-    public string LegalName { get; set; }
+    public string LoginTitle { get; set; } = "Agenda, clienti e prenotazioni della tua attività, in un posto solo";
+    public string LoginText { get; set; } = "Il portale di Tastiere Digitali per le attività che ricevono prenotazioni online";
+    public string SupportEmail { get; set; } = "";
+    public string SupportPhone { get; set; } = "";
+    public string Smtp { get; set; } = "";
+    public string DefaultTimezone { get; set; } = "Europe/Rome";
+    public string DefaultBrandColor { get; set; } = "#7a55ad";
+    public string DefaultPrivacyText { get; set; } = "I dati sono utilizzati per gestire la prenotazione. Contatta l'attività per l'informativa completa.";
+    public string DefaultConsentText { get; set; } = "Acconsento a ricevere novità e offerte via email. Posso revocare il consenso in qualsiasi momento.";
+    public int DefaultRetentionDays { get; set; } = 730;
+    public int DefaultDailyLimit { get; set; } = 500;
+    public int DefaultHourlyLimit { get; set; } = 100;
+    public DateTime Updated { get; set; } = DateTime.UtcNow;
+    public short TrialDays { get; set; } = 14;
+    public string TrialEmail { get; set; } = "";
+    public bool TrialEnabled { get; set; } = true;
+    public string DataLocation { get; set; } = "";
+    public string LegalAddress { get; set; } = "";
+    public string LegalName { get; set; } = "";
     public byte[] LogoDark { get; set; }
-    public double LogoDarkRatio { get; set; }
-    public double LogoRatio { get; set; }
+    public double LogoDarkRatio { get; set; } = 1;
+    public double LogoRatio { get; set; } = 1;
     public bool PricingEnabled { get; set; }
-    public string PricingFaq { get; set; }
-    public string PricingHighlights { get; set; }
-    public string PricingIntro { get; set; }
-    public string PricingNote { get; set; }
-    public string PricingTitle { get; set; }
-    public string PrivacyEmail { get; set; }
-    public string PrivacyPolicy { get; set; }
+    public string PricingFaq { get; set; } = "Ci sono commissioni sulle prenotazioni? | No. Paghi solo il piano scelto, qualunque sia il numero di prenotazioni\nPosso provarlo prima? | Sì: compila la richiesta di prova e prepariamo il portale per il tuo tipo di attività\nFunziona con il mio sito? | Sì: con WordPress usi il nostro plugin, con gli altri siti basta un link o un pulsante\nQual è la differenza tra Cloud e Private? | Cloud gira sui nostri server e pensiamo a tutto noi. Private si installa su un server tuo, per chi deve tenere i dati in casa";
+    public string PricingHighlights { get; set; } = "Nessuna commissione | Paghi un canone fisso: più prenotazioni non vogliono dire più costi\nIl cliente resta tuo | Si prenota sul tuo sito, con il tuo logo, senza un portale che mostra i concorrenti\nDati protetti | Ogni attività ha i suoi dati cifrati e separati dalle altre\nTutti i tipi di prenotazione | Tavoli a turni, appuntamenti, camere, eventi, più sedi\nTe lo configuriamo noi | Sedi, orari, servizi e plugin sul sito: parti già pronto\nAssistenza vera | Persone che rispondono, in italiano";
+    public string PricingIntro { get; set; } = "Un prezzo chiaro, senza commissioni sulle prenotazioni. Il portale lo configuriamo noi, collegato al tuo sito";
+    public string PricingNote { get; set; } = "Prezzi IVA esclusa";
+    public string PricingTitle { get; set; } = "Prezzi e versioni";
+    public string PrivacyEmail { get; set; } = "";
+    public string PrivacyPolicy { get; set; } = "";
     public DateTime? PrivacyUpdated { get; set; }
-    public string VatNumber { get; set; }
-    public string WhyColumns { get; set; }
+    public string VatNumber { get; set; } = "";
+    public string WhyColumns { get; set; } = "TD Booking Suite | Portali con commissione | Agende online fai da te";
     public bool WhyEnabled { get; set; }
-    public string WhyIntro { get; set; }
-    public string WhyNote { get; set; }
-    public string WhyPoints { get; set; }
-    public string WhyRows { get; set; }
-    public string WhyTitle { get; set; }
-    public string OwnerUrl { get; set; }
-    public string DefaultTheme { get; set; }
+    public string WhyIntro { get; set; } = "Ci sono tanti modi di ricevere prenotazioni online. Ecco cosa cambia con il nostro, punto per punto";
+    public string WhyNote { get; set; } = "Il confronto è per categorie di servizi e descrive le condizioni più comuni: i singoli servizi possono avere piani e condizioni diverse";
+    public string WhyPoints { get; set; } = "Più prenotazioni, stessi costi | Con un canone fisso il successo non ti costa di più: niente percentuali sui nuovi clienti, niente euro a coperto\nIl tuo sito lavora per te | Il cliente prenota dove ti ha cercato, con il tuo logo e i tuoi colori. Nessun elenco di concorrenti a due righe di distanza\nI clienti restano tuoi | Nomi, contatti e consensi sono dell'attività. Puoi scrivergli quando vuoi, e solo tu\nUn partner, non solo un software | Configuriamo tutto noi, colleghiamo il sito e rispondiamo quando serve. Le stesse persone che seguono il tuo sito e i tuoi social\nDati al sicuro | Ogni attività ha i suoi dati cifrati e separati. E se devi tenerli in casa, c'è la versione Private\nUn solo strumento per tutto | Tavoli a turni, appuntamenti con l'operatore, camere, eventi, più sedi: non serve cambiare programma se l'attività cresce";
+    public string WhyRows { get; set; } = "Costo | Canone fisso | Commissione su prenotazioni, coperti o nuovi clienti | Canone, spesso con un limite di prenotazioni al mese\nDove prenota il cliente | Sul tuo sito, con il tuo marchio | Sul portale, accanto ad altre attività | Su una pagina del fornitore o nel tuo sito\nDi chi sono i contatti | Tuoi | Condivisi con il portale | Tuoi\nConfigurazione | La facciamo noi | Fai da te, con il supporto del portale | Fai da te\nTipi di prenotazione | Tavoli, appuntamenti, camere, eventi, più sedi | Di solito un solo settore | Soprattutto appuntamenti\nAssistenza | Persone che conosci, in italiano | Centro assistenza del portale | Email o chat del fornitore\nSul tuo server | Sì, con la versione Private | No | Di solito no";
+    public string WhyTitle { get; set; } = "Perché sceglierci";
+    public string OwnerUrl { get; set; } = "https://www.tastieredigitali.it";
+    public string DefaultTheme { get; set; } = "auto";
 }
 
 [Table("core_standby")]
 public partial class Standby
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public decimal Total { get; set; }
-    public string Actor { get; set; }
-    public string Pii { get; set; }
-    public DateTime Created { get; set; }
+    public string Actor { get; set; } = "";
+    public string Pii { get; set; } = "";
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid? BookingId { get; set; }
     public Guid? ContactId { get; set; }
     public Guid LocationId { get; set; }
@@ -649,12 +649,12 @@ public partial class Standby
 [Table("core_supportgrant")]
 public partial class Supportgrant
 {
-    public Guid Id { get; set; }
-    public string Reason { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Reason { get; set; } = "";
     public DateTime Expires { get; set; }
-    public string CreatedBy { get; set; }
+    public string CreatedBy { get; set; } = "";
     public bool Revoked { get; set; }
-    public DateTime Created { get; set; }
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid TenantId { get; set; }
     public Guid UserId { get; set; }
 }
@@ -662,14 +662,14 @@ public partial class Supportgrant
 [Table("core_table")]
 public partial class Table
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; }
-    public short MinCovers { get; set; }
-    public short MaxCovers { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
+    public short MinCovers { get; set; } = 1;
+    public short MaxCovers { get; set; } = 4;
     public short Priority { get; set; }
-    public string Joins { get; set; }
-    public double X { get; set; }
-    public double Y { get; set; }
+    public string Joins { get; set; } = "[]";
+    public double X { get; set; } = 5;
+    public double Y { get; set; } = 5;
     public Guid AreaId { get; set; }
     public Guid TenantId { get; set; }
 }
@@ -677,90 +677,90 @@ public partial class Table
 [Table("core_tenant")]
 public partial class Tenant
 {
-    public Guid Id { get; set; }
-    public string Slug { get; set; }
-    public string Name { get; set; }
-    public string WrappedKey { get; set; }
-    public string Timezone { get; set; }
-    public string Status { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Slug { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string WrappedKey { get; set; } = "";
+    public string Timezone { get; set; } = "Europe/Rome";
+    public string Status { get; set; } = "active";
     public DateTime? TrialUntil { get; set; }
     public bool MarketingEnabled { get; set; }
     public bool MarketingRequested { get; set; }
-    public string Smtp { get; set; }
-    public int SmtpDailyLimit { get; set; }
-    public int SmtpHourlyLimit { get; set; }
-    public string BrandColor { get; set; }
-    public string Tagline { get; set; }
-    public string Website { get; set; }
-    public string EmbedOrigins { get; set; }
-    public string PrivacyText { get; set; }
-    public string ConsentText { get; set; }
-    public int RetentionDays { get; set; }
+    public string Smtp { get; set; } = "";
+    public int SmtpDailyLimit { get; set; } = 500;
+    public int SmtpHourlyLimit { get; set; } = 100;
+    public string BrandColor { get; set; } = "#7a55ad";
+    public string Tagline { get; set; } = "";
+    public string Website { get; set; } = "";
+    public string EmbedOrigins { get; set; } = "[]";
+    public string PrivacyText { get; set; } = "I dati sono utilizzati per gestire la prenotazione. Contatta l'attività per l'informativa completa.";
+    public string ConsentText { get; set; } = "Acconsento a ricevere novità e offerte via email. Posso revocare il consenso in qualsiasi momento.";
+    public int RetentionDays { get; set; } = 730;
     public bool ReceiveSchedule { get; set; }
-    public DateTime Created { get; set; }
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public byte[] Logo { get; set; }
     public bool Maintenance { get; set; }
-    public string NotifyEmail { get; set; }
-    public string Telegram { get; set; }
-    public string BusinessType { get; set; }
-    public string ConnectHash { get; set; }
+    public string NotifyEmail { get; set; } = "";
+    public string Telegram { get; set; } = "";
+    public string BusinessType { get; set; } = "";
+    public string ConnectHash { get; set; } = "";
     public DateTime? ConnectUntil { get; set; }
-    public string Allergens { get; set; }
+    public string Allergens { get; set; } = "[]";
     public bool AllergensOn { get; set; }
-    public double LogoRatio { get; set; }
+    public double LogoRatio { get; set; } = 1;
     public bool ExportEnabled { get; set; }
     public bool ClientMailsEnabled { get; set; }
-    public string ClientMails { get; set; }
-    public string WhatsappText { get; set; }
+    public string ClientMails { get; set; } = "{}";
+    public string WhatsappText { get; set; } = "";
     public DateTime? RetentionAt { get; set; }
-    public string RetentionError { get; set; }
+    public string RetentionError { get; set; } = "";
     public bool ForceAll { get; set; }
     public bool NotifyOperators { get; set; }
     public short? SummaryHour { get; set; }
     public DateTime? SummarySent { get; set; }
-    public string PatronDay { get; set; }
-    public string PatronName { get; set; }
+    public string PatronDay { get; set; } = "";
+    public string PatronName { get; set; } = "";
     public short AbsencesRequest { get; set; }
     public DateTime? WaitCheck { get; set; }
-    public short WaitMinutes { get; set; }
-    public string WaitMode { get; set; }
-    public string ClientCategories { get; set; }
-    public string Texts { get; set; }
-    public int TextsDailyLimit { get; set; }
-    public string ApiKey { get; set; }
-    public string Webhook { get; set; }
-    public string Google { get; set; }
-    public string Alloggiati { get; set; }
+    public short WaitMinutes { get; set; } = 60;
+    public string WaitMode { get; set; } = "all";
+    public string ClientCategories { get; set; } = "[]";
+    public string Texts { get; set; } = "";
+    public int TextsDailyLimit { get; set; } = 100;
+    public string ApiKey { get; set; } = "";
+    public string Webhook { get; set; } = "";
+    public string Google { get; set; } = "";
+    public string Alloggiati { get; set; } = "";
     public bool AlloggiatiSelf { get; set; }
     public bool ApiEnabled { get; set; }
-    public string ConsentTextEn { get; set; }
-    public string PrivacyTextEn { get; set; }
-    public string Microsoft { get; set; }
-    public string ThanksUrl { get; set; }
+    public string ConsentTextEn { get; set; } = "";
+    public string PrivacyTextEn { get; set; } = "";
+    public string Microsoft { get; set; } = "";
+    public string ThanksUrl { get; set; } = "";
     public bool TillOn { get; set; }
     public bool TillOperators { get; set; }
     public bool TillSelf { get; set; }
-    public string WpSync { get; set; }
-    public string WpState { get; set; }
+    public string WpSync { get; set; } = "";
+    public string WpState { get; set; } = "{}";
     public bool WpArchive { get; set; }
     public long WpSeq { get; set; }
-    public string WaWhen { get; set; }
-    public string WhatsappReminder { get; set; }
-    public string WhatsappThanks { get; set; }
+    public string WaWhen { get; set; } = "";
+    public string WhatsappReminder { get; set; } = "";
+    public string WhatsappThanks { get; set; } = "";
 }
 
 [Table("core_timeblock")]
 public partial class Timeblock
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime Day { get; set; }
     public TimeSpan Start { get; set; }
     public TimeSpan End { get; set; }
     public bool Weekly { get; set; }
     public DateTime? Until { get; set; }
-    public string Reason { get; set; }
-    public string Pii { get; set; }
-    public DateTime Created { get; set; }
+    public string Reason { get; set; } = "break";
+    public string Pii { get; set; } = "";
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid? ResourceId { get; set; }
     public Guid? ServiceId { get; set; }
     public Guid TenantId { get; set; }
@@ -769,11 +769,11 @@ public partial class Timeblock
 [Table("core_treatment")]
 public partial class Treatment
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime Date { get; set; }
-    public string Pii { get; set; }
-    public string Author { get; set; }
-    public DateTime Created { get; set; }
+    public string Pii { get; set; } = "";
+    public string Author { get; set; } = "";
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid? BookingId { get; set; }
     public Guid ContactId { get; set; }
     public Guid TenantId { get; set; }
@@ -783,31 +783,31 @@ public partial class Treatment
 [Table("core_trialrequest")]
 public partial class Trialrequest
 {
-    public Guid Id { get; set; }
-    public string Pii { get; set; }
-    public string Preset { get; set; }
-    public string Status { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Pii { get; set; } = "";
+    public string Preset { get; set; } = "";
+    public string Status { get; set; } = "new";
     public DateTime? Notified { get; set; }
     public short Attempts { get; set; }
-    public DateTime Created { get; set; }
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid? ClientId { get; set; }
 }
 
 [Table("core_user")]
 public partial class User
 {
-    public string Password { get; set; }
+    public string Password { get; set; } = "";
     public DateTime? LastLogin { get; set; }
     public bool IsSuperuser { get; set; }
-    public Guid Id { get; set; }
-    public string LoginIndex { get; set; }
-    public string Pii { get; set; }
-    public bool IsActive { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string LoginIndex { get; set; } = "";
+    public string Pii { get; set; } = "";
+    public bool IsActive { get; set; } = true;
     public bool IsStaff { get; set; }
-    public int AuthVersion { get; set; }
-    public string Totp { get; set; }
-    public long LastTotp { get; set; }
-    public string Recovery { get; set; }
+    public int AuthVersion { get; set; } = 1;
+    public string Totp { get; set; } = "";
+    public long LastTotp { get; set; } = -1;
+    public string Recovery { get; set; } = "[]";
     public string NameIndex { get; set; }
     public bool QuickLogin { get; set; }
 }
@@ -815,18 +815,18 @@ public partial class User
 [Table("core_waitentry")]
 public partial class Waitentry
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime First { get; set; }
     public DateTime Last { get; set; }
     public TimeSpan? TimeFrom { get; set; }
     public TimeSpan? TimeTo { get; set; }
-    public int Party { get; set; }
-    public string Status { get; set; }
+    public int Party { get; set; } = 1;
+    public string Status { get; set; } = "waiting";
     public bool Due { get; set; }
     public DateTime? HeldUntil { get; set; }
-    public string Pii { get; set; }
-    public string Snapshot { get; set; }
-    public DateTime Created { get; set; }
+    public string Pii { get; set; } = "";
+    public string Snapshot { get; set; } = "{}";
+    public DateTime Created { get; set; } = DateTime.UtcNow;
     public Guid ContactId { get; set; }
     public Guid? ResourceId { get; set; }
     public Guid ServiceId { get; set; }
@@ -838,30 +838,30 @@ public partial class Waitentry
 public partial class WinAggiornamenti
 {
     public long Id { get; set; }
-    public string Modo { get; set; }
+    public string Modo { get; set; } = "avvisa";
     public DateTime? UltimoControllo { get; set; }
-    public string Esito { get; set; }
-    public string Disponibile { get; set; }
+    public string Esito { get; set; } = "";
+    public string Disponibile { get; set; } = "";
 }
 
 [Table("tdwin_destinazione")]
 public partial class WinDestinazione
 {
-    public Guid Id { get; set; }
-    public string Nome { get; set; }
-    public string Tipo { get; set; }
-    public bool Attiva { get; set; }
-    public string Percorso { get; set; }
-    public string Host { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Nome { get; set; } = "";
+    public string Tipo { get; set; } = "";
+    public bool Attiva { get; set; } = true;
+    public string Percorso { get; set; } = "";
+    public string Host { get; set; } = "";
     public int? Porta { get; set; }
-    public string Utente { get; set; }
-    public string Password { get; set; }
-    public string Impronta { get; set; }
-    public int Conserva { get; set; }
+    public string Utente { get; set; } = "";
+    public string Password { get; set; } = "";
+    public string Impronta { get; set; } = "";
+    public int Conserva { get; set; } = 14;
     public DateTime? ProvaRichiesta { get; set; }
-    public string UltimoEsito { get; set; }
+    public string UltimoEsito { get; set; } = "";
     public DateTime? UltimoControllo { get; set; }
-    public DateTime Creata { get; set; }
+    public DateTime Creata { get; set; } = DateTime.UtcNow;
 }
 
 [Table("tdwin_esecuzione")]
@@ -870,10 +870,10 @@ public partial class WinEsecuzione
     public long Id { get; set; }
     public DateTime Inizio { get; set; }
     public DateTime? Fine { get; set; }
-    public string Esito { get; set; }
-    public string File { get; set; }
+    public string Esito { get; set; } = "in corso";
+    public string File { get; set; } = "";
     public long Dimensione { get; set; }
-    public string Dettagli { get; set; }
+    public string Dettagli { get; set; } = "";
     public bool Manuale { get; set; }
 }
 
@@ -882,10 +882,10 @@ public partial class WinImpostazionibackup
 {
     public long Id { get; set; }
     public bool Attivo { get; set; }
-    public TimeSpan Ora { get; set; }
-    public int ConservaLocali { get; set; }
-    public string Chiave { get; set; }
-    public string Sale { get; set; }
+    public TimeSpan Ora { get; set; } = TimeSpan.Parse("01:30:00");
+    public int ConservaLocali { get; set; } = 7;
+    public string Chiave { get; set; } = "";
+    public string Sale { get; set; } = "";
     public DateTime? PasswordImpostata { get; set; }
     public DateTime? Richiesto { get; set; }
     public DateTime? UltimoGiorno { get; set; }
@@ -901,13 +901,13 @@ public partial class WinOrologio
 [Table("tdwin_postazione")]
 public partial class WinPostazione
 {
-    public Guid Id { get; set; }
-    public string Nome { get; set; }
-    public string Codice { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Nome { get; set; } = "";
+    public string Codice { get; set; } = "";
     public DateTime? ScadenzaCodice { get; set; }
     public int Tentativi { get; set; }
     public string Token { get; set; }
-    public DateTime Creata { get; set; }
+    public DateTime Creata { get; set; } = DateTime.UtcNow;
     public DateTime? Abbinata { get; set; }
     public DateTime? UltimoAccesso { get; set; }
     public string UltimoIp { get; set; }
@@ -918,16 +918,16 @@ public partial class WinProva
 {
     public long Id { get; set; }
     public DateTime Attivata { get; set; }
-    public string Da { get; set; }
+    public string Da { get; set; } = "";
 }
 
 [Table("tdwin_rete")]
 public partial class WinRete
 {
     public long Id { get; set; }
-    public string Indirizzo { get; set; }
-    public string Proxy { get; set; }
-    public string Certificato { get; set; }
-    public string Info { get; set; }
-    public DateTime Aggiornata { get; set; }
+    public string Indirizzo { get; set; } = "";
+    public string Proxy { get; set; } = "";
+    public string Certificato { get; set; } = "interno";
+    public string Info { get; set; } = "{}";
+    public DateTime Aggiornata { get; set; } = DateTime.UtcNow;
 }
