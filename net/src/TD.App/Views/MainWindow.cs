@@ -126,6 +126,7 @@ public sealed class MainWindow : Window
         Show("licenza");
     }
 
+    public Page CurrentPage => content.Content as Page;
     public async void Show(string key)
     {
         if (!pages.TryGetValue(key, out var make)) return;

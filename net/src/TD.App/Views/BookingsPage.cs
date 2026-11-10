@@ -27,7 +27,7 @@ public sealed class BookingsPage : Page
             status.ItemsSource = new[] { ("", "Tutti gli stati") }.Concat(STATUS.Select(s => (s.Key, s.Value))).Select(s => new ComboBoxItem { Content = s.Item2, Tag = s.Item1 }).ToList();
             status.SelectedIndex = 0;
             q.Width = 240;
-            var bar = Row(T("Dal ", size: 13).M(0, 8, 6, 0), from, T(" al ", size: 13).M(8, 8, 6, 0), to, status.M(12, 0, 0, 0), q.M(12, 0, 0, 0), BA("Cerca", Refresh, "Primary").M(8, 0, 0, 0));
+            var bar = new WrapPanel(); foreach (var e in new FrameworkElement[] {T("Dal ", size: 13).M(0, 8, 6, 0), from, T(" al ", size: 13).M(8, 8, 6, 0), to, status.M(12, 0, 0, 0), q.M(12, 0, 0, 0), BA("Cerca", Refresh, "Primary").M(8, 0, 0, 0) }) { e.VerticalAlignment = VerticalAlignment.Center; bar.Children.Add(e); }
             var root = new DockPanel { Margin = new Thickness(24, 18, 24, 12) };
             var top = Col(T("Prenotazioni", "H1"), bar.M(0, 8, 0, 12)); DockPanel.SetDock(top, Dock.Top);
             root.Children.Add(top);

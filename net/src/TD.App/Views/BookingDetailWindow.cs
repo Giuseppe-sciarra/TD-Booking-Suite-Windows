@@ -22,13 +22,13 @@ public sealed class BookingDetailWindow : Window
         await page.Refresh();
     }
 
-    BookingDetailWindow(AgendaPage page, string bookingId)
+    internal BookingDetailWindow(AgendaPage page, string bookingId)
     {
         agenda = page; id = bookingId;
         Title = "Prenotazione"; Width = 760; Height = 720; WindowStartupLocation = WindowStartupLocation.CenterOwner; Owner = Application.Current.MainWindow;
     }
 
-    async Task Reload()
+    internal async Task Reload()
     {
         b = await Api.Current.Call("prenotazione.dettaglio", new { id });
         Draw();

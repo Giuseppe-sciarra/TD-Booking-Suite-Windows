@@ -44,15 +44,17 @@ Legenda: ☐ da fare · ◐ in corso · ☑ fatto e provato
 - ☑ Password Django
 - ☑ Accesso ai dati (Db, Scope, entità generate dallo schema con i default di Django: tools/gen_entities.py + django_defaults.py)
 - ☑ Ctx (unità di lavoro di un'attività: transazione con RLS, chiave, calendario, audit, IOutbox per email/notifiche/webhook)
-- ☐ Migrazioni proprie, controllo dello schema all'avvio
-- ☐ Permessi e ruoli (permissions.py)
+- ☑ Migrazioni proprie (td_net_migrations) + baseline.sql per un database nuovo (provato: il Python lo apre senza migrazioni in sospeso) + permessi del ruolo runtime
+- ☑ Permessi e ruoli (Permissions.cs)
+- ☑ Server: accesso (password, Authenticator, recupero, senza password dai PC fidati), sessioni, postazioni (codice a 6 cifre), licenza (Ed25519, prova, orologio, stato online), certificati (autorità interna), RPC `/api/rpc/nome`, archivio del sito (hook su ogni scrittura)
+- ☑ Messaggi: email ai clienti (testi, HTML, ICS, promemoria/recensione/richiamo), avvisi allo staff, webhook, traduzioni EN dal django.po
 
 ### Lavoro di ogni giorno
 - ☐ Accesso: username/email + password, Authenticator, codici di recupero, accesso senza password dai PC fidati, Esci
 - ☐ Dashboard, banner (promemoria WhatsApp, grazie del giorno dopo)
-- ☐ Agenda: giorno / settimana / mese / elenco, colonne per operatore, trascina per spostare, blocchi orari, turni
+- ◐ Agenda WPF: giorno (colonne per operatore, trascina/allunga, quarti liberi cliccabili), settimana, mese, elenco, blocca orario ☑; turni ☐; stampa ☐
 - ☑ Motore prenotazioni (Calendar, Availability, BookingWrites, Tables, Waitlist.Holds, Stays.Restricted): identico al Python, vedi «Come si prova»
-- ☐ Prenotazioni: nuova (ora prima, servizi dopo, lista unica), dettaglio, sposta, stato, visite con più servizi, presenze
+- ◐ Prenotazioni WPF: nuova (operatore/giorno/ora, più servizi, cliente cercato o nuovo, Forza), dettaglio, stati, annulla con motivo, sposta, ripeti ☑; soggiorni, eventi con iscritti, tavoli, senza appuntamento ☐
 - ☐ Clienti: elenco, ricerca, scheda (panoramica, prenotazioni, trattamenti, foto, consensi e privacy), unisci, import
 - ☐ Scheda cliente (trattamenti), foto (4 al giorno), storico in PDF
 - ☐ Lista d'attesa, richiami
@@ -94,3 +96,11 @@ Legenda: ☐ da fare · ◐ in corso · ☑ fatto e provato
 
 - `dotnet test` (Linux o Windows): compatibilità e API su un PostgreSQL vero (`TD_TEST_PG`).
 - GitHub Actions sul ramo `net-rewrite`: compila su Windows, prove, finestre WPF con screenshot.
+
+## Dove siamo e come si lavora (per riprendere)
+
+- Ramo `net-rewrite`. SDK con WPF su Linux: `export DOTNET_ROOT=/home/claude/dotnet8 PATH=/home/claude/dotnet8:$PATH` (quello di sistema non ha WindowsDesktop).
+- Server di prova: cartella dati `/tmp/tddata` (config.json + db-admin.json sul database `tdcmp`), `TDBS_DATA=/tmp/tddata dotnet run --project src/TD.Server` (porta 8443), utente `titolare` / `Password-di-prova-123`, attività `cmp`.
+- Finestre: non girano su Linux. `TDBookingSuite.exe --demo tests/demo --shot cartella` le apre sulle risposte registrate dal server (tests/demo/*.json, rifarle con curl quando cambia una risposta) e salva gli screenshot; lo fa la build `.github/workflows/net.yml`, artefatto `screenshot` (`gh run download`).
+- Ordine dei prossimi pezzi: Clienti (elenco, scheda con tab, trattamenti, foto, privacy, unisci) → Cassa (+ registratori RCH/Epson, stand-by, gift card, preventivi) → Lista d'attesa, richiami, promemoria WhatsApp → Catalogo e impostazioni → Report → pagine pubbliche e sito WordPress (wpsync) → lavori del worker (email SMTP, promemoria, sito, backup, licenza) → Licenza/Postazioni/Backup/Rete nelle finestre → installer MSI.
+- Le postazioni dovranno rifare l'abbinamento una volta (il token del 2.x è nel cookie del vecchio client, non leggibile): revocare le vecchie da Postazioni.

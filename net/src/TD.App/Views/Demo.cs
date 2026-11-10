@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using TD.App.Net;
+using TD.App.Ui;
 
 namespace TD.App.Views;
 
@@ -26,17 +27,22 @@ public static class Demo
         var shot = Array.IndexOf(args, "--shot");
         if (shot < 0) return;
         var outDir = args[shot + 1]; Directory.CreateDirectory(outDir);
+        AgendaPage Ag() => main.CurrentPage as AgendaPage;
+        Window extra = null;
         var steps = new (string Name, Action Do)[]
         {
             ("01-agenda-giorno", () => { }),
-            ("02-prenotazioni", () => main.Show("prenotazioni")),
-            ("03-agenda", () => main.Show("agenda")),
+            ("02-agenda-settimana", () => _ = Ag().SetView("settimana")),
+            ("03-agenda-mese", () => _ = Ag().SetView("mese")),
+            ("04-nuova-prenotazione", () => { _ = Ag().SetView("giorno"); extra = new BookingWindow(Ag(), null, DateTime.Today.AddHours(10), false); extra.Show(); }),
+            ("05-prenotazione", () => { extra?.Close(); var id = Api.Fake("prenotazione.dettaglio", null).S("id"); var w = new BookingDetailWindow(Ag(), id); extra = w; _ = w.Reload(); w.Show(); }),
+            ("06-prenotazioni", () => { extra?.Close(); extra = null; main.Show("prenotazioni"); }),
         };
         var i = 0;
         var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         timer.Tick += (_, _) =>
         {
-            Save(main, Path.Combine(outDir, steps[i].Name + ".png"));
+            Save(extra is { IsVisible: true } ? extra : main, Path.Combine(outDir, steps[i].Name + ".png"));
             i++;
             if (i >= steps.Length) { timer.Stop(); Application.Current.Shutdown(); return; }
             steps[i].Do();

@@ -64,14 +64,18 @@ public sealed class AgendaPage : Page
             actions.Children.Add(B("+ Nuova prenotazione", () => NewBooking(null, null), "Primary"));
         }
         DockPanel.SetDock(actions, Dock.Right); tools.Children.Add(actions);
-        var filters = Row(nav, seg.M(16, 0, 0, 0), places.M(16, 0, 0, 0), people.M(8, 0, 0, 0), show.M(16, 0, 0, 0));
-        var top = Col(tools, filters.M(0, 12, 0, 12));
+        var filters = new WrapPanel();
+        foreach (var e in new FrameworkElement[] { nav.M(0, 0, 16, 6), seg.M(0, 0, 16, 6), places.M(0, 0, 8, 6), people.M(0, 0, 16, 6), show.M(0, 0, 0, 6) }) filters.Children.Add(e);
+        var top = Col(tools, filters.M(0, 12, 0, 6));
         var root = new DockPanel { Margin = new Thickness(24, 18, 24, 12) };
         DockPanel.SetDock(top, Dock.Top);
         root.Children.Add(top); root.Children.Add(body);
         Content = root;
         PreviewKeyDown += async (_, e) => { if (e.Key == Key.Left && Keyboard.Modifiers == ModifierKeys.Alt) await Guard(() => Step(-1)); if (e.Key == Key.Right && Keyboard.Modifiers == ModifierKeys.Alt) await Guard(() => Step(1)); };
     }
+
+    /// <summary>For the demo's screenshots: the same as choosing the view above the agenda.</summary>
+    public async Task SetView(string v) { view = v; await Refresh(); }
 
     async Task Step(int n)
     {
@@ -83,6 +87,7 @@ public sealed class AgendaPage : Page
     {
         var args = new JsonObject { ["data"] = day.ToString("yyyy-MM-dd"), ["sede"] = location, ["operatore"] = op, ["annullate"] = cancelled };
         data = await Api.Current.Call("agenda." + view, args);
+        if (view == "giorno" && DateOnly.TryParse(data.S("day"), out var shown)) day = shown;
         Fill(places, data.A("places").Select(p => (p.S("id"), p.S("name"))).ToList(), data.S("location"), null);
         places.Visibility = places.Items.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         var ops = data.A("operators").Select(o => (o.S("id"), o.S("name"))).ToList();
