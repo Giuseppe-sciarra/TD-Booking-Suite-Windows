@@ -158,8 +158,13 @@ compila soltanto (`dotnet build src/TD.App`, `src/TD.Server`) e si provano le ch
 - Conferma che sei tu: manca la passkey (WebAuthn di Windows).
 
 
-## Stato al 10/11/2026 (sera)
-- Fatte in questa tornata: Configurazione promemoria, Impostazioni e sito (modulo attività + pannelli WordPress + scarica plugin), sincronizzazione sito, Invio email.
-- Restano come segnaposto in MainWindow: tavoli, alloggi, marketing, testi (SMS/WhatsApp/calendari), programma/attività/generali/licenza/postazioni/backup/rete/stato, guida, account.
-- Poi: iscritti e presenze, agenda Stampa/Importa, clienti Importa/Esporta, pagine pubbliche (/book, /action, feed, API v1, ponte cassa, invito, /api/wordpress), lavori del worker (email in uscita con Mail.Send, promemoria, lista d'attesa, sito ogni 2 minuti con WpSite.Run, backup, licenza, conservazione, calendari), Google/Outlook, installer MSI, una sola build CI alla fine.
-- Non provato dal vivo: la sessione SMTP di MailKit (dalla sandbox non si esce sulla 465/587), Google OAuth e Graph; le finestre WPF (si compilano, non girano su Linux).
+## Stato al 10/11/2026 (notte)
+- Fatte e provate contro il Python: Configurazione promemoria, Impostazioni e sito (modulo attività, pannelli WordPress, scarica plugin), sincronizzazione sito (WpSite), Invio email (SMTP/Google/Microsoft 365), SMS/WhatsApp e calendari (client OAuth), Sale e tavoli, Accesso e sicurezza, Guida, Marketing e campagne, esportazioni CSV (identiche byte per byte), Clienti › Esporta.
+- Segnaposto rimasti in MainWindow: alloggi, programma/attività/generali/licenza/postazioni/backup/rete/stato. In ClientsPage: Importa clienti. In AgendaPage: Stampa e Importa (messaggio provvisorio).
+- Prossimo pezzo, i lavori del worker (Jobs.Add in TD.Server/Work, oggi vuoto), nell'ordine del mail_worker.py:
+  ogni 10 s coda in uscita (mail.worker_once: email con Mail.Send, Telegram, webhook, SMS/WhatsApp con TextMessages.Deliver, limiti giornalieri/orari, esiti) e lista d'attesa (waitlist.run/step);
+  ogni 2 min sito (WpSite.Run); ogni 5 min promemoria (ClientMails.Remind + texts.remind), riepilogo serale (notify.evening), esiti SMS (TextMessages.Receipt), calendari esterni (feeds, gcal, mscal);
+  ogni ora turni (shifts.extend_rules), conservazione (privacy.run_retention), calendari dei portali (stays.run); poi backup, licenza online, rete, aggiornamenti (tdwin_worker).
+- Poi: pagine del programma (Dashboard, Clienti, Impostazioni generali + smtp.sito già pronto, Licenza, Postazioni, Backup, Rete, Stato), Importa clienti e Importa appuntamenti (importer.plan/apply), Stampa del giorno, Iscritti e presenze, Alloggi (stays.py, ospiti, Alloggiati Web), pagine pubbliche (/book, /action, feed, API v1, ponte cassa, invito, /api/wordpress), Google/Outlook sugli operatori, installer MSI, una sola build CI alla fine.
+- Aperti da dire a Giuseppe: aggiungere una passkey dalla finestra (serve Windows Hello/webauthn.dll e la verifica sul server: oggi il tasto avvisa, l'elenco e Rimuovi funzionano; la conferma con passkey al login non c'è ancora); la foto degli operatori per l'agenda del sito usa System.Drawing (solo Windows).
+- Non provato dal vivo: la sessione SMTP di MailKit, Google OAuth e Graph, Twilio/Skebby/WhatsApp (dalla sandbox non si esce), le finestre WPF (si compilano, non girano su Linux).
