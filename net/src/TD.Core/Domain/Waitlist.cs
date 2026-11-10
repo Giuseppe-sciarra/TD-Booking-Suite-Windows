@@ -106,6 +106,44 @@ public sealed partial class Waitlist(Ctx c)
         return (e, true);
     }
 
+    /// <summary>opened(): the entry and the day of an offer's link, or null (expired, done, or not of this business).</summary>
+    public (Waitentry Entry, DateOnly Day)? Opened(string token)
+    {
+        var data = DjangoSigning.Loads("waitlist", token, LINK_DAYS * 86400L, c.Now);
+        if (data == null || !DateOnly.TryParseExact(data.Str("d"), "yyyy-MM-dd", out var day) || !Guid.TryParse(data.Str("e"), out var id)) return null;
+        var e = c.S.One<Waitentry>("SELECT * FROM core_waitentry WHERE id=@id AND status='waiting'", new { id });
+        return e == null ? null : (e, day);
+    }
+
+    /// <summary>add(), online: the notice box ticked, recorded as for a booking; email required, phone optional. The card
+    /// is found as an online booking finds it, never rewritten; a client the business does not book online is refused.</summary>
+    public (Waitentry Entry, bool Created) AddOnline(JsonObject data)
+    {
+        c.Lock();
+        var e = Clean(data, false); var cl = new Clients(c);
+        if (data["consent"]?.GetValueKind() != System.Text.Json.JsonValueKind.True) throw new BookingException("Spunta la casella per ricevere l'avviso.");
+        var typed = new JsonObject(); foreach (var k in new[] { "first_name", "last_name", "email", "phone" }) typed[k] = data[k]?.GetValueKind() == System.Text.Json.JsonValueKind.String ? data.Str(k) : "";
+        var pii = Clients.Clean(typed);
+        if (pii.Str("email") == "") throw new BookingException("Scrivi la tua email: l'avviso arriva lì.");
+        var idx = cl.EmailIndex(pii.Str("email")); var contact = cl.ByIndex(idx) ?? cl.ByPhone(pii.Str("phone"), withoutEmail: true);
+        if (contact is { OnlineBlocked: true } || pii.Str("phone") != "" && c.S.Scalar<long>("SELECT count(*) FROM core_contact WHERE phone_index=@p AND online_blocked", new { p = cl.PhoneIndex(pii.Str("phone")) }) > 0)
+            throw new Bookings(c).Refused(c.Row<Service>(e.ServiceId));
+        if (contact == null)
+        {
+            contact = new Contact { TenantId = c.Tenant.Id, EmailIndex = idx, Created = c.Now };
+            cl.SealCard(contact, new JsonObject { ["first_name"] = pii.Str("first_name"), ["last_name"] = pii.Str("last_name"), ["email"] = pii.Str("email"), ["phone"] = pii.Str("phone") });
+            c.S.Insert(contact);
+        }
+        var same = c.S.One<Waitentry>("SELECT * FROM core_waitentry WHERE contact_id=@c AND service_id=@s AND status='waiting' AND first<=@l AND last>=@f LIMIT 1", new { c = contact.Id, s = e.ServiceId, l = e.Last, f = e.First });
+        if (same != null) return (same, false);
+        e.ContactId = contact.Id;
+        var snap = new JsonObject { ["consent"] = new JsonObject { ["at"] = Times.PyIso(c.Now), ["channel"] = "public", ["text_sha256"] = Privacy.TextHash(c.Tenant.PrivacyText + "\n" + NOTICE) } };
+        if (c.Language != "it") snap["lang"] = c.Language;
+        e.Snapshot = Json.Dump(snap); e.Pii = c.Encrypt(pii, "wait:" + e.Id); c.S.Insert(e);
+        c.Audit("waitlist.added", e.Id, new { channel = "public" });
+        return (e, true);
+    }
+
     /// <summary>close(): done (the client booked or does not want it any more) or removed: a place kept for him goes to the next.</summary>
     public void Close(Waitentry e, bool remove)
     {

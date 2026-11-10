@@ -52,6 +52,24 @@ public static class DjangoSigning
         var key = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(salt + "signer" + Secret));
         return value + ":" + B64(System.Security.Cryptography.HMACSHA256.HashData(key, System.Text.Encoding.UTF8.GetBytes(value)));
     }
+    /// <summary>signing.loads(token, salt=salt, max_age=seconds): the object, or null when the signature is not ours or
+    /// the token is older than that.</summary>
+    public static System.Text.Json.Nodes.JsonObject Loads(string salt, string token, long maxAge, DateTime? now = null)
+    {
+        var parts = (token ?? "").Split(':'); if (parts.Length != 3 || parts[0].StartsWith('.')) return null;
+        var value = parts[0] + ":" + parts[1];
+        var key = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(salt + "signer" + Secret));
+        var good = B64(System.Security.Cryptography.HMACSHA256.HashData(key, System.Text.Encoding.UTF8.GetBytes(value)));
+        if (!System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(System.Text.Encoding.ASCII.GetBytes(good), System.Text.Encoding.UTF8.GetBytes(parts[2]))) return null;
+        long at = 0; foreach (var ch in parts[1]) { var i = B62.IndexOf(ch); if (i < 0) return null; at = at * 62 + i; }
+        if (new DateTimeOffset(DateTime.SpecifyKind(now ?? DateTime.UtcNow, DateTimeKind.Utc)).ToUnixTimeSeconds() - at > maxAge) return null;
+        try
+        {
+            var raw = parts[0].Replace('-', '+').Replace('_', '/'); raw += new string('=', (4 - raw.Length % 4) % 4);
+            return System.Text.Json.Nodes.JsonNode.Parse(Convert.FromBase64String(raw)) as System.Text.Json.Nodes.JsonObject;
+        }
+        catch (Exception ex) when (ex is FormatException or System.Text.Json.JsonException) { return null; }
+    }
     /// <summary>Signer(salt=salt).sign_object(obj), obj given as its compact JSON.</summary>
     public static string SignObject(string salt, string compactJson, string secret)
     {

@@ -1,0 +1,28 @@
+## Chi tratta i tuoi dati
+Il titolare del trattamento è {legal_name}{address_part}{vat_part}. Per qualsiasi domanda sui tuoi dati scrivi a {email}.
+
+## Quali dati trattiamo
+- Per chi usa il portale: email, password conservata in forma non leggibile, eventuali Authenticator e passkey, registro degli accessi e delle operazioni
+- Per chi chiede una prova del servizio: nome, cognome, email, telefono, nome e tipo dell'attività, messaggio
+- Per i clienti delle attività che prenotano: i dati che inseriscono nella prenotazione
+
+## Le prenotazioni presso un'attività
+Quando prenoti presso un'attività, il titolare dei tuoi dati è l'attività stessa: trovi la sua informativa nella pagina prenotazioni. {legal_name} gestisce il portale per conto dell'attività come responsabile del trattamento e usa quei dati solo per farlo funzionare.
+
+## Perché li trattiamo
+- Per fornire il portale alle attività che lo usano, in base al contratto
+- Per rispondere alle richieste di prova, su tua richiesta e con il tuo consenso
+- Per la sicurezza del servizio, per esempio bloccare accessi sospetti, in base al nostro legittimo interesse
+- Per rispettare gli obblighi di legge
+
+## Per quanto tempo
+I dati degli account restano finché dura il servizio e poi per il tempo richiesto dalla legge. Le richieste di prova si possono cancellare in ogni momento e le eliminiamo quando non servono più. Le prenotazioni restano per il tempo deciso da ogni attività.
+
+## Dove sono e chi li vede
+I dati sono conservati sui server gestiti da {legal_name}{location_part}, cifrati e separati attività per attività. Li vedono solo le persone autorizzate. Ci aiutano solo i fornitori necessari al servizio, per esempio per l'invio delle email. Non vendiamo i dati e non li usiamo per pubblicità.
+
+## Cookie
+Il portale usa solo cookie tecnici, necessari a farlo funzionare: la sessione di chi entra nel portale e la protezione dei moduli. Nella memoria del browser restano anche le tue scelte di visualizzazione, come il tema chiaro o scuro. Non ci sono cookie di profilazione né di terze parti, per questo non serve un banner per il consenso.
+
+## I tuoi diritti
+Puoi chiedere di vedere, correggere, cancellare o esportare i tuoi dati, limitarne l'uso o opporti al trattamento, scrivendo a {email}. Puoi anche presentare reclamo al Garante per la protezione dei dati personali (garanteprivacy.it).

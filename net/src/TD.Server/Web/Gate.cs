@@ -7,7 +7,7 @@ namespace TD.Server.Web;
 public static class Gate
 {
     // reachable from any device: booking pages and customer links, the pairing of a workstation, the program's info
-    static readonly string[] PUBLIC = { "/book/", "/action/", "/brand/", "/site/", "/static/", "/api/wordpress/", "/api/info", "/api/postazione/", "/oauth/" };
+    static readonly string[] PUBLIC = { "/book/", "/action/", "/brand/", "/site/", "/static/", "/api/wordpress/", "/api/info", "/api/postazione/", "/oauth/", "/invite/", "/privacy/", "/prezzi/", "/prova/", "/perche-sceglierci/" };
     static readonly string[] OFFLINE = { "/book/", "/api/wordpress/" };
     static readonly string[] UNLICENSED = { "/api/login", "/api/verify", "/api/logout", "/api/info", "/api/postazione/", "/api/rpc/licenza.", "/api/rpc/backup", "/api/rpc/sessione.", "/api/primo-avvio", "/api/conferma", "/api/rpc/inizia", "/api/rpc/account", "/static/", "/site/" };
     static HashSet<string> local = new(); static DateTime localAt;

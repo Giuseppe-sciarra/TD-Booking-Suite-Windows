@@ -5,6 +5,8 @@ public static partial class Public
 {
     public static void Map(WebApplication app)
     {
+        PublicHost.Map(app);
+        PublicPages.Map(app);
         MapBooking(app);
         MapActions(app);
         MapWordPress(app);
