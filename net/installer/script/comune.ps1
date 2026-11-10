@@ -82,9 +82,13 @@ function Wait-Web([int]$Port) {
 # The program is its own Windows service (no wrapper): registered here, or pointed at this version when the service
 # is already there (an update, also from the 2.x that ran it through WinSW).
 function Register-Program([string]$Name, [string]$Title, [string]$Description, [string]$Arguments) {
+    # the path in quotes, then the arguments: written by Windows itself, not through a command line that would split it
     $command = "`"$Server`"" + $(if ($Arguments) { " $Arguments" } else { "" })
-    if (Get-Service $Name -ErrorAction SilentlyContinue) { Invoke-Checked "sc.exe" @("config", $Name, "binPath=", $command, "start=", "auto", "depend=", "TDBookingDB", "DisplayName=", $Title) }
-    else { Invoke-Checked "sc.exe" @("create", $Name, "binPath=", $command, "start=", "auto", "depend=", "TDBookingDB", "DisplayName=", $Title) }
+    if (Get-Service $Name -ErrorAction SilentlyContinue) {
+        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\$Name" -Name "ImagePath" -Value $command
+        Invoke-Checked "sc.exe" @("config", $Name, "start=", "auto", "depend=", "TDBookingDB", "DisplayName=", $Title)
+    }
+    else { New-Service -Name $Name -BinaryPathName $command -DisplayName $Title -StartupType Automatic -DependsOn "TDBookingDB" | Out-Null }
     Invoke-Checked "sc.exe" @("config", $Name, "obj=", "NT SERVICE\$Name")
     Invoke-Checked "sc.exe" @("description", $Name, $Description)
     # stopped by an error: started again after 10 seconds, 30 seconds, 2 minutes; the count starts over after an hour
