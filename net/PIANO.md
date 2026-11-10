@@ -202,3 +202,4 @@ compila soltanto (`dotnet build src/TD.App`, `src/TD.Server`) e si provano le ch
   - `/` e `/login/` dicono «Si entra dal programma»: l'accesso web del Python qui è la finestra;
   - il collegamento «TD Booking Suite nel browser» del menu Start non c'è più (l'aggiornamento lo toglie).
 - Da dire a Giuseppe: la passkey usa il browser del PC, quindi il certificato del server deve essere fidato da Windows su quel PC (sul PC server lo mette l'installazione; sulle postazioni dipende da come sono state collegate).
+- Build su Windows riuscita (run 42893376581, net.yml): compila, test, schermate, MSI e prova di installazione completa (installa come server, primo avvio, backup del worker, aggiornamento, Un PC solo, disinstalla, da zero, da zero a mano, da zero a metà). L'MSI è l'artifact `TD-Booking-Suite-3-Windows` della run, non pubblicato.
