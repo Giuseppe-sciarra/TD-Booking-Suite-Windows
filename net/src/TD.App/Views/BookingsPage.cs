@@ -42,7 +42,7 @@ public sealed class BookingsPage : Page
         var r = await Api.Current.Call("prenotazioni.elenco", new { dal = from.SelectedDate?.ToString("yyyy-MM-dd"), al = to.SelectedDate?.ToString("yyyy-MM-dd"), stato = (string)((ComboBoxItem)status.SelectedItem).Tag, q = q.Text });
         rows.Children.Clear();
         var list = r.A("righe").ToList();
-        if (list.Count == 0) rows.Children.Add(T("Nessuna prenotazione con questi filtri.", "Muted").M(16));
+        if (list.Count == 0) rows.Children.Add(T("Nessuna prenotazione con questi filtri.", "MutedText").M(16));
         foreach (var x in list)
         {
             var a = helper.Local(x.S("start"));
@@ -50,12 +50,12 @@ public sealed class BookingsPage : Page
             {
                 BorderBrush = Res("Line"), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(14, 9, 14, 9), Cursor = Cursors.Hand,
                 Child = Row(T(a.ToString("ddd dd/MM HH:mm", AgendaPage.It), size: 13, bold: true).M(0, 0, 14, 0), T(x.S("name"), size: 13, bold: true).M(0, 0, 12, 0),
-                    T(x.S("service") + (x.S("who") != "" ? " · " + x.S("who") : ""), "Muted").M(0, 0, 12, 0), T(STATUS.GetValueOrDefault(x.S("status"), ""), "Muted")),
+                    T(x.S("service") + (x.S("who") != "" ? " · " + x.S("who") : ""), "MutedText").M(0, 0, 12, 0), T(STATUS.GetValueOrDefault(x.S("status"), ""), "MutedText")),
             };
             var id = x.S("id");
             row.MouseLeftButtonUp += async (_, _) => { await Guard(() => BookingDetailWindow.Open(helper, id)); await Guard(Refresh); };
             rows.Children.Add(row);
         }
-        if (r.Bo("troppe")) rows.Children.Add(T("Ne mostro 1000: restringi il periodo.", "Muted").M(16));
+        if (r.Bo("troppe")) rows.Children.Add(T("Ne mostro 1000: restringi il periodo.", "MutedText").M(16));
     }
 }

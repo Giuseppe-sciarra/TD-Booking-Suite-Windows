@@ -24,7 +24,7 @@ public sealed class AgendaPage : Page
     JsonNode data;
     TimeZoneInfo zone = TimeZoneInfo.Local;
     readonly TextBlock title = T("", "H1");
-    readonly TextBlock subtitle = T("", "Muted");
+    readonly TextBlock subtitle = T("", "MutedText");
     readonly ContentControl body = new();
     readonly ComboBox places = new() { MinWidth = 150 }, people = new() { MinWidth = 170 };
     const double PX = 1.6;  // pixels per minute: a quarter of hour is 24 px
@@ -128,7 +128,7 @@ public sealed class AgendaPage : Page
         var ruler = new Canvas { Height = height };
         for (var m = first; m < last; m += 60)
         {
-            var label = T($"{m / 60:00}:00", "Muted", size: 12);
+            var label = T($"{m / 60:00}:00", "MutedText", size: 12);
             Canvas.SetTop(label, (m - first) * PX - 8); Canvas.SetLeft(label, 8);
             ruler.Children.Add(label);
         }
@@ -178,7 +178,7 @@ public sealed class AgendaPage : Page
                 {
                     Width = 4000, Height = Math.Max(14, bottom - top), Background = new LinearGradientBrush(Color.FromRgb(236, 233, 240), Color.FromRgb(226, 222, 232), 45),
                     BorderBrush = Res("LineStrong"), BorderThickness = new Thickness(0, 1, 0, 1), Cursor = Cursors.Hand,
-                    Child = T($"{a:HH:mm}–{b:HH:mm}  {bl.S("label")}{(bl.S("note") != "" ? " · " + bl.S("note") : "")}", "Muted", size: 12).M(8, 3, 8, 0),
+                    Child = T($"{a:HH:mm}–{b:HH:mm}  {bl.S("label")}{(bl.S("note") != "" ? " · " + bl.S("note") : "")}", "MutedText", size: 12).M(8, 3, 8, 0),
                 };
                 var blockNode = bl;
                 card.MouseLeftButtonUp += (_, e) => { e.Handled = true; if (writer) BlockDialog.Open(this, blockNode, day, opId); };
@@ -243,10 +243,10 @@ public sealed class AgendaPage : Page
         var marks = (x.Bo("vip") ? "★ " : "") + (x.A("alert").Any() ? "⚠ " : "") + (x.Bo("forced") ? "⚑ " : "") + (x.I("noShow") > 0 ? $"✕{x.I("noShow")} " : "");
         var name = T(marks + x.S("name"), size: 13, bold: true); name.TextTrimming = TextTrimming.CharacterEllipsis; name.TextWrapping = TextWrapping.NoWrap;
         if (status == "cancelled") name.TextDecorations = TextDecorations.Strikethrough;
-        var when = T($"{x.S("from")}–{x.S("to")}" + (status is "pending" ? " · da confermare" : status != "confirmed" ? " · " + STATUS.GetValueOrDefault(status, status).ToLowerInvariant() : ""), "Muted", size: 12);
+        var when = T($"{x.S("from")}–{x.S("to")}" + (status is "pending" ? " · da confermare" : status != "confirmed" ? " · " + STATUS.GetValueOrDefault(status, status).ToLowerInvariant() : ""), "MutedText", size: 12);
         when.TextWrapping = TextWrapping.NoWrap;
         var svc = T(x.S("service"), size: 12); svc.TextTrimming = TextTrimming.CharacterEllipsis; svc.TextWrapping = TextWrapping.NoWrap;
-        if (h < 34) { lines.Children.Add(Row(T($"{x.S("from")} ", "Muted", size: 12), name)); }
+        if (h < 34) { lines.Children.Add(Row(T($"{x.S("from")} ", "MutedText", size: 12), name)); }
         else { lines.Children.Add(when); lines.Children.Add(name); if (h > 50) lines.Children.Add(svc); }
         var card = new Border
         {
@@ -334,8 +334,8 @@ public sealed class AgendaPage : Page
                 {
                     Stripe(Op(x.I("color"))),
                     Row(T($"{(x.S("phaseLabel") != "" ? x.S("phaseLabel") : a.ToString("HH:mm"))}", size: 13, bold: true).M(0, 0, 12, 0), T(x.S("name"), size: 13, bold: true).M(0, 0, 10, 0),
-                        T(x.S("service") + (x.S("who") != "" ? " · " + x.S("who") : "") + (x.I("party") > 1 ? $" · {x.I("party")} persone" : ""), "Muted"),
-                        T(x.S("status") != "confirmed" ? "  · " + STATUS.GetValueOrDefault(x.S("status")) : "", "Muted")),
+                        T(x.S("service") + (x.S("who") != "" ? " · " + x.S("who") : "") + (x.I("party") > 1 ? $" · {x.I("party")} persone" : ""), "MutedText"),
+                        T(x.S("status") != "confirmed" ? "  · " + STATUS.GetValueOrDefault(x.S("status")) : "", "MutedText")),
                 },
             },
         };
@@ -347,7 +347,7 @@ public sealed class AgendaPage : Page
     void DrawList(List<JsonNode> items)
     {
         var list = Col();
-        if (items.Count == 0) list.Children.Add(T("Nessuna prenotazione in questo giorno.", "Muted").M(16));
+        if (items.Count == 0) list.Children.Add(T("Nessuna prenotazione in questo giorno.", "MutedText").M(16));
         foreach (var x in items.OrderBy(i => i.S("start"))) list.Children.Add(ListRow(x));
         body.Content = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Background = Res("Surface"), ClipToBounds = true, Child = new ScrollViewer { Content = list } };
     }
@@ -376,7 +376,7 @@ public sealed class AgendaPage : Page
         var grid = new Grid(); var head = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) }); head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
         var ruler = new Canvas { Height = height };
-        for (var m = first; m < last; m += 60) { var l = T($"{m / 60:00}:00", "Muted", size: 12); Canvas.SetTop(l, (m - first) * px - 8); Canvas.SetLeft(l, 8); ruler.Children.Add(l); }
+        for (var m = first; m < last; m += 60) { var l = T($"{m / 60:00}:00", "MutedText", size: 12); Canvas.SetTop(l, (m - first) * px - 8); Canvas.SetLeft(l, 8); ruler.Children.Add(l); }
         grid.Children.Add(ruler);
         var open = data.A("open").ToList();
         for (int i = 0; i < 7; i++)
@@ -431,7 +431,7 @@ public sealed class AgendaPage : Page
         for (int i = 0; i < 7; i++) grid.ColumnDefinitions.Add(new ColumnDefinition());
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var names = new[] { "Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom" };
-        for (int i = 0; i < 7; i++) { var t = T(names[i], "Muted", size: 12, bold: true).M(10, 8, 0, 6); Grid.SetColumn(t, i); grid.Children.Add(t); }
+        for (int i = 0; i < 7; i++) { var t = T(names[i], "MutedText", size: 12, bold: true).M(10, 8, 0, 6); Grid.SetColumn(t, i); grid.Children.Add(t); }
         for (int w = 0; w < weeks.Count; w++)
         {
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 96 });
@@ -445,7 +445,7 @@ public sealed class AgendaPage : Page
                     var t = T($"{(x.S("phaseLabel") != "" ? x.S("phaseLabel") : x.S("from"))} {x.S("name")}", size: 12); t.TextTrimming = TextTrimming.CharacterEllipsis; t.TextWrapping = TextWrapping.NoWrap;
                     col.Children.Add(new Border { Background = Tint(Op(x.I("color")), 0.15), CornerRadius = new CornerRadius(4), Padding = new Thickness(5, 1, 5, 1), Margin = new Thickness(0, 0, 0, 2), Child = t });
                 }
-                if (c.I("count") > 3) col.Children.Add(T($"+{c.I("count") - 3} altre", "Muted", size: 12));
+                if (c.I("count") > 3) col.Children.Add(T($"+{c.I("count") - 3} altre", "MutedText", size: 12));
                 var cell = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(0, 1, i < 6 ? 1 : 0, 0), Padding = new Thickness(8, 6, 6, 6), Background = c.Bo("inside") ? Res("Surface") : Res("Bg"), Child = col, Cursor = Cursors.Hand };
                 var dd = d; cell.MouseLeftButtonUp += async (_, _) => { day = dd; view = "giorno"; Content = null; Build(); await Guard(Refresh); };
                 Grid.SetRow(cell, w + 1); Grid.SetColumn(cell, i); grid.Children.Add(cell);

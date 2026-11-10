@@ -46,7 +46,7 @@ public sealed class BookingDetailWindow : Window
             T(AgendaPage.It.TextInfo.ToTitleCase(a.ToString("dddd d MMMM yyyy", AgendaPage.It)) + $" · {a:HH:mm}–{z:HH:mm}", size: 15));
         var info = new Grid { Margin = new Thickness(0, 14, 0, 0) };
         info.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) }); info.ColumnDefinitions.Add(new ColumnDefinition());
-        void Line(string k, string v) { if (string.IsNullOrWhiteSpace(v)) return; var r = info.RowDefinitions.Count; info.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); var l = T(k, "Muted").M(0, 3, 8, 3); var t = T(v).M(0, 3, 0, 3); Grid.SetRow(l, r); Grid.SetRow(t, r); Grid.SetColumn(t, 1); info.Children.Add(l); info.Children.Add(t); }
+        void Line(string k, string v) { if (string.IsNullOrWhiteSpace(v)) return; var r = info.RowDefinitions.Count; info.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); var l = T(k, "MutedText").M(0, 3, 8, 3); var t = T(v).M(0, 3, 0, 3); Grid.SetRow(l, r); Grid.SetRow(t, r); Grid.SetColumn(t, 1); info.Children.Add(l); info.Children.Add(t); }
         Line("Servizio", b.S("servizio") + (b.S("variante") != "" ? " · " + b.S("variante") : ""));
         Line("Con", b.S("operatore")); Line("Cabina", b.S("cabina")); Line("Sede", b.S("sede"));
         if (b.I("persone") > 1) Line("Persone", b.I("persone").ToString());
@@ -80,7 +80,7 @@ public sealed class BookingDetailWindow : Window
         if (b.S("whatsapp") != "") actions.Children.Add(B("WhatsApp", () => Process.Start(new ProcessStartInfo(b.S("whatsapp")) { UseShellExecute = true })).M(0, 0, 8, 8));
 
         var hist = Col(T("Storia", size: 13, bold: true).M(0, 16, 0, 4));
-        foreach (var h in b.A("storia")) hist.Children.Add(T($"{agenda.Local(h.S("quando")):dd/MM HH:mm}  {Action(h.S("azione"))} · {h.S("chi")}", "Muted"));
+        foreach (var h in b.A("storia")) hist.Children.Add(T($"{agenda.Local(h.S("quando")):dd/MM HH:mm}  {Action(h.S("azione"))} · {h.S("chi")}", "MutedText"));
         Content = new ScrollViewer { Content = Col(head, info, visitBox, actions, hist).M(28), VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     }
 
@@ -193,7 +193,7 @@ public sealed class MoveWindow : Window
             var xx = x; t.Checked += (_, _) => { foreach (var o in wrap.Children.OfType<System.Windows.Controls.Primitives.ToggleButton>()) if (o != t) o.IsChecked = false; slot = xx.ToJsonString(); };
             wrap.Children.Add(t);
         }
-        if (wrap.Children.Count == 0) slots.Children.Add(T("Nessun orario libero in questo giorno.", "Muted"));
+        if (wrap.Children.Count == 0) slots.Children.Add(T("Nessun orario libero in questo giorno.", "MutedText"));
         slots.Children.Add(wrap);
     }
 }
@@ -228,7 +228,7 @@ public static class BlockDialog
                 if (await WithForce("blocco.salva", args) != null) w.DialogResult = true;
             }, "Primary");
             var remove = bl == null ? null : BA("Togli il blocco", async () => { if (Ask("Togliere il blocco? Quell'orario si prenota di nuovo.")) { await Api.Current.Call("blocco.togli", new { id = bl.S("id") }); w.DialogResult = true; } }, "DangerButton").M(8, 0, 0, 0);
-            w.Content = Col(T("Blocca orario", "H2"), T("Online e al banco quell'orario non si prenota: non conta come una prenotazione.", "Muted").M(0, 0, 0, 12),
+            w.Content = Col(T("Blocca orario", "H2"), T("Online e al banco quell'orario non si prenota: non conta come una prenotazione.", "MutedText").M(0, 0, 0, 12),
                 Field(f.S("etichetta"), ops), Field("Giorno", date), times, Field("Motivo", reason), Field("Nota (facoltativa)", note), weekly, Field("Fino al (vuoto: senza fine)", until).M(0, 6, 0, 12),
                 Row(save, remove, B("Annulla", () => w.DialogResult = false, "Ghost").M(8, 0, 0, 0))).M(24);
             if (w.ShowDialog() == true) await page.Refresh();

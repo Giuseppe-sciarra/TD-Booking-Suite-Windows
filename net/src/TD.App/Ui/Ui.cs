@@ -42,7 +42,7 @@ public static class U
     public static T M<T>(this T e, double all) where T : FrameworkElement { e.Margin = new Thickness(all); return e; }
     public static Border Card(UIElement child) => new() { Style = Style("Card"), Child = child };
     public static FrameworkElement Field(string label, FrameworkElement input, string help = null) =>
-        Col(T(label, size: 13, bold: true).M(0, 0, 0, 4), input, help == null ? null : T(help, "Muted").M(0, 3, 0, 0)).M(0, 0, 0, 12);
+        Col(T(label, size: 13, bold: true).M(0, 0, 0, 4), input, help == null ? null : T(help, "MutedText").M(0, 3, 0, 0)).M(0, 0, 0, 12);
     public static TextBox Box(string text = "", bool multi = false) =>
         new() { Text = text ?? "", AcceptsReturn = multi, TextWrapping = multi ? TextWrapping.Wrap : TextWrapping.NoWrap, MinHeight = multi ? 70 : 0, VerticalScrollBarVisibility = multi ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled };
 

@@ -35,10 +35,10 @@ public sealed class MainWindow : Window
         Title = "TD Booking Suite"; Width = 1360; Height = 860; MinWidth = 1000; MinHeight = 640; WindowStartupLocation = WindowStartupLocation.CenterScreen;
         WindowState = WindowState.Maximized;
         var bar = new DockPanel { Width = 236, Background = Res("Surface") };
-        var head = Col(businessName.M(20, 18, 16, 0), T("TD Booking Suite " + me.S("versione"), "Muted").M(20, 2, 16, 14));
+        var head = Col(businessName.M(20, 18, 16, 0), T("TD Booking Suite " + me.S("versione"), "MutedText").M(20, 2, 16, 14));
         DockPanel.SetDock(head, Dock.Top); bar.Children.Add(head);
         var account = Col(new Border { Height = 1, Background = Res("Line"), Margin = new Thickness(12, 6, 12, 8) },
-            T(me.S("nome"), size: 13, bold: true).M(20, 0, 16, 2), T(RoleText(), "Muted").M(20, 0, 16, 6),
+            T(me.S("nome"), size: 13, bold: true).M(20, 0, 16, 2), T(RoleText(), "MutedText").M(20, 0, 16, 6),
             Row(B("Account", () => Show("account"), "Ghost"), B("Esci", () => Shell.Instance.SignedOut(true), "Ghost")).M(12, 0, 12, 14));
         DockPanel.SetDock(account, Dock.Bottom); bar.Children.Add(account);
         bar.Children.Add(new ScrollViewer { Content = nav, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
@@ -96,7 +96,7 @@ public sealed class MainWindow : Window
             r.Checked += (_, _) => { if (current != r) Show(key); };
             nav.Children.Add(r);
         }
-        void Section(string title) => nav.Children.Add(T(title.ToUpperInvariant(), "Muted", size: 11).M(20, 14, 16, 4));
+        void Section(string title) => nav.Children.Add(T(title.ToUpperInvariant(), "MutedText", size: 11).M(20, 14, 16, 4));
         Add("agenda", "Agenda", () => new AgendaPage(), Can("booking.read"));
         Add("prenotazioni", "Prenotazioni", () => new BookingsPage(), Can("booking.read"));
         Add("clienti", "Clienti", () => new Placeholder("Clienti"), Can("contacts.read"));
@@ -143,7 +143,7 @@ public sealed class Placeholder(string title) : Page
 {
     public override Task Load()
     {
-        Content = Col(T(title, "H1"), T("Questa sezione arriva nei prossimi passaggi del nuovo programma.", "Muted")).M(32);
+        Content = Col(T(title, "H1"), T("Questa sezione arriva nei prossimi passaggi del nuovo programma.", "MutedText")).M(32);
         return Task.CompletedTask;
     }
 }

@@ -94,7 +94,7 @@ public static class Setup
         var ok = false;
         var go = B("Continua", () => { ok = true; w.DialogResult = true; }, "Primary");
         go.IsDefault = true;
-        w.Content = Col(T("Collega questa postazione", "H1"), T("Scrivi l'indirizzo del PC server, come lo trovi nella pagina Postazioni del programma: per esempio ufficio.local:8443 o 192.168.1.10:8443.", "Muted").M(0, 0, 0, 16),
+        w.Content = Col(T("Collega questa postazione", "H1"), T("Scrivi l'indirizzo del PC server, come lo trovi nella pagina Postazioni del programma: per esempio ufficio.local:8443 o 192.168.1.10:8443.", "MutedText").M(0, 0, 0, 16),
             Field("Indirizzo del server", box), go).M(28);
         box.Focus();
         if (w.ShowDialog() != true || !ok) return false;
@@ -144,7 +144,7 @@ public sealed class PairWindow : Window
             catch (ApiError ex) { error.Text = ex.Message; }
         }, "Primary");
         go.IsDefault = true;
-        Content = Col(T("Registra la postazione", "H1"), T("Sul PC server apri Postazioni, crea un codice e scrivilo qui: vale 15 minuti.", "Muted").M(0, 0, 0, 16),
+        Content = Col(T("Registra la postazione", "H1"), T("Sul PC server apri Postazioni, crea un codice e scrivilo qui: vale 15 minuti.", "MutedText").M(0, 0, 0, 16),
             Field("Codice di 6 cifre", code), error.M(0, 0, 0, 10), go).M(28);
         Loaded += (_, _) => code.Focus();
     }
@@ -183,7 +183,7 @@ public sealed class LoginWindow : Window
             catch (ApiError ex) { error.Text = ex.Message; }
         }, "Primary");
         go.IsDefault = true; go.HorizontalAlignment = HorizontalAlignment.Stretch;
-        body.Children.Add(Col(T("TD Booking Suite", "H1"), T("Entra con il tuo username o la tua email.", "Muted").M(0, 0, 0, 18),
+        body.Children.Add(Col(T("TD Booking Suite", "H1"), T("Entra con il tuo username o la tua email.", "MutedText").M(0, 0, 0, 18),
             Field("Username o email", login), Field("Password", pw), remember.M(0, 0, 0, 12), error.M(0, 0, 0, 8), go));
         login.Focus();
         try
@@ -220,7 +220,7 @@ public sealed class LoginWindow : Window
             catch (ApiError ex) { error.Text = ex.Message; }
         }, "Primary");
         go.IsDefault = true;
-        body.Children.Add(Col(T("Codice di verifica", "H1"), T("Scrivi il codice di 6 cifre dell'app Authenticator, o uno dei codici di recupero.", "Muted").M(0, 0, 0, 18),
+        body.Children.Add(Col(T("Codice di verifica", "H1"), T("Scrivi il codice di 6 cifre dell'app Authenticator, o uno dei codici di recupero.", "MutedText").M(0, 0, 0, 18),
             Field("Codice", code), error.M(0, 0, 0, 8), Row(go, B("Indietro", Password, "Ghost").M(8, 0, 0, 0))));
         code.Focus();
     }

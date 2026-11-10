@@ -30,7 +30,7 @@ public sealed class BookingWindow : Window
     readonly TextBox notes = Box("", true), search = Box(""), filter = Box("");
     readonly TextBox first = Box(""), last = Box(""), phone = Box(""), email = Box(""), forceTime = Box("");
     readonly CheckBox force = new() { Content = "Forza: un orario qualsiasi" }, marketing = new() { Content = "Il cliente vuole le comunicazioni (gli arriva l'email per confermare)" };
-    readonly TextBlock status = T("", "Muted");
+    readonly TextBlock status = T("", "MutedText");
     readonly Dictionary<string, FrameworkElement> answers = new();
 
     public BookingWindow(AgendaPage page, string resourceId, DateTime at, bool exact)
@@ -104,14 +104,14 @@ public sealed class BookingWindow : Window
         {
             var b = new Button { Style = Style("Ghost"), HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(10, 6, 10, 6) };
             var dock = new DockPanel();
-            var price = T(s.S("prezzo"), "Muted"); DockPanel.SetDock(price, Dock.Right); dock.Children.Add(price);
+            var price = T(s.S("prezzo"), "MutedText"); DockPanel.SetDock(price, Dock.Right); dock.Children.Add(price);
             dock.Children.Add(T($"{s.S("nome")}  ·  {s.I("durata")} min", size: 14));
             b.Content = dock;
             var sv = s;
             b.Click += async (_, _) => { if (chosen.Count >= 5) { Say("Al massimo 5 servizi in una visita."); return; } chosen.Add(sv); DrawChosen(); DrawServices(); if (chosen.Count == 1) FillOps(); DrawQuestions(); await Guard(LoadSlots); };
             servicesBox.Children.Add(b);
         }
-        if (list.Count == 0) servicesBox.Children.Add(T("Nessun servizio con questo nome.", "Muted").M(10));
+        if (list.Count == 0) servicesBox.Children.Add(T("Nessun servizio con questo nome.", "MutedText").M(10));
     }
 
     void DrawChosen()
@@ -133,7 +133,7 @@ public sealed class BookingWindow : Window
             row.Children.Add(T((i == 0 ? "" : "poi ") + s.S("nome"), size: 14, bold: i == chosen.Count - 1));
             chosenBox.Children.Add(new Border { Background = i == chosen.Count - 1 ? Res("BrandSoft") : Res("Surface"), CornerRadius = new CornerRadius(8), Padding = new Thickness(10, 4, 4, 4), Child = row, Margin = new Thickness(0, 0, 0, 4) });
         }
-        if (chosen.Count == 0) chosenBox.Children.Add(T("Scegli uno o più servizi dalla lista.", "Muted"));
+        if (chosen.Count == 0) chosenBox.Children.Add(T("Scegli uno o più servizi dalla lista.", "MutedText"));
     }
 
     async Task LoadSlots()
@@ -174,13 +174,13 @@ public sealed class BookingWindow : Window
         if (client != null)
         {
             clientBox.Children.Add(Card(Col(T($"{client.S("nome")} {client.S("cognome")}".Trim() + (client.Bo("vip") ? "  ★" : ""), size: 15, bold: true),
-                T(string.Join(" · ", new[] { client.S("telefono"), client.S("email") }.Where(x => x != "")), "Muted"),
+                T(string.Join(" · ", new[] { client.S("telefono"), client.S("email") }.Where(x => x != "")), "MutedText"),
                 B("Cambia cliente", () => { client = null; DrawClient(); }, "Ghost").M(-10, 6, 0, 0))));
             return;
         }
         if (catalog.Bo("cercaClienti")) clientBox.Children.Add(Field("Cerca per nome, telefono o email", search));
         clientBox.Children.Add(new ContentControl { Name = "results" });
-        clientBox.Children.Add(T("o scrivi un cliente nuovo", "Muted").M(0, 4, 0, 8));
+        clientBox.Children.Add(T("o scrivi un cliente nuovo", "MutedText").M(0, 4, 0, 8));
         var g = new Grid();
         g.ColumnDefinitions.Add(new ColumnDefinition()); g.ColumnDefinitions.Add(new ColumnDefinition());
         var a = Field("Nome", first); var b = Field("Cognome", last).M(8, 0, 0, 12);
@@ -199,11 +199,11 @@ public sealed class BookingWindow : Window
         var list = Col();
         foreach (var f in found ?? new JsonArray())
         {
-            var b = new Button { Style = Style("Ghost"), HorizontalContentAlignment = HorizontalAlignment.Left, Content = Col(T($"{f.S("nome")} {f.S("cognome")}".Trim() + (f.Bo("vip") ? "  ★" : ""), size: 14, bold: true), T(string.Join(" · ", new[] { f.S("telefono"), f.S("email") }.Where(x => x != "")), "Muted")) };
+            var b = new Button { Style = Style("Ghost"), HorizontalContentAlignment = HorizontalAlignment.Left, Content = Col(T($"{f.S("nome")} {f.S("cognome")}".Trim() + (f.Bo("vip") ? "  ★" : ""), size: 14, bold: true), T(string.Join(" · ", new[] { f.S("telefono"), f.S("email") }.Where(x => x != "")), "MutedText")) };
             var ff = f; b.Click += (_, _) => { client = ff; DrawClient(); };
             list.Children.Add(b);
         }
-        if (found == null || found.Count == 0) list.Children.Add(T("Nessun cliente trovato: scrivilo qui sotto.", "Muted").M(4));
+        if (found == null || found.Count == 0) list.Children.Add(T("Nessun cliente trovato: scrivilo qui sotto.", "MutedText").M(4));
         holder.Content = new Border { Child = list, BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8), Margin = new Thickness(0, 0, 0, 8) };
     }
 
