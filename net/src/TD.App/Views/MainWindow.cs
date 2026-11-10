@@ -204,7 +204,7 @@ public sealed class MainWindow : Window
                 Add("impostazioni", "globe", "Impostazioni e sito", () => new SettingsPage());
                 Add("smtp", "mail", "Invio email", () => new MailSetupPage(false));
                 Add("promemoria", "bell", "Configurazione promemoria", () => new NotificationsPage(), !Can("users.manage"));
-                Add("testi", "bell", "SMS, WhatsApp e calendari", () => new Placeholder("SMS, WhatsApp e calendari"));
+                Add("testi", "bell", "SMS, WhatsApp e calendari", () => new TextsPage());
                 Add("api", "plug", "API e webhook", () => new ApiPage());
                 Add("registratore", "sliders", "Registratore di cassa", () => new RegisterPage());
             }
