@@ -361,10 +361,53 @@ public sealed class HolidaysPage : Page
             F.Card(top, list, F.Legend("Santo patrono").M(0, 18, 0, 0), hint, F.Grid2(F.Field("Giorno", patron), F.Field("Nome", name)), confirm, actions.M(0, 18, 0, 0))));
     }
 }
-/// <summary>templates/services_import.html. Still to come in this build.</summary>
+/// <summary>templates/services_import.html: Importa servizi: the price list of the old program, from Excel or CSV.</summary>
 public sealed class ServicesImportPage : Page
 {
-    public override Task Load() { Content = F.Page(1180, Col(F.Back("Servizi", () => Main.ShowPage(new CatalogPage { Kind = "services" })), F.Heading(null, "Importa i servizi da Excel", "Questa pagina arriva con il prossimo pezzo."))); return Task.CompletedTask; }
+    string path = ""; JsonNode done; string error = "";
+    public override async Task Load() => Draw(await Api.Current.Call("servizi.importa", new { }));
+    static TextBlock Muted(string text) { var t = T(text, size: 14, color: Res("Muted")); t.TextWrapping = TextWrapping.Wrap; return t; }
+
+    void Draw(JsonNode d)
+    {
+        void Services() => Main.ShowPage(new CatalogPage { Kind = "services" });
+        var body = Col();
+        if (error != "") body.Children.Add(F.Notice(error, "warning"));
+        if (done != null)
+        {
+            var text = WaitRows.Para(13.5, $"Creati {done.I("creati")} servizi", done.I("prodotti") > 0 ? $" e {done.I("prodotti")} " : "", done.I("prodotti") > 0 ? ((string, Action))("prodotti", () => Main.ShowPage(new CatalogPage { Kind = "products" })) : "",
+                done.I("prodotti") > 0 ? " (le righe del gruppo Rivendita)" : "", done.I("uguali") > 0 ? $" · già presenti e saltati: {done.I("uguali")}" : "", done.I("quantiErrori") > 0 ? $" · con errori: {done.I("quantiErrori")}" : "",
+                ". Controllali in ", ((string, Action))("Servizi", Services), ": tipo, durata e varianti si ritoccano lì.");
+            text.Foreground = Res("Ink"); body.Children.Add(F.Notice(text));
+            foreach (var e in done.A("errori")) body.Children.Add(T("• " + e, size: 13));
+        }
+        var file = T(path != "" ? System.IO.Path.GetFileName(path) : "Nessun file scelto", size: 14, color: Res("Muted")); file.VerticalAlignment = VerticalAlignment.Center; file.Margin = new Thickness(10, 0, 0, 0);
+        var pick = B("Scegli il file", () => { var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "Excel o CSV|*.xlsx;*.csv;*.txt" }; if (dlg.ShowDialog(Application.Current.MainWindow) == true) { path = dlg.FileName; file.Text = System.IO.Path.GetFileName(path); } });
+        var place = new ComboBox { ItemsSource = d.A("sedi").Select(l => new ComboBoxItem { Content = l.S("nome"), Tag = l.S("id") }).ToList(), SelectedIndex = 0 };
+        var staff = new CheckBox { IsChecked = true, Margin = new Thickness(0, 14, 0, 0), Content = Col(T("Tutti gli operatori della sede fanno questi servizi", size: 14), Muted("Dopo, nella scheda di ogni servizio, togli chi non lo fa").Also13()) };
+        var go = new Button { Content = "Importa i servizi", Style = Style("Primary"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 16, 0, 0) };
+        go.Click += async (_, _) =>
+        {
+            go.IsEnabled = false; error = ""; done = null;
+            try
+            {
+                if (path == "") throw new ApiError("Scegli il file da importare.");
+                var bytes = System.IO.File.ReadAllBytes(path); if (bytes.Length > 20 * 1024 * 1024) throw new ApiError("File troppo grande: al massimo 20 MB.");
+                var r = await Api.Current.Call("servizi.importa", new { file = Convert.ToBase64String(bytes), location = (string)(place.SelectedItem as ComboBoxItem)?.Tag ?? "", staff = staff.IsChecked == true });
+                done = r["fatto"]; path = ""; Draw(r);
+            }
+            catch (NeedsLogin) { Shell.Instance?.SignedOut(); }
+            catch (Exception ex) when (ex is ApiError or System.IO.IOException or UnauthorizedAccessException) { error = ex.Message; Draw(d); }
+            finally { go.IsEnabled = true; }
+        };
+        body.Children.Add(F.Label("File Excel (.xlsx) o CSV")); body.Children.Add(Row(pick, file)); body.Children.Add(F.Field("Sede", place)); body.Children.Add(staff); body.Children.Add(go);
+        var tips = Col(T("Come deve essere il file", "H2"));
+        foreach (var tip in new[] { "La prima riga sono i titoli: Servizio, Prezzo, Durata in minuti. Le altre colonne si ignorano", "Prezzo e durata possono mancare: senza durata il servizio dura 30 minuti, senza prezzo non lo mostra", "I servizi nascono come appuntamento con un operatore, ogni 15 minuti", "Prima crea gli operatori, se vuoi che li facciano subito" })
+        { var t = T(tip, size: 14); t.TextWrapping = TextWrapping.Wrap; tips.Children.Add(new Border { Child = t, Padding = new Thickness(0, 10, 0, 10), BorderBrush = Res("Line"), BorderThickness = new Thickness(0, 0, 0, 1) }); }
+        var aside = new Border { Style = Style("Card"), Child = tips, VerticalAlignment = VerticalAlignment.Top }; var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) }); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(360) });
+        var left = F.Card(body); Grid.SetColumn(aside, 2); grid.Children.Add(left); grid.Children.Add(aside);
+        Content = F.Page(1180, Col(F.Back("Servizi", Services), F.Heading(null, "Importa servizi", "Il listino del programma di prima, da Excel o CSV: un servizio per riga, con prezzo e durata. I servizi che hanno già lo stesso nome si saltano, quindi si può caricare due volte senza doppioni"), grid));
+    }
 }
 /// <summary>templates/allergens.html: Intolleranze e allergie: on or off in the booking form, the items, the standard
 /// list, and how the client sees them.</summary>

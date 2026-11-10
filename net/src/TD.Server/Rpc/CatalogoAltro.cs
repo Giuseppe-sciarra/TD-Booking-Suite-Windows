@@ -87,4 +87,47 @@ public static class CatalogoAltro
         x.Audit("allergens." + action, t.Id, new { items = items.Count, on = t.AllergensOn });
         return new { testo = text, voci = items, accese = t.AllergensOn };
     }
+
+    // ---------- Importa servizi
+    /// <summary>portal.services_import: the price list of the old program (Excel or CSV): a service a row with its price
+    /// and minutes, made in one location, done by its operators when asked. A name already there is skipped.</summary>
+    [Rpc("servizi.importa", Perm = "catalog.write")]
+    public static object ImportServices(Call c)
+    {
+        if (!Configura.CatalogAllowed(c, "services")) throw new UnauthorizedAccessException("Non hai i permessi per questa operazione.");
+        var x = c.C; var t = c.Tenant; var places = x.S.Query<Location>("SELECT * FROM core_location WHERE active ORDER BY name").ToList();
+        if (c.Args["file"] == null) return new { sedi = places.Select(l => new { id = l.Id, nome = l.Name }) };
+        byte[] raw; try { raw = Convert.FromBase64String(c.Str("file")); } catch (FormatException) { raw = Array.Empty<byte>(); }
+        if (raw.Length == 0) throw new BookingException("Scegli il file da importare.");
+        if (raw.Length > Importer.MAX_BYTES) throw new BookingException("File troppo grande: al massimo 20 MB.");
+        var loc = places.FirstOrDefault(l => l.Id == c.Id("location")) ?? throw new BookingException("Scegli la sede.");
+        var (head, rows) = Importer.Read(raw); var col = new Dictionary<string, int>(); for (int i = 0; i < head.Count; i++) col[Importer.Plain(head[i])] = i;
+        int? Pick(params string[] names) => names.Where(col.ContainsKey).Select(n => (int?)col[n]).FirstOrDefault();
+        var n = Pick("servizio", "nome", "descrizione", "trattamento"); var pr = Pick("prezzo", "prezzovendita", "importo"); var du = Pick("durata", "duratainminuti", "minuti", "tempomedio", "tempo");
+        var gr = Pick("gruppo", "categoria", "reparto", "tipo");  // the resale rows of the old program become products
+        if (n == null) throw new BookingException("Nel file manca la colonna Servizio (il nome).");
+        var have = x.S.Query<string>("SELECT name FROM core_service WHERE location_id=@l", new { l = loc.Id }).Select(TD.Core.Crypto.CaseFold).ToHashSet();
+        var goods = x.S.Query<string>("SELECT name FROM core_product").Select(TD.Core.Crypto.CaseFold).ToHashSet();
+        var staff = c.Bool("staff") ? x.S.Query<Guid>("SELECT id FROM core_resource WHERE location_id=@l AND active", new { l = loc.Id }).ToList() : new();
+        int created = 0, same = 0, products = 0; var errors = new List<string>(); var line = 1;
+        foreach (var row in rows)
+        {
+            line++; string Cell(int? k) => k.HasValue && k < row.Count ? row[k.Value].Trim() : "";
+            var name = Importer.Name(Cell(n)); if (name.Length > 120) name = name[..120];
+            if (name == "") continue;
+            var resale = System.Text.RegularExpressions.Regex.IsMatch(Cell(gr), "rivendit|prodott|vendita|retail", System.Text.RegularExpressions.RegexOptions.IgnoreCase); var folded = TD.Core.Crypto.CaseFold(name);
+            if (folded.Contains("gift card") || folded.Contains("giftcard")) continue;  // the program has its own gift cards
+            if ((resale ? goods : have).Contains(folded)) { same++; continue; }
+            decimal? price = null; var minutes = 0; var inv = System.Globalization.CultureInfo.InvariantCulture;
+            if (Cell(pr) != "") { if (decimal.TryParse(Cell(pr).Replace("€", "").Replace(",", ".").Trim(), System.Globalization.NumberStyles.Float, inv, out var d)) price = Math.Round(d, 2, MidpointRounding.ToEven); else { errors.Add($"riga {line}: prezzo o durata non validi"); continue; } }
+            if (Cell(du) != "") { if (double.TryParse(Cell(du).Replace(",", "."), System.Globalization.NumberStyles.Float, inv, out var m) && !double.IsNaN(m) && Math.Abs(m) < 1e9) minutes = (int)m; else { errors.Add($"riga {line}: prezzo o durata non validi"); continue; } }
+            if (price is < 0 or > 99999) { errors.Add($"riga {line}: prezzo non valido"); continue; }
+            if (resale) { x.S.Insert(new Product { TenantId = t.Id, Name = name.Length > 80 ? name[..80] : name, Price = price is > 0 ? price : null, Created = x.Now }); goods.Add(folded); products++; continue; }
+            var svc = new Service { TenantId = t.Id, LocationId = loc.Id, Name = name, Kind = "resource", Duration = minutes is >= 5 and <= 720 ? minutes : 30, Interval = 15, Price = price, ResourceLabel = "Operatore" }; x.S.Insert(svc);
+            foreach (var r in staff) x.S.Insert(new Serviceresource { TenantId = t.Id, ServiceId = svc.Id, ResourceId = r });
+            have.Add(folded); created++;
+        }
+        x.Audit("services.imported", loc.Id, new { created, same });
+        return new { sedi = places.Select(l => new { id = l.Id, nome = l.Name }), fatto = new { creati = created, prodotti = products, uguali = same, errori = errors.Take(20), quantiErrori = errors.Count } };
+    }
 }
