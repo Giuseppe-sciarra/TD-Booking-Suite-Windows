@@ -127,7 +127,7 @@ public sealed class DashboardPage : Page
                 var day = DateOnly.Parse(b.S("giorno"));
                 var right = T($"{(day == today ? "oggi" : day.ToString("dddd d", It))}, {b.I("anni")} anni", size: 14, color: Res("Muted"));
                 var row = new DockPanel(); DockPanel.SetDock(right, Dock.Right); row.Children.Add(right);
-                row.Children.Add(Row(b.Bo("vip") ? F.Mark("vip", "star", "", "Cliente VIP") : null, F.Link($"{b.S("nome")} {b.S("cognome")}", () => Main.Show("clienti"))));
+                row.Children.Add(Row(b.Bo("vip") ? F.Mark("vip", "star", "", "Cliente VIP") : null, F.Link($"{b.S("nome")} {b.S("cognome")}", () => Main.ShowPage(new ClientPage(b.S("id"))))));
                 ul.Children.Add(new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(0, first ? 0 : 1, 0, 0), Padding = new Thickness(0, 8, 0, 8), Child = row }); first = false;
             }
             more.Add(F.Card(F.Section("Compleanni della settimana"), ul));

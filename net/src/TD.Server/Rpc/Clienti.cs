@@ -94,6 +94,16 @@ public static class Clienti
         var today = x.Today;
         var owed = x.S.Query<Sale>("SELECT * FROM core_sale WHERE contact_id=@c AND kind='sale' AND status='done' AND due>0 AND settled IS NULL ORDER BY created", new { c = contact.Id }).ToList();
         var fiscalKinds = Clients.FISCAL_KINDS.ToDictionary(k => k.Id, k => k.Label);
+        // Foto, the album by day; each record entry with the photos of its day (photos.place: on the first entry of a day)
+        object album = null; var byDay = new Dictionary<DateOnly, List<Guid>>(); var placed = new Dictionary<Guid, (List<Guid> Photos, int Left)>();
+        if (Foto.On(c))
+        {
+            var ph = new Photos(x); var got = ph.Album(contact); byDay = ph.ByDay(contact.Id);
+            if (write && !got.Any(g => g.Date == today)) got.Insert(0, new Photos.Day(today, "", new(), Photos.PER_DAY, null, false));  // room for today's
+            album = new { giorni = got.Select(g => new { data = g.Date, etichetta = g.Label, foto = g.Photos, liberi = g.Left, prenotazione = g.Booking, voce = g.Entry }), quante = got.Sum(g => g.Photos.Count), scrivi = write, max = Photos.PER_DAY, oggi = today };
+            var seen = new HashSet<DateOnly>();
+            foreach (var t in entries) { var day = DateOnly.FromDateTime(t.Row.Date); if (seen.Add(day)) { var list = byDay.GetValueOrDefault(day, new()); placed[t.Row.Id] = (list, Math.Max(0, Photos.PER_DAY - list.Count)); } }
+        }
         return new
         {
             id = contact.Id, dati = data, grezzi = pii ? raw : new JsonObject(), creato = bk.Iso(contact.Created), vip = contact.Vip, bloccato = contact.OnlineBlocked, consenso = contact.Consent,
@@ -112,7 +122,8 @@ public static class Clienti
             {
                 titolo = spec.Title, uno = spec.One, cosa = spec.What, suggerimento = spec.Hint, voci = entries.Count, pagina = tp, pagine = tpages, precompilata = prefill, oggi = today,
                 cose = x.S.Query<string>("SELECT name FROM core_service WHERE active ORDER BY name").Concat(spec.Suggest).Distinct(), persone = x.S.Query<string>("SELECT name FROM core_resource WHERE active ORDER BY name"),
-                righe = entries.Skip((tp - 1) * ENTRIES).Take(ENTRIES).Select(t => new { id = t.Row.Id, data = DateOnly.FromDateTime(t.Row.Date), servizio = t.Info.Str("service"), operatore = t.Info.Str("staff"), dettagli = t.Info.Str("details"), tipo = t.Info.Str("kind"), prenotazione = t.Row.BookingId }),
+                righe = entries.Skip((tp - 1) * ENTRIES).Take(ENTRIES).Select(t => new { id = t.Row.Id, data = DateOnly.FromDateTime(t.Row.Date), servizio = t.Info.Str("service"), operatore = t.Info.Str("staff"), dettagli = t.Info.Str("details"), tipo = t.Info.Str("kind"), prenotazione = t.Row.BookingId,
+                    foto = placed.TryGetValue(t.Row.Id, out var pl) ? pl.Photos : null, fotoLiberi = placed.TryGetValue(t.Row.Id, out var pl2) ? pl2.Left : 0 }),
             },
             attese = x.S.Query<Waitentry>("SELECT * FROM core_waitentry WHERE contact_id=@c AND status='waiting' ORDER BY first", new { c = contact.Id }).Select(w => new { servizio = x.Row<Service>(w.ServiceId)?.Name, dal = DateOnly.FromDateTime(w.First), al = DateOnly.FromDateTime(w.Last) }),
             unisci = c.Can("privacy.manage") && pii, test = x.S.Query<string>("SELECT name FROM core_service WHERE active AND test_days>0"), titoliConsenso = Clients.CONSENT_TITLES,
@@ -128,6 +139,7 @@ public static class Clienti
             giftcard = x.S.Query<Giftcard>("SELECT * FROM core_giftcard WHERE contact_id=@c AND status='active' ORDER BY created DESC", new { c = contact.Id }).Select(g => new
             { codice = g.Code, credito = Prices.Str(g.Balance), scade = g.Expires.HasValue ? DateOnly.FromDateTime(g.Expires.Value) : (DateOnly?)null, scaduta = g.Expires.HasValue && DateOnly.FromDateTime(g.Expires.Value) < today }),
             preventivi = write ? x.S.Query<Quote>("SELECT * FROM core_quote WHERE contact_id=@c ORDER BY year DESC, number DESC LIMIT 10", new { c = contact.Id }).Select(q => (object)new { id = q.Id, numero = $"{q.Year}-{q.Number:0000}", totale = Prices.Str(q.Total) }) : Array.Empty<object>(),
+            foto = album,
             eventi = new Privacy(x).History(contact).Select(e => new { tipo = EVENTS.GetValueOrDefault(e.Kind, e.Kind), quando = bk.Iso(e.At), canale = e.Channel, testo = e.TextHash.Length > 10 ? e.TextHash[..10] : e.TextHash }),
         };
     }
@@ -141,24 +153,7 @@ public static class Clienti
         {
             case "treatment" or "treatment_remove":
                 if (Spec(c) == null) throw new KeyNotFoundException();
-                c.Require("booking.write"); c.Require("notes.read");
-                Treatment item = null;
-                if (c.Id("treatment") is Guid tid) item = x.S.One<Treatment>("SELECT * FROM core_treatment WHERE contact_id=@c AND id=@id", new { c = contact.Id, id = tid }) ?? throw new BookingException("Voce non trovata: forse è già stata eliminata.");
-                if (a == "treatment_remove")
-                {
-                    if (item == null) throw new BookingException("Voce non trovata.");
-                    x.S.Delete<Treatment>(item.Id); x.Audit("treatment.removed", contact.Id); text = "Voce eliminata dalla scheda."; break;
-                }
-                var d = Clients.CleanTreatment(c.Args, x.Today); Guid? booking = null;
-                if (item == null && c.Id("booking") is Guid bid)
-                {
-                    // the booking it comes from: only one of this client, and only one this user may see
-                    var (vis, vargs) = Permissions.VisibleBookings(c.Member, c.Perms, "b"); var p = new DynamicParameters(vargs); p.Add("id", bid); p.Add("cid", contact.Id);
-                    booking = x.S.One<Guid?>($"SELECT b.id FROM core_booking b WHERE b.id=@id AND b.contact_id=@cid AND ({vis})", p);
-                }
-                var t = cl.SaveTreatment(contact, d, item, item == null ? booking : null);
-                x.Audit("treatment.saved", contact.Id, new { entry = t.Id.ToString(), edited = item != null });
-                text = item != null ? "Modifica salvata." : "Salvato nella scheda del cliente."; break;
+                text = Entry(c, contact, null); break;
             case "discount":
                 c.Require("catalog.write");
                 var changed = cl.SetDiscount(contact, c.Str("discount_kind"), c.Str("discount"));
@@ -193,6 +188,30 @@ public static class Clienti
             default: throw new KeyNotFoundException();
         }
         return new { testo = text };
+    }
+
+    /// <summary>portal.record_action: add, edit or remove one entry of the client record. booking: the one the entry is for
+    /// (from its page); otherwise args.booking, only one of this client the user may see.</summary>
+    public static string Entry(Call c, Contact contact, Guid? booking)
+    {
+        var x = c.C; var cl = new Clients(x); var a = c.Str("azione");
+        c.Require("booking.write"); c.Require("notes.read");
+        Treatment item = null;
+        if (c.Id("treatment") is Guid tid) item = x.S.One<Treatment>("SELECT * FROM core_treatment WHERE contact_id=@c AND id=@id", new { c = contact.Id, id = tid }) ?? throw new BookingException("Voce non trovata: forse è già stata eliminata.");
+        if (a == "treatment_remove")
+        {
+            if (item == null) throw new BookingException("Voce non trovata.");
+            x.S.Delete<Treatment>(item.Id); x.Audit("treatment.removed", contact.Id); return "Voce eliminata dalla scheda.";
+        }
+        var d = Clients.CleanTreatment(c.Args, x.Today);
+        if (booking == null && item == null && c.Id("booking") is Guid bid)
+        {
+            var (vis, vargs) = Permissions.VisibleBookings(c.Member, c.Perms, "b"); var p = new DynamicParameters(vargs); p.Add("id", bid); p.Add("cid", contact.Id);
+            booking = x.S.One<Guid?>($"SELECT b.id FROM core_booking b WHERE b.id=@id AND b.contact_id=@cid AND ({vis})", p);
+        }
+        var t = cl.SaveTreatment(contact, d, item, item == null ? booking : null);
+        x.Audit("treatment.saved", contact.Id, new { entry = t.Id.ToString(), edited = item != null });
+        return item != null ? "Modifica salvata." : "Salvato nella scheda del cliente.";
     }
 
     static readonly JsonSerializerOptions Pretty = new() { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };

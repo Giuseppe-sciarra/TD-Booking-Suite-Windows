@@ -201,7 +201,42 @@ public static class Prenotazioni
             whatsapp = c.Can("pii.read") ? ClientMails.WhatsApp(c.C, bk.Data(b).Str("phone"), b) : "",
             storia = history.Select(h => new { azione = h.Item1, chi = Who(h.Item2), quando = bk.Iso(h.Item3), dettagli = JsonNode.Parse(h.Item4) }),
             motivi = Bookings.REASONS.Select(x => new { id = x.Key, nome = x.Label }),
+            scheda = Record(c, b, contact, data), foto = DayPhotos(c, b, contact),
         };
+    }
+
+    /// <summary>The client record on the booking's page: what was written for this booking, or the form to write it once
+    /// the appointment has started, and the three times before with their photos.</summary>
+    static object Record(Call c, Booking b, Contact contact, JsonObject data)
+    {
+        if (contact == null || !c.Can("notes.read") || Json.Truthy(data["notes_hidden"])) return null;
+        var x = c.C; var spec = Presets.RecordOf(c.Tenant.BusinessType, x.S.Scalar<long>("SELECT count(*) FROM core_service WHERE kind='resource'") > 0);
+        if (spec == null) return null;
+        var cl = new Clients(x); var entries = cl.Treatments(contact); var prefill = cl.FromBooking(b); var day = x.Cal.DayOf(b.Start).ToDateTime(TimeOnly.MinValue);
+        var photos = Foto.On(c) ? new Photos(x).ByDay(contact.Id) : new();
+        object Row((Treatment Row, JsonObject Info) t, bool withPhotos) => new
+        { id = t.Row.Id, data = DateOnly.FromDateTime(t.Row.Date), servizio = t.Info.Str("service"), operatore = t.Info.Str("staff"), dettagli = t.Info.Str("details"), foto = withPhotos ? photos.GetValueOrDefault(DateOnly.FromDateTime(t.Row.Date)) : null };
+        return new
+        {
+            titolo = spec.Title, uno = spec.One, cosa = spec.What, suggerimento = spec.Hint, precompilata = prefill, aperta = b.Start <= x.Now && Bookings.ACCEPTED.Contains(b.Status),
+            cose = x.S.Query<string>("SELECT name FROM core_service WHERE active ORDER BY name").Concat(spec.Suggest).Distinct(), persone = x.S.Query<string>("SELECT name FROM core_resource WHERE active ORDER BY name"),
+            collegate = entries.Where(t => t.Row.BookingId == b.Id).Select(t => Row(t, false)), precedenti = entries.Where(t => t.Row.BookingId != b.Id && t.Row.Date < day).Take(3).Select(t => Row(t, true)),
+        };
+    }
+
+    static object DayPhotos(Call c, Booking b, Contact contact)
+    {
+        if (contact == null || !Foto.On(c)) return null;
+        var day = c.C.Cal.DayOf(b.Start); var got = new Photos(c.C).Album(contact, day);
+        return new { giorno = day, righe = got.Count > 0 ? got[0].Photos : new List<Guid>(), liberi = got.Count > 0 ? got[0].Left : Photos.PER_DAY, scrivi = c.Can("booking.write"), max = Photos.PER_DAY };
+    }
+
+    /// <summary>The record entry written from the booking's page (portal.booking_detail, action treatment).</summary>
+    [Rpc("prenotazione.voce", Perm = "booking.write")]
+    public static object Entry(Call c)
+    {
+        var b = Visible(c, c.NeedId("id")); var contact = c.C.Row<Contact>(b.ContactId) ?? throw new KeyNotFoundException();
+        return new { testo = Clienti.Entry(c, contact, b.Id) };
     }
 
     static object Marks(Call c, Contact ct)

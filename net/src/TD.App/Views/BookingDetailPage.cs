@@ -49,7 +49,7 @@ public sealed class BookingDetailPage(string id) : Page
             if (m.Bo("bloccato")) acts.Add(MainWindow.Pill("Non prenotabile online", "danger"));
             foreach (var t in m.A("etichette")) acts.Add(MainWindow.Pill(t.ToString()));
         }
-        if (b["contatto"] != null && Can("contacts.read")) acts.Add(B("Scheda cliente e storico", () => Main.Show("clienti")));
+        if (b["contatto"] != null && Can("contacts.read")) acts.Add(B("Scheda cliente e storico", () => Main.ShowPage(new ClientPage(b["contatto"].S("id")))));
         if (b.S("whatsapp") != "") acts.Add(B("WhatsApp", () => Process.Start(new ProcessStartInfo(b.S("whatsapp")) { UseShellExecute = true })));
         var when = a.ToString("dddd dd MMMM yyyy, HH:mm", It); when = char.ToUpper(when[0]) + when[1..];
         var heading = F.Heading("Prenotazione " + b.S("codice"), $"{d.S("first_name")} {d.S("last_name")}".Trim(), $"{b.S("servizio")} · {when}", acts.ToArray());
@@ -103,6 +103,68 @@ public sealed class BookingDetailPage(string id) : Page
         if (!d.Bo("notes_hidden")) { ((StackPanel)details.Child).Children.Add(T("Note del cliente", size: 15, bold: true).M(0, 8, 0, 8)); ((StackPanel)details.Child).Children.Add(T(d.S("notes") != "" ? d.S("notes") : "Nessuna nota.", size: 14)); }
         var left = Col(details);
 
+        // ----- the client record: what was written for this booking, or the form, and the times before
+        if (b["scheda"] is JsonNode rec && !d.Bo("notes_hidden"))
+        {
+            var h2 = T(rec.S("titolo"), "H2"); h2.Margin = new Thickness(0, 2, 0, 0);
+            var head = new DockPanel { Margin = new Thickness(0, 0, 0, 12) };
+            if (b["contatto"] != null && Can("contacts.read")) { var all = F.Small(B("Tutta la scheda", () => Main.ShowPage(new ClientPage(b["contatto"].S("id"))), "Ghost")); DockPanel.SetDock(all, Dock.Right); head.Children.Add(all); }
+            head.Children.Add(Col(T("Scheda cliente", "Eyebrow"), h2));
+            var box = Col(head);
+            FrameworkElement Staff(string name, bool avatar) => name == "" ? null : Row(avatar ? F.Avatar(name, 24).M(0, 0, 7, 0) : null, T("con " + name, size: 13, bold: true, color: Res("Muted")));
+            Border Entry(JsonNode t, bool linked, bool small)
+            {
+                var h3 = T(t.S("servizio"), size: 16, bold: true); h3.TextWrapping = TextWrapping.Wrap;
+                var top = new DockPanel(); if (Staff(t.S("operatore"), linked) is FrameworkElement st) { st.VerticalAlignment = VerticalAlignment.Center; DockPanel.SetDock(st, Dock.Right); top.Children.Add(st); }
+                top.Children.Add(h3); var col = Col(top);
+                if (t.S("dettagli") != "") col.Children.Add(new Border { Background = Res("BrandSoft"), CornerRadius = new CornerRadius(10), Padding = new Thickness(13, 10, 13, 10), Margin = new Thickness(0, 10, 0, 0), Child = T(t.S("dettagli"), size: 14.5) });
+                if (!linked && t.A("foto").Any()) col.Children.Add(PhotoGrid.Make(t.A("foto").Select(x => x.ToString()), true, false, null, 0, 0, Load));
+                var date = DateOnly.Parse(t.S("data")).ToString("d MMMM yyyy", It);
+                col.Children.Add(T(linked ? "✓ Registrato per questa prenotazione, " + date : date, size: 12.5, color: Res("Muted")).M(0, 10, 0, 0));
+                return new Border { BorderBrush = Res(linked ? "Ok" : "Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(14), Background = Res(linked ? "OkSoft" : "Surface"), Padding = small ? new Thickness(13, 10, 13, 10) : new Thickness(16, 14, 16, 14), Child = col, Margin = new Thickness(0, 0, 0, 10) };
+            }
+            foreach (var t in rec.A("collegate")) box.Children.Add(Entry(t, true, false));
+            if (!rec.A("collegate").Any())
+            {
+                if (rec.Bo("aperta") && write)
+                {
+                    var pre = rec["precompilata"];
+                    var date = new DatePicker { SelectedDate = DateTime.Parse(pre.S("date")) }; var what = F.Suggest(rec.A("cose").Select(x => x.ToString()), pre.S("service"), 120); var staff = F.Suggest(rec.A("persone").Select(x => x.ToString()), pre.S("staff"), 100);
+                    var notesBox = Box("", true); notesBox.MaxLength = 4000; notesBox.MinHeight = 100; notesBox.Tag = rec.S("suggerimento"); AgendaPage.Hint(notesBox);
+                    var g = new Grid();
+                    foreach (var w in new[] { new GridLength(165), new GridLength(14), new GridLength(1.4, GridUnitType.Star), new GridLength(14), new GridLength(1, GridUnitType.Star) }) g.ColumnDefinitions.Add(new ColumnDefinition { Width = w });
+                    var f1 = F.Field("Data", date); var f2 = F.Field(rec.S("cosa"), what); var f3 = F.Field("Con chi", staff); Grid.SetColumn(f2, 2); Grid.SetColumn(f3, 4); g.Children.Add(f1); g.Children.Add(f2); g.Children.Add(f3);
+                    var save = BA("Salva nella scheda", async () =>
+                    {
+                        var r = await Api.Current.Call("prenotazione.voce", new { id, azione = "treatment", date = date.SelectedDate?.ToString("yyyy-MM-dd") ?? "", service = what.Text, staff = staff.Text, details = notesBox.Text });
+                        Main.Flash(r.S("testo")); await Load();
+                    }, "Primary"); save.HorizontalAlignment = HorizontalAlignment.Left; save.Margin = new Thickness(0, 14, 0, 0);
+                    box.Children.Add(T("Cosa è stato fatto in questo appuntamento: resta nella scheda del cliente per le prossime volte", size: 14, color: Res("Muted"))); box.Children.Add(g); box.Children.Add(F.Label("Dettagli")); box.Children.Add(notesBox); box.Children.Add(save);
+                }
+                else if (!rec.Bo("aperta")) box.Children.Add(T("Dopo l'appuntamento qui registri cosa è stato fatto.", size: 14, color: Res("Muted")));
+            }
+            if (rec.A("precedenti").Any())
+            {
+                box.Children.Add(T("Le volte precedenti", size: 15, bold: true).M(0, 16, 0, 10));
+                foreach (var t in rec.A("precedenti"))
+                {
+                    var day = DateOnly.Parse(t.S("data"));
+                    var dd = T(day.ToString("dd"), size: 17, bold: true, color: Res("Brand")); dd.HorizontalAlignment = HorizontalAlignment.Center; var mm = T(day.ToString("MMM", It).ToUpperInvariant(), size: 11, bold: true, color: Res("Muted")); mm.HorizontalAlignment = HorizontalAlignment.Center;
+                    var dateBox = new Border { Width = 48, Padding = new Thickness(0, 6, 0, 6), CornerRadius = new CornerRadius(14), Background = Res("Surface"), BorderBrush = Res("Line"), BorderThickness = new Thickness(1), Child = Col(dd, mm), VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 0, 12, 0) };
+                    var row = new DockPanel(); DockPanel.SetDock(dateBox, Dock.Left); row.Children.Add(dateBox); row.Children.Add(Entry(t, false, true));
+                    box.Children.Add(row);
+                }
+            }
+            left.Children.Add(new Border { Style = Style("Card"), Child = box, Margin = new Thickness(0, 0, 0, 14) });
+        }
+        // ----- the photos of the work of that day
+        if (b["foto"] is JsonNode ph)
+        {
+            var head = new DockPanel();
+            if (b["contatto"] != null && Can("contacts.read")) { var all = F.Small(B("Tutte le sue foto", () => Main.ShowPage(new ClientPage(b["contatto"].S("id")) { StartTab = "foto" }), "Ghost")); all.VerticalAlignment = VerticalAlignment.Top; DockPanel.SetDock(all, Dock.Right); head.Children.Add(all); }
+            head.Children.Add(Col(T("Foto del " + DateOnly.Parse(ph.S("giorno")).ToString("d MMMM yyyy", It), "H2"), T($"Il lavoro fatto, nella scheda del cliente: al massimo {ph.I("max")} per giorno, rimpicciolite da sole.", size: 13, color: Res("Muted"))));
+            left.Children.Add(F.Card(head, PhotoGrid.Make(ph.A("righe").Select(x => x.ToString()), false, ph.Bo("scrivi"), new JsonObject { ["cliente"] = b["contatto"].S("id"), ["prenotazione"] = id }, ph.I("liberi"), ph.I("max"), Load)));
+        }
         // ----- Visita
         var visit = b.A("visita").ToList();
         if (visit.Count > 1)

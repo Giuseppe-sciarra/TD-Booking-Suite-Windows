@@ -124,14 +124,15 @@ compila soltanto (`dotnet build src/TD.App`, `src/TD.Server`) e si provano le ch
 - `booking.html` + `booking.js` → `BookingPage` · `booking_detail.html` → `BookingDetailPage` · blocco orario → `BlockDialog`
 - `dashboard.html` → `DashboardPage` (`cruscotto`, `turno.cambia`)
 - `contacts.html` → `ClientsPage` (`clienti.elenco`, `clienti.nuovo`) · `contact_detail.html` → `ClientPage` (`cliente.scheda`,
-  `cliente.azione`, `cliente.esporta`, `cliente.cancella`)
+  `cliente.azione`, `cliente.esporta`, `cliente.cancella`) · `contact_merge.html` → `ClientMergePage` · `_photo_grid.html` → `Ui/PhotoGrid`
+  (`foto.aggiungi`, `foto.togli`, `foto.immagine`; le due copie JPEG le fa la finestra con WIC, il server controlla che siano JPEG)
 - `confirm.html` («Conferma che sei tu», ogni 15 minuti per le operazioni delicate) → `ConfirmDialog` (`/api/conferma`,
   `[Rpc(Fresh = true)]`, risposta 428)
 
 ### Pezzi lasciati con un segnaposto dentro pagine già fatte (da chiudere, nessuno va tolto)
 
 - Dashboard: avviso «Manca la chiusura giornaliera» (arriva con la Cassa).
-- Agenda: Stampa, Importa prenotazioni. Dettaglio prenotazione: Scheda/record del servizio, Foto, «Iscritti e presenze».
-- Clienti: Importa, Esporta, Storico in PDF, Unisci due schede, scheda Foto; «Metti in lista d'attesa» e «Nuovo preventivo»
+- Agenda: Stampa, Importa prenotazioni. Dettaglio prenotazione: «Iscritti e presenze».
+- Clienti: Importa, Esporta, Storico in PDF; «Metti in lista d'attesa» e «Nuovo preventivo»
   aprono la pagina senza il cliente già scelto; Copia dello scontrino apre la Cassa.
 - Conferma che sei tu: manca la passkey (WebAuthn di Windows).

@@ -21,6 +21,8 @@ public sealed class ClientPage(string id) : Page
 {
     static readonly CultureInfo It = AgendaPage.It;
     JsonNode d; AgendaPage z; string tab; int page = 1, tp = 1; string from = "";
+    /// <summary>The tab to open on (#foto, #scheda in the links of the web).</summary>
+    public string StartTab { init => tab = value; }
     DateTime Local(string iso) => z.Local(iso);
     static string Euro(string v) => decimal.TryParse(v, NumberStyles.Number, CultureInfo.InvariantCulture, out var x) ? x.ToString("#,##0.00", It) + " €" : v;
     static void Web(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
@@ -31,7 +33,7 @@ public sealed class ClientPage(string id) : Page
         z = new AgendaPage { Main = Main }; z.UseZone(Business.S("fuso"));
         d = await Api.Current.Call("cliente.scheda", new { id, pagina = page, tp, da = from });
         tab ??= "panoramica";
-        if (d["scheda"] == null && tab == "scheda") tab = "panoramica";
+        if (d["scheda"] == null && tab == "scheda" || d["foto"] == null && tab == "foto") tab = "panoramica";
         Draw();
     }
     async Task Act(JsonObject args, string open = null)
@@ -289,10 +291,11 @@ public sealed class ClientPage(string id) : Page
         void Show()
         {
             foreach (var (k, b, t) in all) { b.BorderBrush = k == tab ? Res("Brand") : Brushes.Transparent; t.Foreground = Res(k == tab ? "Ink" : "Muted"); }
-            panel.Content = tab switch { "prenotazioni" => Bookings(), "scheda" => Record(), "privacy" => PrivacyTab(), _ => Overview() };
+            panel.Content = tab switch { "prenotazioni" => Bookings(), "scheda" => Record(), "privacy" => PrivacyTab(), "foto" when d["foto"] != null => PhotosTab(), _ => Overview() };
         }
         Tab("panoramica", "Panoramica"); Tab("prenotazioni", "Prenotazioni", n.I("totale"));
         if (spec != null) Tab("scheda", spec.S("titolo"), spec.I("voci"));
+        if (d["foto"] != null) Tab("foto", "Foto", d["foto"].I("quante"));
         Tab("privacy", "Consensi e privacy");
         show = Show;
         main.Children.Add(new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(0, 0, 0, 1), Margin = new Thickness(0, 0, 0, 16), Child = tabs });
@@ -468,6 +471,8 @@ public sealed class ClientPage(string id) : Page
             headRow.Children.Add(h3);
             var card = Col(headRow);
             if (t.S("dettagli") != "") card.Children.Add(new Border { Background = Res("BrandSoft"), CornerRadius = new CornerRadius(10), Padding = new Thickness(13, 10, 13, 10), Margin = new Thickness(0, 10, 0, 0), Child = T(t.S("dettagli"), size: 14.5) });
+            if (d["foto"] != null && t["foto"] != null && (t.A("foto").Any() || d["foto"].Bo("scrivi")))
+                card.Children.Add(PhotoGrid.Make(t.A("foto").Select(x => x.ToString()), true, d["foto"].Bo("scrivi"), new JsonObject { ["cliente"] = id, ["voce"] = tid }, t.I("fotoLiberi"), d["foto"].I("max"), async () => { tab = "scheda"; await Load(); }).M(0, 6, 0, 2));
             var foot = new DockPanel { Margin = new Thickness(0, 10, 0, 0) }; var editBox = new ContentControl { Visibility = Visibility.Collapsed, Focusable = false };
             if (write)
             {
@@ -496,6 +501,32 @@ public sealed class ClientPage(string id) : Page
         var rail = new Grid(); rail.Children.Add(new Border { Width = 2, Background = Res("Pastel"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(31, 8, 0, 8), Visibility = spec.A("righe").Any() ? Visibility.Visible : Visibility.Collapsed }); rail.Children.Add(line);
         body.Children.Add(rail);
         var pages = F.Pagination(spec.I("pagina"), spec.I("pagine"), async p => { tp = p; tab = "scheda"; await Guard(Load); }, "← Più recenti", "Meno recenti →"); if (pages != null) body.Children.Add(pages);
+        return new Border { Style = Style("Card"), Child = body };
+    }
+
+    // ---------- Foto
+    UIElement PhotosTab()
+    {
+        var f = d["foto"]; var spec = d["scheda"]; var today = f.S("oggi"); var write = f.Bo("scrivi");
+        var body = Col(T("Foto", "H2"), T($"Il lavoro fatto, giorno per giorno: al massimo {f.I("max")} foto per giorno, rimpicciolite da sole. Restano in questo programma, non vanno sul sito.", size: 13, color: Res("Muted")));
+        var first = true;
+        foreach (var g in f.A("giorni"))
+        {
+            var date = DateOnly.Parse(g.S("data")); var isToday = g.S("data") == today; var name = date.ToString("dddd d MMMM yyyy", It);
+            var h3 = new TextBlock { FontSize = 15, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) }; h3.Inlines.Add(isToday ? "Oggi" : char.ToUpper(name[0]) + name[1..]);
+            if (g.S("etichetta") != "") { var r = new Run(" · " + g.S("etichetta")) { FontWeight = FontWeights.Normal }; r.SetResourceReference(TextElement.ForegroundProperty, "Muted"); h3.Inlines.Add(r); }
+            var day = Col(h3);
+            if (g.S("prenotazione") != "" || g.Bo("voce"))
+            {
+                var links = Row(); var bid = g.S("prenotazione");
+                if (g.Bo("voce") && spec != null) links.Children.Add(F.Link($"Vedi il {spec.S("uno")} di quel giorno", () => Go("scheda"), 13));
+                if (bid != "") { if (links.Children.Count > 0) links.Children.Add(T(" · ", size: 13)); links.Children.Add(F.Link("Apri l'appuntamento", () => Main.ShowPage(new BookingDetailPage(bid)), 13)); }
+                day.Children.Add(links);
+            }
+            day.Children.Add(PhotoGrid.Make(g.A("foto").Select(x => x.ToString()), false, write, isToday ? new JsonObject { ["cliente"] = id } : null, g.I("liberi"), f.I("max"), async () => { tab = "foto"; await Load(); }));
+            body.Children.Add(new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(0, first ? 0 : 2, 0, 0), Padding = new Thickness(0, 14, 0, 14), Child = day }); first = false;
+        }
+        if (!f.A("giorni").Any()) body.Children.Add(T(write ? "Nessuna foto ancora: si aggiungono qui per oggi o dall'appuntamento." : "Nessuna foto.", size: 14, color: Res("Muted")).M(0, 10, 0, 0));
         return new Border { Style = Style("Card"), Child = body };
     }
 
