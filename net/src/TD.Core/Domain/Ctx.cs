@@ -42,7 +42,7 @@ public sealed class Ctx : IDisposable
 
     public Ctx(Db db, Crypto crypto, Guid tenant)
     {
-        Crypto = crypto;
+        Crypto = crypto; Db = db;
         S = db.Tenant(tenant);
         Tenant = S.Get<Tenant>(tenant) ?? throw new InvalidOperationException("Attività inesistente");
     }
@@ -50,7 +50,11 @@ public sealed class Ctx : IDisposable
 
     /// <summary>SELECT ... FOR UPDATE of the business row: every writer of the inventory takes the same lock.</summary>
     public void Lock() => Tenant = S.One<Tenant>("SELECT * FROM core_tenant WHERE id=@id FOR UPDATE", new { id = Tenant.Id });
-    public void Commit() => S.Commit();
+    /// <summary>The database this unit of work came from, for what starts after it (the register's sender); null in tests on a bare scope.</summary>
+    public Db Db { get; }
+    /// <summary>transaction.on_commit: what runs once the unit of work is saved.</summary>
+    public List<Action> AfterCommit { get; } = new();
+    public void Commit() { S.Commit(); foreach (var a in AfterCommit.ToList()) a(); AfterCommit.Clear(); }
     public void Dispose() => S.Dispose();
 
     // ---------- the business key
