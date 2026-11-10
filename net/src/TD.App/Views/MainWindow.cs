@@ -188,7 +188,7 @@ public sealed class MainWindow : Window
             Add("giftcard", "gift", "Gift card", () => new GiftCardsPage(), Can("sale.write"));
             Add("preventivi", "briefcase", "Preventivi", () => new QuotesPage(), Can("booking.write") && Can("pii.read"));
             Add("tavoli", "grid", "Sale e tavoli", () => new TablesPage(), Can("booking.read") && type == "ristorante");
-            Add("alloggi", "home", "Alloggi", () => new Placeholder("Alloggi"), Can("booking.read") && t.Bo("soggiorni"));
+            Add("alloggi", "home", "Alloggi", () => new StaysPage(), Can("booking.read") && t.Bo("soggiorni"));
             Section("Comunicazioni");
             Add("richiami", "bell", "Richiami", () => new RecallsPage(), Can("contacts.read"));
             Add("whatsapp", "chat", "Promemoria WhatsApp", () => new WhatsAppPage(), Can("booking.read") && Can("pii.read"));

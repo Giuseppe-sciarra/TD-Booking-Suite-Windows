@@ -41,6 +41,8 @@ public static partial class Jobs
         list.Add(Make("ora", 60, 3600, () =>
         {
             W().Turns(); ClientImport.Purge();  // copies left by an import never finished
+            // stays.run: the portals' calendars read again, Alloggiati Web sent and its receipts
+            var read = Stays.Run(s.Db, s.Crypto, s.PublicOrigin, Outbox.Instance, s.Edition); if (read > 0) log.LogInformation("Calendari dei portali letti: {N}.", read);
             var done = W().Retention((text, ex) => log.LogWarning(ex, "{Text}", text)); if (done > 0) log.LogInformation("Conservazione dei dati applicata a {N} attività.", done);
         }));
     }

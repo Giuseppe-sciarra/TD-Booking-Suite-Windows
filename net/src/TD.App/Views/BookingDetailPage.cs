@@ -99,6 +99,12 @@ public sealed class BookingDetailPage(string id) : Page
             if (v == null || v is JsonValue jv && (jv.TryGetValue<bool>(out var bb) && !bb || jv.TryGetValue<string>(out var ss) && ss == "")) continue;
             Line(b["campi"]?[k]?.ToString() ?? k, v is JsonValue j2 && j2.TryGetValue<bool>(out _) ? "Sì" : v.ToString());
         }
+        if (kind == "day" && !d.Bo("masked"))
+        {
+            var guests = Row(T($"{(d["guests"] as JsonArray)?.Count ?? 0} di {b.I("persone")} con i dati", size: 15));
+            if (Can("booking.write")) { guests.Children.Add(T(" · ", size: 15)); guests.Children.Add(F.Link("Dati degli ospiti", () => Main.ShowPage(new GuestsPage { Id = id }), 15)); }
+            Row2("Ospiti", guests);
+        }
         var details = F.Card(T("Tutti i dettagli", "H2"), dl);
         if (!d.Bo("notes_hidden")) { ((StackPanel)details.Child).Children.Add(T("Note del cliente", size: 15, bold: true).M(0, 8, 0, 8)); ((StackPanel)details.Child).Children.Add(T(d.S("notes") != "" ? d.S("notes") : "Nessuna nota.", size: 14)); }
         var left = Col(details);
