@@ -27,7 +27,7 @@ public sealed class AgendaPage : Page
     readonly TextBlock subtitle = T("", "MutedText");
     readonly ContentControl body = new();
     readonly ComboBox places = new() { MinWidth = 150 }, people = new() { MinWidth = 170 };
-    const double PX = 1.6;  // pixels per minute: a quarter of hour is 24 px
+    const double PX = 26.0 / 15;  // pixels per minute: a quarter of hour is 26 px, as the web agenda
 
     public override async Task Load()
     {
@@ -39,12 +39,13 @@ public sealed class AgendaPage : Page
 
     void Build()
     {
-        var seg = Row();
+        var segRow = Row();
+        var seg = new Border { Background = Res("Surface"), BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(4), Child = segRow };
         foreach (var (k, label) in new[] { ("giorno", "Giorno"), ("settimana", "Settimana"), ("mese", "Mese") })
         {
             var r = new RadioButton { Style = Style("Segment"), Content = label, GroupName = "vista", IsChecked = k == view };
             r.Checked += async (_, _) => { view = k; await Guard(Refresh); };
-            seg.Children.Add(r);
+            segRow.Children.Add(r);
         }
         var picker = new DatePicker { SelectedDate = day.ToDateTime(TimeOnly.MinValue), Width = 130, VerticalContentAlignment = VerticalAlignment.Center };
         picker.SelectedDateChanged += async (_, _) => { if (picker.SelectedDate is DateTime d && DateOnly.FromDateTime(d) != day) { day = DateOnly.FromDateTime(d); await Guard(Refresh); } };
@@ -55,7 +56,7 @@ public sealed class AgendaPage : Page
         people.SelectionChanged += async (_, _) => { if (people.SelectedItem is ComboBoxItem i && (string)i.Tag != op) { op = (string)i.Tag; await Guard(Refresh); } };
         var nav = Row(BA("‹", () => Step(-1)), BA("Oggi", async () => { day = DateOnly.Parse(Business.S("oggi")); await Refresh(); }).M(6, 0, 6, 0), BA("›", () => Step(1)), picker.M(10, 0, 0, 0));
         var tools = new DockPanel { LastChildFill = false };
-        var left = Col(title, subtitle);
+        var left = Col(T("Agenda", "Eyebrow"), title, subtitle);
         DockPanel.SetDock(left, Dock.Left); tools.Children.Add(left);
         var actions = Row();
         if (Can("booking.write"))
@@ -67,7 +68,7 @@ public sealed class AgendaPage : Page
         var filters = new WrapPanel();
         foreach (var e in new FrameworkElement[] { nav.M(0, 0, 16, 6), seg.M(0, 0, 16, 6), places.M(0, 0, 8, 6), people.M(0, 0, 16, 6), show.M(0, 0, 0, 6) }) filters.Children.Add(e);
         var top = Col(tools, filters.M(0, 12, 0, 6));
-        var root = new DockPanel { Margin = new Thickness(24, 18, 24, 12) };
+        var root = new DockPanel { Margin = new Thickness(28, 22, 28, 16) };
         DockPanel.SetDock(top, Dock.Top);
         root.Children.Add(top); root.Children.Add(body);
         Content = root;
@@ -158,12 +159,11 @@ public sealed class AgendaPage : Page
             for (var m = first; m < last; m += 60)
             {
                 var line = new Rectangle { Width = 4000, Height = 1, Fill = Res("Line") }; Canvas.SetTop(line, (m - first) * PX); col.Children.Add(line);
-                var half = new Rectangle { Width = 4000, Height = 1, Fill = Hex("#F2F0F5") }; Canvas.SetTop(half, (m + 30 - first) * PX); col.Children.Add(half);
             }
             if (day < DateOnly.FromDateTime(now) || day == DateOnly.FromDateTime(now))
             {
                 var pastMin = day < DateOnly.FromDateTime(now) ? last : Math.Clamp((int)(now - d).TotalMinutes, first, last);
-                var past = new Rectangle { Width = 4000, Height = Math.Max(0, (pastMin - first) * PX), Fill = new SolidColorBrush(Color.FromArgb(30, 120, 110, 140)), IsHitTestVisible = false };
+                var past = new Rectangle { Width = 4000, Height = Math.Max(0, (pastMin - first) * PX), Fill = Res("Closed"), Opacity = 0.9, IsHitTestVisible = false };
                 Canvas.SetTop(past, 0); col.Children.Add(past);
             }
             var opId = o.S("id");
@@ -194,7 +194,7 @@ public sealed class AgendaPage : Page
                 col.Children.Add(Appointment(x, d, first, last, col, lane, lanes, ops, i));
             if (day == DateOnly.FromDateTime(now) && (now - d).TotalMinutes is var nm && nm >= first && nm < last)
             {
-                var line = new Rectangle { Width = 4000, Height = 2, Fill = Res("Danger"), IsHitTestVisible = false };
+                var line = new Rectangle { Width = 4000, Height = 2, Fill = Res("Pink"), IsHitTestVisible = false };
                 Canvas.SetTop(line, (nm - first) * PX); col.Children.Add(line);
             }
             var frame = new Border { Child = col, BorderBrush = Res("Line"), BorderThickness = new Thickness(1, 0, 0, 0) };
@@ -203,7 +203,7 @@ public sealed class AgendaPage : Page
         // appointments without an operator (made before operators existed): listed under the grid
         var loose = items.Where(x => !ops.Any(o => o.S("id") == x.S("resource"))).ToList();
         var scroll = new ScrollViewer { Content = grid, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
-        var frameAll = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Background = Res("Surface"), ClipToBounds = true };
+        var frameAll = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1.5), CornerRadius = new CornerRadius(14), Background = Res("Surface"), ClipToBounds = true };
         var dock = new DockPanel();
         DockPanel.SetDock(head, Dock.Top); dock.Children.Add(head);
         if (loose.Count > 0) { var l = Col(T("Senza operatore", size: 13, bold: true).M(10, 8, 0, 4)); foreach (var x in loose) l.Children.Add(ListRow(x)); DockPanel.SetDock(l, Dock.Bottom); dock.Children.Add(l); }
@@ -243,21 +243,24 @@ public sealed class AgendaPage : Page
         var bottom = Math.Min(last - first, (b - d).TotalMinutes - first) * PX;
         var h = Math.Max(20, bottom - top - 2);
         var color = Op(x.I("color")); var status = x.S("status");
-        var bg = status switch { "cancelled" => Hex("#F4F3F6"), "no_show" => Res("DangerSoft"), "arrived" or "in_progress" => Res("OkSoft"), "completed" => Hex("#F1F0F4"), _ => Tint(color, 0.13) };
-        var lines = Col();
+        // filled with the operator's colour, white text, as the web agenda; done in green, absent in red, cancelled struck
+        var solid = status is "pending" or "confirmed" or "arrived" or "in_progress";
+        Brush bg = status switch { "cancelled" => Res("Surface"), "no_show" => Res("DangerSoft"), "completed" => Res("OkSoft"), "pending" => Tint(color, 0.72), _ => color };
+        var ink = solid ? Brushes.White : Res("Ink");
         var marks = (x.Bo("vip") ? "★ " : "") + (x.A("alert").Any() ? "⚠ " : "") + (x.Bo("forced") ? "⚑ " : "") + (x.I("noShow") > 0 ? $"✕{x.I("noShow")} " : "");
-        var name = T(marks + x.S("name"), size: 13, bold: true); name.TextTrimming = TextTrimming.CharacterEllipsis; name.TextWrapping = TextWrapping.NoWrap;
+        var headText = $"{x.S("from")}–{x.S("to")} {marks}{x.S("name")}";
+        var name = T(headText, size: 12.5, bold: true, color: ink); name.TextTrimming = TextTrimming.CharacterEllipsis; name.TextWrapping = TextWrapping.NoWrap;
         if (status == "cancelled") name.TextDecorations = TextDecorations.Strikethrough;
-        var when = T($"{x.S("from")}–{x.S("to")}" + (status is "pending" ? " · da confermare" : status != "confirmed" ? " · " + STATUS.GetValueOrDefault(status, status).ToLowerInvariant() : ""), "MutedText", size: 12);
-        when.TextWrapping = TextWrapping.NoWrap;
-        var svc = T(x.S("service"), size: 12); svc.TextTrimming = TextTrimming.CharacterEllipsis; svc.TextWrapping = TextWrapping.NoWrap;
-        if (h < 34) { lines.Children.Add(Row(T($"{x.S("from")} ", "MutedText", size: 12), name)); }
-        else { lines.Children.Add(when); lines.Children.Add(name); if (h > 50) lines.Children.Add(svc); }
+        var extra = status == "pending" ? " · da confermare" : status is "confirmed" ? "" : " · " + STATUS.GetValueOrDefault(status, status).ToLowerInvariant();
+        var svc = T(x.S("service") + extra, size: 12.5, color: ink); svc.TextTrimming = TextTrimming.CharacterEllipsis; svc.TextWrapping = TextWrapping.NoWrap; svc.Opacity = 0.95;
+        var lines = Col();
+        if (h < 34) { name.Text = headText + "  " + x.S("service"); lines.Children.Add(name); }
+        else { lines.Children.Add(name); lines.Children.Add(svc); }
         var card = new Border
         {
-            Height = h, Background = bg, CornerRadius = new CornerRadius(6), BorderBrush = status == "pending" ? color : Res("Line"),
-            BorderThickness = new Thickness(status == "pending" ? 1.5 : 1), Padding = new Thickness(8, 3, 6, 3), Cursor = Cursors.Hand, ClipToBounds = true,
-            Child = new DockPanel { Children = { Stripe(color), lines } }, Opacity = status == "cancelled" ? 0.7 : 1,
+            Height = h, Background = bg, CornerRadius = new CornerRadius(7), BorderBrush = status == "completed" ? Res("Ok") : status == "no_show" ? Res("Danger") : color,
+            BorderThickness = solid ? new Thickness(0) : new Thickness(3, 0, 0, 0), Padding = new Thickness(8, h < 34 ? 1 : 3, 6, 2), Cursor = Cursors.Hand, ClipToBounds = true,
+            Child = lines, Opacity = status == "cancelled" ? 0.75 : 1,
             ToolTip = $"{x.S("from")}–{x.S("to")}  {x.S("name")}\n{x.S("service")}" + (x.S("notes") != "" ? "\n" + x.S("notes") : "") + (x.A("alert").Any() ? "\nAllergie: " + string.Join(", ", x.A("alert")) : ""),
         };
         void Place()
@@ -354,7 +357,7 @@ public sealed class AgendaPage : Page
         var list = Col();
         if (items.Count == 0) list.Children.Add(T("Nessuna prenotazione in questo giorno.", "MutedText").M(16));
         foreach (var x in items.OrderBy(i => i.S("start"))) list.Children.Add(ListRow(x));
-        body.Content = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Background = Res("Surface"), ClipToBounds = true, Child = new ScrollViewer { Content = list } };
+        body.Content = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1.5), CornerRadius = new CornerRadius(14), Background = Res("Surface"), ClipToBounds = true, Child = new ScrollViewer { Content = list } };
     }
 
     // ---------- the week
@@ -374,7 +377,7 @@ public sealed class AgendaPage : Page
                 foreach (var x in days[i].AsArray().Where(n => n != null)) c.Children.Add(ListRow(x));
                 cols.Children.Add(new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(0, 0, 1, 0), Child = c });
             }
-            body.Content = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Background = Res("Surface"), Child = new ScrollViewer { Content = cols } };
+            body.Content = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1.5), CornerRadius = new CornerRadius(14), Background = Res("Surface"), Child = new ScrollViewer { Content = cols } };
             return;
         }
         int first = data.I("firstMinute"), last = data.I("lastMinute"); var height = (last - first) * PX * 0.75; var px = PX * 0.75;
@@ -409,8 +412,8 @@ public sealed class AgendaPage : Page
                 var a = Local(x.S("start")); var b = Local(x.S("end"));
                 var top = Math.Max(0, (a - dt).TotalMinutes - first) * px; var bottom = Math.Min(last - first, (b - dt).TotalMinutes - first) * px;
                 var color = Op(x.I("color"));
-                var t = T($"{x.S("from")} {x.S("name")}", size: 12, bold: true); t.TextTrimming = TextTrimming.CharacterEllipsis;
-                var card = new Border { Height = Math.Max(16, bottom - top - 2), Background = Tint(color, 0.16), BorderBrush = color, BorderThickness = new Thickness(3, 0, 0, 0), CornerRadius = new CornerRadius(4), Padding = new Thickness(5, 2, 4, 2), Cursor = Cursors.Hand, Child = t, ClipToBounds = true, ToolTip = $"{x.S("from")}–{x.S("to")} {x.S("name")}\n{x.S("service")} · {x.S("who")}" };
+                var t = T($"{x.S("from")} {x.S("name")}", size: 12, bold: true, color: Brushes.White); t.TextTrimming = TextTrimming.CharacterEllipsis; t.TextWrapping = TextWrapping.NoWrap;
+                var card = new Border { Height = Math.Max(16, bottom - top - 2), Background = color, CornerRadius = new CornerRadius(6), Padding = new Thickness(5, 2, 4, 2), Cursor = Cursors.Hand, Child = t, ClipToBounds = true, ToolTip = $"{x.S("from")}–{x.S("to")} {x.S("name")}\n{x.S("service")} · {x.S("who")}" };
                 var ln = lane; var lns = lanes;
                 void Place() { var w = col.ActualWidth > 0 ? col.ActualWidth : 120; var lw = (w - 4) / lns; card.Width = Math.Max(20, lw - 2); Canvas.SetLeft(card, 2 + ln * lw); }
                 col.SizeChanged += (_, _) => Place(); Place();
@@ -423,7 +426,7 @@ public sealed class AgendaPage : Page
         }
         var dock = new DockPanel(); DockPanel.SetDock(head, Dock.Top); dock.Children.Add(head);
         dock.Children.Add(new ScrollViewer { Content = grid, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
-        body.Content = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Background = Res("Surface"), ClipToBounds = true, Child = dock };
+        body.Content = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1.5), CornerRadius = new CornerRadius(14), Background = Res("Surface"), ClipToBounds = true, Child = dock };
     }
 
     // ---------- the month
@@ -456,7 +459,7 @@ public sealed class AgendaPage : Page
                 Grid.SetRow(cell, w + 1); Grid.SetColumn(cell, i); grid.Children.Add(cell);
             }
         }
-        body.Content = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Background = Res("Surface"), ClipToBounds = true, Child = grid };
+        body.Content = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1.5), CornerRadius = new CornerRadius(14), Background = Res("Surface"), ClipToBounds = true, Child = grid };
     }
 
     void NewBooking(string resource, DateTime? at)

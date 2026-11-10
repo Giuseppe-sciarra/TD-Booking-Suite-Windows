@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="app.ico" />
+    <Resource Include="Fonts\*.ttf" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
