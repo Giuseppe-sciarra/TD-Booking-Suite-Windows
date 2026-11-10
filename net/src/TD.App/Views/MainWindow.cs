@@ -187,7 +187,7 @@ public sealed class MainWindow : Window
             Add("configura", "shop", "Configura l'attività", () => new Placeholder("Configura l'attività"), Can("catalog.write"));
             Add("registratore", "sliders", "Registratore di cassa", () => new RegisterPage(), Can("catalog.write") && t.Bo("cassaTitolare") && t.S("ruolo") == "owner" && !staff);
             Section("Controlli");
-            Add("registro", "list", "Registro attività", () => new Placeholder("Registro attività"), Can("audit.read"));
+            Add("registro", "list", "Registro attività", () => new AuditPage(), Can("audit.read"));
             Add("accesso", "key", "Accesso dell'amministratore", () => new Placeholder("Accesso dell'amministratore"), Can("users.manage"));
             if (staff)
             {

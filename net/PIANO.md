@@ -57,12 +57,12 @@ Legenda: ☐ da fare · ◐ in corso · ☑ fatto e provato
 - ◐ Prenotazioni WPF: nuova (operatore/giorno/ora, più servizi, cliente cercato o nuovo, Forza), dettaglio, stati, annulla con motivo, sposta, ripeti ☑; soggiorni, eventi con iscritti, tavoli, senza appuntamento ☐
 - ☐ Clienti: elenco, ricerca, scheda (panoramica, prenotazioni, trattamenti, foto, consensi e privacy), unisci, import
 - ☐ Scheda cliente (trattamenti), foto (4 al giorno), storico in PDF
-- ☐ Lista d'attesa, richiami
-- ☐ Promemoria WhatsApp e grazie con recensione
+- ☑ Lista d'attesa, richiami
+- ☑ Promemoria WhatsApp e grazie con recensione (con l'avviso in cima alle pagine)
 - ☐ Cassa: conto, operatori, mattonelle, Parcheggio/Stand-by, Da pagare, gift card, non nello scontrino, storico,
       riepilogo PDF, chiusura, annulli, registratore RCH ed Epson (rete e USB), conto che resta
 - ☐ Gift card, preventivi (PDF)
-- ☐ Report, esportazioni, registro attività
+- ◐ Report (fatto, Excel e PDF), registro attività (fatto); esportazioni da fare
 
 ### Attività e impostazioni
 - ☐ Configurazione guidata, attività, sedi, orari, festivi, servizi e catalogo, operatori (foto, colori, calendari)
@@ -142,8 +142,13 @@ compila soltanto (`dotnet build src/TD.App`, `src/TD.Server`) e si provano le ch
 - Clienti: Importa, Esporta; Copia dello scontrino dalla scheda apre la Cassa.
 - Cassa: foto degli operatori nella barra (ora l'iniziale colorata); ponte cassa per le sedi non «diretto» (`/book/<slug>/api/cassa/`, con le pagine pubbliche).
 - Lista d'attesa: l'iscrizione dalla pagina online (con le pagine pubbliche) e l'avviso a chi aspetta (lavoro del worker).
-- Da fare, nell'ordine: Richiami, Promemoria WhatsApp, Report, Registratore di cassa (impostazioni), Configura l'attività e catalogo, Persone e permessi,
-  Impostazioni e sito, Invio email, testi SMS/WhatsApp, API, Registro, Sale e tavoli, Alloggi, Guida, Account e sicurezza, Iscritti e presenze, stampa e import
-  dell'agenda, import ed export clienti, Marketing; poi configurazione del programma (Licenza, Postazioni, Backup, Rete, Stato), pagine pubbliche, sito
-  WordPress, lavori del worker, installer.
+- Fatti dopo: Richiami, Promemoria WhatsApp, Report, Registratore di cassa (impostazioni; il ponte cassa ha codice e scaricamento, manca il suo
+  indirizzo `/book/<slug>/api/cassa/`), Registro attività.
+- Da fare, nell'ordine: Persone e permessi e Accesso dell'amministratore (con inviti, password, entra senza password: il modulo degli account, che
+  serve anche ad Account e sicurezza), Configura l'attività e catalogo, Configurazione promemoria, Impostazioni e sito, Invio email, testi
+  SMS/WhatsApp, API, Sale e tavoli, Alloggi, Guida, Account e sicurezza, Iscritti e presenze, stampa e import dell'agenda, import ed export
+  clienti, Marketing; poi configurazione del programma (Licenza, Postazioni, Backup, Rete, Stato), pagine pubbliche, sito WordPress, lavori del
+  worker, installer.
+- Diverso da Python, apposta: Salva nel Registratore di cassa tiene lo scarto dei documenti imparato (`doc_offset`); Python lo azzera.
+- Report: a parità di data, Elenco dei trattamenti e I servizi più fatti seguono l'ora di inserimento (in Python l'ordine a parità di data è casuale).
 - Conferma che sei tu: manca la passkey (WebAuthn di Windows).
