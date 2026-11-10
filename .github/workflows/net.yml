@@ -1,0 +1,29 @@
+name: net (programma in C#)
+# The C# rewrite on its own branch: build on Windows, the tests, and the windows on recorded answers as screenshots.
+on:
+  push:
+    branches: [net-rewrite]
+    paths: ["net/**", ".github/workflows/net.yml"]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: true }
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: "8.0.x" }
+      - name: Compila
+        run: dotnet build net/TDBooking.sln -c Release
+      - name: Prove
+        run: dotnet test net/tests/TD.Tests -c Release --no-build
+      - name: Finestre (screenshot)
+        shell: pwsh
+        run: |
+          $exe = "net/src/TD.App/bin/Release/net8.0-windows/TDBookingSuite.exe"
+          $p = Start-Process $exe -ArgumentList "--demo", "$PWD/net/tests/demo", "--shot", "$PWD/shots" -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "le finestre non si sono chiuse" }
+          Get-ChildItem shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: screenshot, path: shots }

@@ -66,6 +66,7 @@ public static class RpcHost
         .ToDictionary(x => x.A.Name, x => (x.M, x.A));
 
     public static IEnumerable<string> Names => methods.Keys;
+    static readonly JsonSerializerOptions Out = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     public static void Map(WebApplication app)
     {
@@ -96,8 +97,11 @@ public static class RpcHost
             {
                 var result = target.M.Invoke(null, new object[] { call });
                 if (result is Task t) { await t; result = t.GetType().GetProperty("Result")?.GetValue(t); }
+                if (result is IResult r) { call.Commit(); return r; }
+                // serialized here, while the unit of work is open: the answers are often lazy queries
+                var node = JsonSerializer.SerializeToNode(result ?? new { ok = true }, Out);
                 call.Commit();
-                return result is IResult r ? r : Results.Json(result ?? new { ok = true });
+                return Results.Content(node.ToJsonString(Out), "application/json; charset=utf-8");
             }
             catch (TargetInvocationException ex) when (ex.InnerException != null) { return Fail(ex.InnerException); }
             catch (Exception ex) { return Fail(ex); }
