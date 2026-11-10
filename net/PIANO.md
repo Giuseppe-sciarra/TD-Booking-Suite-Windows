@@ -132,12 +132,18 @@ compila soltanto (`dotnet build src/TD.App`, `src/TD.Server`) e si provano le ch
   Il conto lasciato a metà resta sul PC in `%LocalAppData%\TDBookingSuite\cassa-<attività>-<sede>.json` (al posto del localStorage), stesso formato del web
 - `standby.html` → `StandbyPage` · `gift_cards.html`, `gift_print.html` → `GiftCardsPage`, `GiftPrintPage` (`giftcard.elenco`, `giftcard.azione`)
 - `quotes.html`, `quote_form.html`, `quote_sheet.html` → `QuotesPage`, `QuoteFormPage`, `QuoteSheetPage` (`preventivi.elenco`, `preventivo.dati/salva/elimina/foglio`)
+- `waitlist.html` → `WaitlistPage` (`attesa`, `attesa.azione`)
 - `confirm.html` («Conferma che sei tu», ogni 15 minuti per le operazioni delicate) → `ConfirmDialog` (`/api/conferma`,
   `[Rpc(Fresh = true)]`, risposta 428)
 
 ### Pezzi lasciati con un segnaposto dentro pagine già fatte (da chiudere, nessuno va tolto)
 
 - Agenda: Stampa, Importa prenotazioni. Dettaglio prenotazione: «Iscritti e presenze».
-- Clienti: Importa, Esporta; «Metti in lista d'attesa» apre la pagina senza il cliente già scelto; Copia dello scontrino apre la Cassa.
+- Clienti: Importa, Esporta; Copia dello scontrino dalla scheda apre la Cassa.
 - Cassa: foto degli operatori nella barra (ora l'iniziale colorata); ponte cassa per le sedi non «diretto» (`/book/<slug>/api/cassa/`, con le pagine pubbliche).
+- Lista d'attesa: l'iscrizione dalla pagina online (con le pagine pubbliche) e l'avviso a chi aspetta (lavoro del worker).
+- Da fare, nell'ordine: Richiami, Promemoria WhatsApp, Report, Registratore di cassa (impostazioni), Configura l'attività e catalogo, Persone e permessi,
+  Impostazioni e sito, Invio email, testi SMS/WhatsApp, API, Registro, Sale e tavoli, Alloggi, Guida, Account e sicurezza, Iscritti e presenze, stampa e import
+  dell'agenda, import ed export clienti, Marketing; poi configurazione del programma (Licenza, Postazioni, Backup, Rete, Stato), pagine pubbliche, sito
+  WordPress, lavori del worker, installer.
 - Conferma che sei tu: manca la passkey (WebAuthn di Windows).
