@@ -25,6 +25,7 @@ public static class PublicHost
     /// <summary>middleware.public_lang: ?lang= (links, the WordPress frame), then the browser's; Italian otherwise.</summary>
     public static string Lang(HttpContext h)
     {
+        if (h.Items["lang"] is string own) return own; // the language the client booked in (Public.OwnLang)
         var lang = h.Request.Query["lang"].ToString(); if (lang is "it" or "en") return lang;
         foreach (var part in h.Request.Headers.AcceptLanguage.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries))
         { var code = part.Split(';')[0].Trim().ToLowerInvariant(); if (code.StartsWith("it")) return "it"; if (code.StartsWith("en")) return "en"; }

@@ -134,7 +134,7 @@ public static partial class Public
         catch (JsonException) { throw new BookingException("Richiesta non valida."); }
     }
     /// <summary>One request in the business's data: saved when it ends well; what goes wrong is said in JSON, as the form expects.</summary>
-    internal static IResult Json(Server s, HttpContext h, Tenant t, Func<Ctx, IResult> work, string fallback = "Controlla i dati.")
+    internal static IResult Answer(Server s, HttpContext h, Tenant t, Func<Ctx, IResult> work, string fallback = "Controlla i dati.")
     {
         try { using var c = PublicHost.Ctx(s, h, t); var result = work(c); c.Commit(); return result; }
         catch (ForceWarning ex) { return Results.Json(new JsonObject { ["error"] = ex.Message, ["force"] = true }, statusCode: 409); }
@@ -175,11 +175,11 @@ public static partial class Public
                 widget["slots"] = widget["slots"] + (widget["slots"].ToString().Contains('?') ? "&" : "?") + "attesa=" + token;
             }
             var en = lang == "en"; var conf = TextMessages.Config(c);
-            var channels = new List<object>(); if (TD.Core.Domain.Json.Truthy(conf["provider"])) channels.Add("sms"); if (TD.Core.Domain.Json.Truthy(conf["wa_token"])) channels.Add("whatsapp");
+            var channels = new List<object>(); if (Json.Truthy(conf["provider"])) channels.Add("sms"); if (Json.Truthy(conf["wa_token"])) channels.Add("whatsapp");
             return PublicHost.Page(s, h, "booking.html", t, new()
             {
                 ["widget"] = widget, ["public"] = true, ["privacy_text"] = en && t.PrivacyTextEn != "" ? t.PrivacyTextEn : t.PrivacyText, ["consent_text"] = en && t.ConsentTextEn != "" ? t.ConsentTextEn : t.ConsentText,
-                ["text_channels"] = channels, ["intro"] = Tr.T(lang, INTRO[FirstStep(widget)]), ["reminder"] = TD.Core.Domain.Json.Truthy(ClientMails.Current(t)["reminder"]?["on"]), ["waitlist"] = true, ["offer"] = offer != null,
+                ["text_channels"] = channels, ["intro"] = Tr.T(lang, INTRO[FirstStep(widget)]), ["reminder"] = Json.Truthy(ClientMails.Current(t)["reminder"]?["on"]), ["waitlist"] = true, ["offer"] = offer != null,
                 ["codes"] = c.S.All<Location>("active", order: "name").Select(ClientMails.CodesLine).Where(x => x != "").Cast<object>().ToList(),
             });
         });
@@ -189,7 +189,7 @@ public static partial class Public
             var (t, no) = PublicHost.Business(s, slug, true); if (t == null) return no;
             try { s.Identity.Throttle("availability:" + t.Id, Address(s, h), 120, 60); } catch (UnauthorizedAccessException ex) { return Error(403, ex.Message); }
             string P(string k) => h.Request.Query.TryGetValue(k, out var v) ? v.ToString() : null;
-            return Json(s, h, t, c =>
+            return Answer(s, h, t, c =>
             {
                 // the page of an offer's link sees the place kept for its client as free
                 var offer = new Waitlist(c).Opened(P("attesa")); Waitlist.Own.Value = offer?.Entry.Id;
@@ -214,7 +214,7 @@ public static partial class Public
             }
             catch (UnauthorizedAccessException ex) { return Error(403, ex.Message); }
             catch (BookingException ex) { return Error(400, ex.Message); }
-            return Json(s, h, t, c =>
+            return Answer(s, h, t, c =>
             {
                 // a private service only from a page opened with its link
                 var asked = new[] { data["service"] }.Concat(data["extra"] as JsonArray ?? new JsonArray()).Select(x => Bookings.AsId(x)).Where(x => x.HasValue).Select(x => x.Value).ToArray();
@@ -245,7 +245,7 @@ public static partial class Public
             }
             catch (UnauthorizedAccessException ex) { return Error(403, ex.Message); }
             catch (BookingException ex) { return Error(400, ex.Message); }
-            return Json(s, h, t, c => { new Waitlist(c).AddOnline(data); return Results.Json(new JsonObject { ["ok"] = true }, statusCode: 201); });
+            return Answer(s, h, t, c => { new Waitlist(c).AddOnline(data); return Results.Json(new JsonObject { ["ok"] = true }, statusCode: 201); });
         });
     }
 }
