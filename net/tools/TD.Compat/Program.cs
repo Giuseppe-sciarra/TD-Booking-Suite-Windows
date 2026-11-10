@@ -6,6 +6,7 @@ using TD.Core;
 using TD.Core.Data;
 using TD.Core.Domain;
 
+if (args.Length > 1 && args[1] == "migrate") { Console.WriteLine(string.Join(",", Migrations.Apply(args[0], "apppw"))); return; }
 var keys = "{\"v1\":\"" + Crypto.B64("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"u8.ToArray()) + "\",\"index\":\"" + Crypto.B64("iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii"u8.ToArray()) + "\"}";
 var crypto = new Crypto(keys, "v1");
 using var db = new Db(args[0]);

@@ -42,7 +42,8 @@ Legenda: ☐ da fare · ◐ in corso · ☑ fatto e provato
 ### Fondamenta
 - ☑ Cifratura compatibile (prove con dati del Python)
 - ☑ Password Django
-- ◐ Accesso ai dati (Db, Scope, entità generate dallo schema)
+- ☑ Accesso ai dati (Db, Scope, entità generate dallo schema con i default di Django: tools/gen_entities.py + django_defaults.py)
+- ☑ Ctx (unità di lavoro di un'attività: transazione con RLS, chiave, calendario, audit, IOutbox per email/notifiche/webhook)
 - ☐ Migrazioni proprie, controllo dello schema all'avvio
 - ☐ Permessi e ruoli (permissions.py)
 
@@ -50,6 +51,7 @@ Legenda: ☐ da fare · ◐ in corso · ☑ fatto e provato
 - ☐ Accesso: username/email + password, Authenticator, codici di recupero, accesso senza password dai PC fidati, Esci
 - ☐ Dashboard, banner (promemoria WhatsApp, grazie del giorno dopo)
 - ☐ Agenda: giorno / settimana / mese / elenco, colonne per operatore, trascina per spostare, blocchi orari, turni
+- ☑ Motore prenotazioni (Calendar, Availability, BookingWrites, Tables, Waitlist.Holds, Stays.Restricted): identico al Python, vedi «Come si prova»
 - ☐ Prenotazioni: nuova (ora prima, servizi dopo, lista unica), dettaglio, sposta, stato, visite con più servizi, presenze
 - ☐ Clienti: elenco, ricerca, scheda (panoramica, prenotazioni, trattamenti, foto, consensi e privacy), unisci, import
 - ☐ Scheda cliente (trattamenti), foto (4 al giorno), storico in PDF
@@ -76,6 +78,19 @@ Legenda: ☐ da fare · ◐ in corso · ☑ fatto e provato
 - ☐ Installer MSI (WiX) che aggiorna il 2.22.x tenendo i dati
 
 ## Come si prova
+
+- **Confronto col Python sullo stesso database** (`tools/compat`): `compat.py seed` crea un'attività con ogni tipo di
+  servizio, orari, eccezioni, blocchi e prenotazioni; `compat.py dump` e `TD.Compat dump` scrivono le disponibilità
+  (12 giorni × servizi × operatori × banco/online × persone, visite) e le prenotazioni come le leggono;
+  `diff.py` le confronta. `TD.Compat create` scrive prenotazioni dal C# e il Python le rilegge.
+  Ultimo esito: 372 casi, 0 differenze, prima e dopo le scritture del C#.
+  ```
+  DB=tdcmp; psql ... -c "DROP DATABASE $DB" -c "CREATE DATABASE $DB"
+  PYTHONPATH=.:suite DJANGO_SETTINGS_MODULE=tdwin.test_settings DATABASE_URL="postgres://postgres@/$DB?host=/tmp&port=5433" python suite/manage.py migrate && ... grant_runtime
+  python net/tools/compat/compat.py seed; python net/tools/compat/compat.py dump > /tmp/py.json
+  dotnet run --project net/tools/TD.Compat -- "Host=/tmp;Port=5433;Database=$DB;Username=tdbooking_app;Password=..." dump > /tmp/cs.json
+  python3 net/tools/compat/diff.py /tmp/py.json /tmp/cs.json
+  ```
 
 - `dotnet test` (Linux o Windows): compatibilità e API su un PostgreSQL vero (`TD_TEST_PG`).
 - GitHub Actions sul ramo `net-rewrite`: compila su Windows, prove, finestre WPF con screenshot.

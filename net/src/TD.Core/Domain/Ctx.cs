@@ -58,6 +58,8 @@ public sealed class Ctx : IDisposable
     public string Encrypt(JsonNode data, string label) => Crypto.Encrypt(Tenant.Id, Tenant.WrappedKey, data, label);
     public JsonObject Decrypt(string data, string label) =>
         string.IsNullOrEmpty(data) ? new JsonObject() : Crypto.Decrypt(Tenant.Id, Tenant.WrappedKey, data, label) as JsonObject ?? new JsonObject();
+    public JsonNode DecryptNode(string data, string label) => string.IsNullOrEmpty(data) ? null : Crypto.Decrypt(Tenant.Id, Tenant.WrappedKey, data, label);
+    public string DecryptText(string data, string label) => DecryptNode(data, label) is JsonValue v && v.TryGetValue<string>(out var s) ? s : "";
     public string Index(string value, string purpose) => Crypto.Index(value, Key, purpose);
 
     // ---------- rows by id, read once per unit of work

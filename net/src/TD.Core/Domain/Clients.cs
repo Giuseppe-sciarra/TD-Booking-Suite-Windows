@@ -185,3 +185,69 @@ public sealed partial class Clients(Ctx c)
         return null;
     }
 }
+
+public sealed partial class Clients
+{
+    public sealed record Due(Booking Booking, Contact Contact, Service Service, DateTime Last, DateTime DueAt);
+
+    /// <summary>The clients to call back (Richiami): the last visit of each service with a recall, due within ahead days,
+    /// nothing booked after now and not marked as called.</summary>
+    public List<Due> Recalls(DateTime now, int ahead = 7)
+    {
+        var days = c.S.Query<(Guid, int)>("SELECT id, recall_days FROM core_service WHERE recall_days>0").ToDictionary(x => x.Item1, x => x.Item2);
+        if (days.Count == 0) return new();
+        var future = c.S.Query<Guid>("SELECT DISTINCT contact_id FROM core_booking WHERE status = ANY(@o) AND start>@n AND contact_id IS NOT NULL", new { o = Bookings.OPEN, n = now }).ToHashSet();
+        var rows = new List<Due>();
+        foreach (var (cid, sid, last) in c.S.Query<(Guid, Guid, DateTime)>(@"SELECT b.contact_id, b.service_id, max(b.""end"") FROM core_booking b JOIN core_contact ct ON ct.id=b.contact_id
+            WHERE b.service_id = ANY(@s) AND b.status = ANY(@a) AND b.""end""<=@n AND ct.email_index NOT LIKE 'erased:%' GROUP BY b.contact_id, b.service_id",
+            new { s = days.Keys.ToArray(), a = Bookings.ACCEPTED, n = now }))
+        {
+            var due = last.AddDays(days[sid]);
+            if (future.Contains(cid) || due > now.AddDays(ahead)) continue;
+            var b = c.S.One<Booking>("SELECT * FROM core_booking WHERE contact_id=@c AND service_id=@s AND \"end\"=@e LIMIT 1", new { c = cid, s = sid, e = last });
+            if (b != null && !b.Snap.ContainsKey("recall_done")) rows.Add(new Due(b, c.Row<Contact>(cid), c.Row<Service>(sid), last, due));
+        }
+        return rows.OrderBy(r => r.DueAt).ToList();
+    }
+}
+
+public sealed partial class Clients
+{
+    public sealed record Found(Contact Contact, JsonObject Data);
+
+    /// <summary>search(): a whole email or phone by their index, a name by the starts of its words, most recent first;
+    /// part of an email or of a phone looked for in every card. extraWhere: the filters of the list.</summary>
+    public List<Found> Search(string q, int limit = 10, string extraWhere = null, object extraArgs = null)
+    {
+        q = (q ?? "").Trim();
+        if (q.Length < 2) return new();
+        var digits = new string(q.Where(char.IsDigit).ToArray());
+        var phone = digits.Length >= 6 && Regex.IsMatch(q, @"^[\d\s+()./-]+$") ? NormalizePhone(q) : "";
+        var p = new Dapper.DynamicParameters(extraArgs);
+        var where = "email_index NOT LIKE 'erased:%'" + (extraWhere != null ? " AND " + extraWhere : "");
+        string cond;
+        if (q.Contains('@')) { cond = "email_index=@i"; p.Add("i", c.Index(Crypto.CaseFold(q), "email")); }
+        else if (phone != "") { cond = "(phone_index=@i OR email_index=@i)"; p.Add("i", c.Index("tel:" + phone, "email")); }
+        else if (!Regex.IsMatch(q, @"[^\W\d_]")) cond = "false";
+        else
+        {
+            var h = SearchKeys(c.Key); var ws = Words(q); var parts = new List<string>();
+            for (int i = 0; i < ws.Count; i++) { parts.Add($"name_index LIKE @n{i}"); p.Add("n" + i, "%" + h("n:" + (ws[i].Length > 20 ? ws[i][..20] : ws[i])) + "%"); }
+            cond = parts.Count > 0 ? string.Join(" AND ", parts) : "false";
+        }
+        p.Add("lim", limit);
+        var outp = c.S.Query<Contact>($"SELECT * FROM core_contact WHERE {where} AND {cond} ORDER BY created DESC LIMIT @lim", p).Select(x => new Found(x, Data(x))).ToList();
+        if (outp.Count > 0 || !(q.Contains('@') || digits.Length >= 3)) return outp;
+        var ql = Crypto.CaseFold(q); var key = c.Key;
+        foreach (var x in c.S.Query<Contact>($"SELECT * FROM core_contact WHERE {where} ORDER BY created DESC", p))
+        {
+            var d = Crypto.Open(x.Pii, key, $"{c.Tenant.Id}:contact:{x.Id}") as JsonObject ?? new JsonObject();
+            if (q.Contains('@') ? Crypto.CaseFold(d.Str("email")).Contains(ql) : d.Str("phone").Replace("+", "").Contains(digits))
+            {
+                outp.Add(new Found(x, d));
+                if (outp.Count >= limit) break;
+            }
+        }
+        return outp;
+    }
+}

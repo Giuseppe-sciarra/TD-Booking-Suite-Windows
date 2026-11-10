@@ -60,6 +60,9 @@ public sealed class Db : IDisposable
 /// <summary>A connection with its transaction; commit with Commit(), anything else rolls back.</summary>
 public sealed class Scope : IDisposable
 {
+    /// <summary>Called after every insert, update and delete of a row: wpsync.changed keeps the site's archive (models._archived).</summary>
+    public static Action<Scope, string, object> Changed;
+
     public NpgsqlConnection Connection { get; }
     public NpgsqlTransaction Transaction { get; }
     public Guid? TenantId { get; }
@@ -111,6 +114,7 @@ public sealed class Scope : IDisposable
         if (props.TryGetValue("id", out var idp) && (idp.PropertyType == typeof(int) || idp.PropertyType == typeof(long)) && Equals(idp.GetValue(row), Convert.ChangeType(0, idp.PropertyType)))
             idp.SetValue(row, Convert.ChangeType(Connection.ExecuteScalar(sql + " RETURNING id", p, Transaction), idp.PropertyType));
         else Connection.Execute(sql, p, Transaction);
+        if (props.TryGetValue("id", out var idq)) Changed?.Invoke(this, table, idq.GetValue(row));
         return row;
     }
 
@@ -130,10 +134,17 @@ public sealed class Scope : IDisposable
             p.Add(col, prop.GetValue(row));
         }
         p.Add("__id", props["id"].GetValue(row));
-        return Connection.Execute($"UPDATE {table} SET {set} WHERE id=@__id", p, Transaction);
+        var n = Connection.Execute($"UPDATE {table} SET {set} WHERE id=@__id", p, Transaction);
+        if (n > 0) Changed?.Invoke(this, table, props["id"].GetValue(row));
+        return n;
     }
 
-    public int Delete<T>(object id) where T : class => Connection.Execute($"DELETE FROM {Table<T>()} WHERE id=@id", new { id }, Transaction);
+    public int Delete<T>(object id) where T : class
+    {
+        var n = Connection.Execute($"DELETE FROM {Table<T>()} WHERE id=@id", new { id }, Transaction);
+        if (n > 0) Changed?.Invoke(this, Table<T>(), id);
+        return n;
+    }
 
     static string Cast(string type) => type switch { "jsonb" => "::jsonb", "inet" => "::inet", "date" => "::date", "time without time zone" => "::time", _ => "" };
     static string Quote(string col) => "\"" + col + "\"";

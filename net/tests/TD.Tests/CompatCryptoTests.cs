@@ -60,3 +60,35 @@ public class CompatCryptoTests
         Assert.False(Passwords.Verify("x", Passwords.Unusable()));
     }
 }
+
+public class LicensingTests
+{
+    static System.Text.Json.Nodes.JsonObject F() => (System.Text.Json.Nodes.JsonObject)System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures", "licence.json")));
+
+    [Fact]
+    public void Reads_licences_signed_by_TD_Licenze()
+    {
+        var f = F(); var keep = TD.Core.Win.Licensing.PublicKey;
+        try
+        {
+            TD.Core.Win.Licensing.PublicKey = f["public"]!.ToString();
+            var l = TD.Core.Win.Licensing.Parse(f["licence"]!.ToString());
+            Assert.Equal("L-TEST-1", l.Id); Assert.Equal(3, l.Postazioni); Assert.Equal("server", l.Tipo); Assert.Equal(new DateOnly(2027, 12, 31), l.Scadenza);
+            Assert.Equal("pc", TD.Core.Win.Licensing.Parse(f["expired"]!.ToString()).Tipo);
+            var ex = Assert.Throws<ArgumentException>(() => TD.Core.Win.Licensing.Parse(f["tampered"]!.ToString()));
+            Assert.Contains("firma", ex.Message);
+        }
+        finally { TD.Core.Win.Licensing.PublicKey = keep; }
+    }
+
+    [Fact]
+    public void The_seller_key_is_built_in() => Assert.Equal(43, TD.Core.Win.Licensing.PublicKey.Length);
+
+    [Fact]
+    public void Authenticator_codes_match_pyotp()
+    {
+        // pyotp.TOTP("JBSWY3DPEHPK3PXP").at(59) and RFC 6238's SHA1 vector truncated to 6 digits
+        Assert.Equal(TD.Core.Identity.Totp("JBSWY3DPEHPK3PXP", 59 / 30), TD.Core.Identity.Totp("JBSWY3DPEHPK3PXP", 1));
+        Assert.Equal("287082", TD.Core.Identity.Totp("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", 1));
+    }
+}
