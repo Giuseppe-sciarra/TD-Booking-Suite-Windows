@@ -23,6 +23,8 @@ jobs:
           $exe = "net/src/TD.App/bin/Release/net8.0-windows/TDBookingSuite.exe"
           $p = Start-Process $exe -ArgumentList "--demo", "$PWD/net/tests/demo", "--shot", "$PWD/shots" -PassThru
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "le finestre non si sono chiuse" }
+          $log = Join-Path $env:TEMP "TDBookingSuite-errore.txt"
+          if (Test-Path $log) { Get-Content $log; New-Item -ItemType Directory -Force shots | Out-Null; Copy-Item $log shots/ }
           Get-ChildItem shots
       - uses: actions/upload-artifact@v4
         if: always()

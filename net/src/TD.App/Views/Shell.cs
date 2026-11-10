@@ -18,9 +18,9 @@ public sealed class Shell
     public async void Start(string[] args)
     {
         Instance = this;
-        Application.Current.DispatcherUnhandledException += (_, e) => { Say("Errore inatteso: " + e.Exception.Message); e.Handled = true; };
         var demo = Array.IndexOf(args, "--demo");
         if (demo >= 0 && args.Length > demo + 1) { Demo.Run(args[demo + 1], args); return; }
+        Application.Current.DispatcherUnhandledException += (_, e) => { Say("Errore inatteso: " + e.Exception.Message); e.Handled = true; };
         var config = ClientConfig.Load();
         if (config == null && !Setup.Choose(out config)) { Application.Current.Shutdown(); return; }
         Api.Current = new Api(config);
