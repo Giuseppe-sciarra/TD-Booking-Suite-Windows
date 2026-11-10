@@ -125,6 +125,7 @@ public static class RpcHost
     static IResult Fail(Exception ex) => ex switch
     {
         ForceWarning w => Results.Json(new { warning = w.Message }, statusCode: 409),
+        FormErrors f => Results.Json(new { error = f.Message, errori = f.Errors, conferma = f.Confirm }, statusCode: 422),
         BookingException b => Results.Json(new { error = b.Message }, statusCode: 400),
         ArgumentException a => Results.Json(new { error = a.Message }, statusCode: 400),
         UnauthorizedAccessException u => Results.Json(new { error = u.Message }, statusCode: 403),

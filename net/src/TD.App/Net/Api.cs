@@ -14,6 +14,12 @@ public sealed class NeedsLogin(string message) : ApiError(message, 401);
 /// <summary>A sensitive operation: the user confirms it is him (quick, password or code), then the call goes again.</summary>
 public sealed class NeedsConfirm(string message, string mode) : ApiError(message, 428) { public string Mode { get; } = mode; }
 public sealed class NeedsPairing(string message) : ApiError(message, 403);
+/// <summary>A form the server did not accept: the error of each field ("" for the whole form); Confirm: the bookings left to check want a tick.</summary>
+public sealed class FormError(string message, System.Text.Json.Nodes.JsonNode errors, bool confirm) : ApiError(message, 422)
+{
+    public Dictionary<string, string> Errors { get; } = (errors as System.Text.Json.Nodes.JsonObject)?.ToDictionary(x => x.Key, x => x.Value?.ToString() ?? "") ?? new();
+    public bool Confirm { get; } = confirm;
+}
 
 /// <summary>The program's server: sign in, the workstation's pairing and every call of the windows (POST /api/rpc/name).</summary>
 public sealed class Api
@@ -74,6 +80,7 @@ public sealed class Api
             401 => new NeedsLogin(msg),
             428 => new NeedsConfirm(msg, node?["conferma"]?.ToString() ?? "password"),
             403 when msg.Contains("postazione", StringComparison.OrdinalIgnoreCase) && msg.Contains("registrata") => new NeedsPairing(msg),
+            422 => new FormError(msg, node?["errori"], (bool?)node?["conferma"] ?? false),
             _ => new ApiError(msg, (int)res.StatusCode),
         };
     }

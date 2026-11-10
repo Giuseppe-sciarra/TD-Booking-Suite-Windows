@@ -77,6 +77,8 @@ public sealed class Ctx : IDisposable
     }
     public T Row<T>(Guid? id) where T : class => id.HasValue ? Row<T>(id.Value) : null;
     public void Forget<T>(Guid id) => rows.Remove((typeof(T), id));
+    /// <summary>After the catalog changed: hours, closures and rows are read again.</summary>
+    public void Refresh() { cal = null; rows.Clear(); }
 
     // ---------- audit, as core.models.audit
     public void Audit(string action, object target = null, object detail = null) =>

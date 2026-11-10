@@ -8,6 +8,13 @@ namespace TD.Core.Domain;
 public class BookingException(string message) : Exception(message);
 /// <summary>Forza at the desk: what the booking goes beyond, said before it is saved (force_ok confirms it).</summary>
 public sealed class ForceWarning(string message) : BookingException(message);
+/// <summary>A form that does not pass: the errors of its fields ("" for the whole form), and whether the bookings left
+/// to check want an explicit confirmation.</summary>
+public sealed class FormErrors(Dictionary<string, string> errors, bool confirm = false) : BookingException(string.Join(" ", errors.Values))
+{
+    public Dictionary<string, string> Errors { get; } = errors;
+    public bool Confirm { get; } = confirm;
+}
 
 /// <summary>A free time as available() gives it: ISO times in the business's zone, as the pages and the plugin read them.</summary>
 public sealed class Slot

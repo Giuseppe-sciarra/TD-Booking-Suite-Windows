@@ -46,6 +46,7 @@ public sealed class SetupPage : Page
         }
         catch (Exception ex) when (ex is NotSupportedException or FileFormatException or IOException or ArgumentException or System.Runtime.InteropServices.COMException) { throw new ApiError("Usa un'immagine PNG, JPEG o WebP valida."); }
     }
+    public static ImageSource PictureOf(byte[] data) => Picture(data);
     static ImageSource Picture(byte[] png) { var bi = new BitmapImage(); bi.BeginInit(); bi.StreamSource = new MemoryStream(png); bi.CacheOption = BitmapCacheOption.OnLoad; bi.EndInit(); return bi; }
     static Brush Hex(string c) { try { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(c)); } catch (FormatException) { return Res("Brand"); } }
 
