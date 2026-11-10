@@ -96,6 +96,18 @@ public static class F
         return new System.Windows.Controls.Primitives.ToggleButton { Content = c, Style = Style("Slot"), Margin = new Thickness(0, 0, 8, 8), Width = 112 };
     }
     /// <summary>.check: a box and its sentence, 18 px above and below.</summary>
+    /// <summary>.switch: the 46×26 pill with its knob, green when on, and its words beside (Parte / Spenta).</summary>
+    public static CheckBox Switch(bool on, string yes, string no)
+    {
+        var text = T(on ? yes : no, size: 14, bold: true);
+        var c = new CheckBox { IsChecked = on, Content = text, Cursor = System.Windows.Input.Cursors.Hand, VerticalAlignment = VerticalAlignment.Center, Template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(
+            "<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='CheckBox'><StackPanel Orientation='Horizontal' Background='Transparent'>" +
+            "<Border x:Name='track' Width='46' Height='26' CornerRadius='13' Background='{DynamicResource Line}'><Ellipse x:Name='knob' Width='20' Height='20' Fill='{DynamicResource Surface}' HorizontalAlignment='Left' Margin='3,0,0,0'/></Border>" +
+            "<ContentPresenter Margin='12,0,0,0' VerticalAlignment='Center'/></StackPanel><ControlTemplate.Triggers><Trigger Property='IsChecked' Value='True'><Setter TargetName='track' Property='Background' Value='{DynamicResource Ok}'/><Setter TargetName='knob' Property='Margin' Value='23,0,0,0'/></Trigger>" +
+            "<Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='.55'/></Trigger></ControlTemplate.Triggers></ControlTemplate>") };
+        c.Checked += (_, _) => text.Text = yes; c.Unchecked += (_, _) => text.Text = no;
+        return c;
+    }
     public static CheckBox Check(UIElement content) => new() { Content = content, Margin = new Thickness(0, 18, 0, 18) };
     /// <summary>button.small: 5 11, 13 px.</summary>
     public static T Small<T>(T b) where T : Control { b.Padding = new Thickness(11, 5, 11, 5); b.FontSize = 13; b.MinHeight = 0; b.VerticalAlignment = VerticalAlignment.Center; return b; }

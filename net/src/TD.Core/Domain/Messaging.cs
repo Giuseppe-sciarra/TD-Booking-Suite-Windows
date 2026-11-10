@@ -172,6 +172,90 @@ public static class ClientMails
     }
     """);
 
+    public static readonly (string Name, string[] Keys)[] GROUPS = { ("Promemoria e conferme", new[] { "confirmed", "reminder", "reminder2", "requested", "accepted", "rejected", "moved", "cancelled" }), ("Prima dell'arrivo", new[] { "arrival" }), ("Dopo la visita", new[] { "review", "recall" }), ("Lista d'attesa", new[] { "waitlist" }) };
+    public static readonly (string Key, string Label)[] FIELDS = { ("nome", "nome del cliente"), ("servizio", "servizio"), ("quando", "giorno e ora"), ("data", "data"), ("ora", "ora"), ("sede", "sede"), ("operatore", "operatore o camera"), ("attivita", "nome dell'attività"), ("link", "link per gestire o annullare"), ("istruzioni", "istruzioni del servizio") };
+    public const string SMS_TEXT = "{attivita}: ti ricordiamo {servizio}, {quando}. Per gestire o annullare: {link}";
+    static string Lines(string v) => (v ?? "").Replace("\r\n", "\n").Trim();
+    static string Words(string v) => string.Join(" ", (v ?? "").Split((char[])null, StringSplitOptions.RemoveEmptyEntries));
+    static bool Odd(string v) => v.Any(ch => ch < 32 && ch != '\n');
+
+    /// <summary>sample(): the values of the preview: a booking tomorrow at 10:30 with the first service, operator and location.</summary>
+    public static Dictionary<string, string> Sample(Ctx c)
+    {
+        var start = c.Today.AddDays(1).ToDateTime(new TimeOnly(10, 30));
+        var service = c.S.One<Service>("SELECT * FROM core_service WHERE active ORDER BY name LIMIT 1");
+        return new()
+        {
+            ["nome"] = "Giulia", ["servizio"] = service?.Name ?? "Taglio", ["quando"] = Texts.When(start, start.AddDays(2), service?.Kind == "day"), ["data"] = $"{start:dd/MM/yyyy}", ["ora"] = $"{start:HH:mm}",
+            ["sede"] = c.S.Scalar<string>("SELECT name FROM core_location WHERE active ORDER BY name LIMIT 1") ?? "Sede", ["operatore"] = c.S.Scalar<string>("SELECT name FROM core_resource WHERE active ORDER BY name LIMIT 1") ?? "",
+            ["attivita"] = c.Tenant.Name, ["link"] = $"{c.PublicOrigin}/action/{c.Tenant.Slug}/…/",
+            ["istruzioni"] = !string.IsNullOrEmpty(service?.Instructions) ? service.Instructions : "Le chiavi sono nella cassetta accanto al portone, codice 1234.",
+        };
+    }
+
+    /// <summary>clean(): the emails as the business set them: an empty subject or text goes back to the standard one;
+    /// on/off and timing of the reminders and the autocancel only from who may (admin), otherwise kept as saved.</summary>
+    public static JsonObject Clean(JsonObject post, bool enabled, JsonObject saved, bool admin)
+    {
+        var outp = new JsonObject(); var defaults = Defaults(); string P(string k) => post[k] is JsonValue v ? v.ToString() : ""; bool On(string k) => Json.Truthy(post[k]);
+        foreach (var (key, label, _) in KINDS)
+        {
+            var d = (JsonObject)defaults[key]; var mine = (saved?[key] as JsonObject)?.DeepClone() as JsonObject ?? new JsonObject();
+            if (enabled)
+            {
+                var subject = Words(P(key + "_subject")) is var su && su != "" ? su : d.Str("subject"); var body = Lines(P(key + "_body")) is var bo && bo != "" ? bo : d.Str("body");
+                if (subject.Length > 150) throw new BookingException($"{label}: l'oggetto è troppo lungo, al massimo 150 caratteri.");
+                if (body.Length > 4000) throw new BookingException($"{label}: il testo è troppo lungo, al massimo 4000 caratteri.");
+                if (Odd(subject + body)) throw new BookingException($"{label}: il testo contiene caratteri non validi.");
+                mine["subject"] = subject; mine["body"] = body;
+                // the English version, optional: empty = the standard text translated
+                var subjectEn = Words(P(key + "_subject_en")); var bodyEn = Lines(P(key + "_body_en"));
+                if (subjectEn.Length > 150 || bodyEn.Length > 4000 || Odd(subjectEn + bodyEn)) throw new BookingException($"{label}: il testo in inglese è troppo lungo o contiene caratteri non validi.");
+                mine["subject_en"] = subjectEn; mine["body_en"] = bodyEn;
+            }
+            if ((enabled || !STANDARD.Contains(key)) && (admin || !ADMIN.Contains(key))) mine["on"] = On(key + "_on");
+            if (TIMING.TryGetValue(key, out var timing) && admin)
+            {
+                if (d.ContainsKey("at") && P(key + "_hours") == "at")
+                {
+                    mine["at"] = P(key + "_at").Trim();
+                    if (!Regex.IsMatch(mine.Str("at"), @"^([01]\d|2[0-3]):[0-5]\d\z")) throw new BookingException($"{label}: scrivi l'ora del giorno prima, per esempio 18:00.");
+                }
+                else
+                {
+                    var hours = post[key + "_hours"] != null ? int.TryParse(P(key + "_hours"), out var h) ? h : 0 : mine["hours"] != null ? Till.Int(mine["hours"]) : Till.Int(d["hours"]);
+                    if (!timing.Contains(hours)) throw new BookingException($"{label}: scegli quando parte.");
+                    mine["hours"] = hours; if (d.ContainsKey("at")) mine["at"] = "";
+                }
+            }
+            outp[key] = mine;
+        }
+        // texts.clean_texts: the SMS and WhatsApp words, in the same page
+        var texts = new JsonObject();
+        foreach (var (k, most) in new[] { ("sms", 640), ("wa", 1024) })
+        {
+            var text = Lines(P("text_" + k));
+            if (text.Length > most || Odd(text)) throw new BookingException($"{(k == "sms" ? "SMS" : "WhatsApp")}: al massimo {most} caratteri, senza caratteri speciali.");
+            var bad = Regex.Matches(text, @"\{(\w+)\}").Select(m => m.Groups[1].Value).Where(f => !FIELDS.Any(x => x.Key == f)).OrderBy(f => f, StringComparer.Ordinal).FirstOrDefault();
+            if (bad != null) throw new BookingException("Campo sconosciuto nel testo: {" + bad + "}.");
+            if (text != "" && text != SMS_TEXT) texts[k] = text;
+        }
+        outp["texts"] = texts; outp["confirmed"]["price"] = On("confirmed_price");
+        if (admin)
+        {
+            var cancel = int.TryParse(P("reminder_autocancel") is var ra && ra != "" ? ra : "0", out var cv) ? cv : -1;
+            if (!AUTOCANCEL.Contains(cancel)) throw new BookingException("Scegli quando annullare le prenotazioni non confermate.");
+            // with «the day before at» the hours vary: only who was asked before the last hours began is cancelled
+            if (cancel > 0 && outp["reminder"].Str("at") == "" && cancel >= Till.Int(outp["reminder"]["hours"])) throw new BookingException("L'annullamento automatico deve venire dopo il promemoria: scegli meno ore.");
+            outp["reminder"]["autocancel"] = cancel;
+        }
+        var url = P("review_url").Trim();
+        if (url != "") { if (!(url.StartsWith("https://") && Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Host.Contains('.'))) throw new BookingException("Dopo la visita: il link della recensione deve iniziare con https://"); }
+        else if (outp["review"]["on"] != null ? Json.Truthy(outp["review"]["on"]) : false) throw new BookingException("Dopo la visita: scrivi il link per la recensione, per esempio quello di Google.");
+        outp["review"]["url"] = url;
+        return outp;
+    }
+
     /// <summary>The Windows program: the shop itself sets everything up (SHOP_MAILS).</summary>
     public static bool ShopMails = true;
     public static bool Free(Tenant t) => t.ClientMailsEnabled || ShopMails;

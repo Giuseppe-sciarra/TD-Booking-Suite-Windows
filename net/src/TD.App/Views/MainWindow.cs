@@ -187,7 +187,7 @@ public sealed class MainWindow : Window
             Add("richiami", "bell", "Richiami", () => new RecallsPage(), Can("contacts.read"));
             Add("whatsapp", "chat", "Promemoria WhatsApp", () => new WhatsAppPage(), Can("booking.read") && Can("pii.read"));
             Add("marketing", "megaphone", "Marketing", () => new Placeholder("Marketing"), Can("campaign.manage") && (t.Bo("marketing") || t.Bo("esporta")));
-            Add("promemoria", "bell", "Configurazione promemoria", () => new Placeholder("Configurazione promemoria"), Can("users.manage"));
+            Add("promemoria", "bell", "Configurazione promemoria", () => new NotificationsPage(), Can("users.manage"));
             Add("api", "plug", "API e webhook", () => new ApiPage(), Can("users.manage") && t.Bo("api") && !staff);
             Section("La tua attività");
             Add("attesa", "hourglass", "Lista d'attesa", () => new WaitlistPage(), Can("booking.read"));
@@ -203,7 +203,7 @@ public sealed class MainWindow : Window
                 Add("persone", "badge", "Persone e permessi", () => new PeoplePage());
                 Add("impostazioni", "globe", "Impostazioni e sito", () => new Placeholder("Impostazioni e sito"));
                 Add("smtp", "mail", "Invio email", () => new Placeholder("Invio email"));
-                Add("promemoria", "bell", "Configurazione promemoria", () => new Placeholder("Configurazione promemoria"), !Can("users.manage"));
+                Add("promemoria", "bell", "Configurazione promemoria", () => new NotificationsPage(), !Can("users.manage"));
                 Add("testi", "bell", "SMS, WhatsApp e calendari", () => new Placeholder("SMS, WhatsApp e calendari"));
                 Add("api", "plug", "API e webhook", () => new ApiPage());
                 Add("registratore", "sliders", "Registratore di cassa", () => new RegisterPage());
