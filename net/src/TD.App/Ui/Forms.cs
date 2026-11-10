@@ -55,7 +55,7 @@ public static class F
         return t;
     }
     public static StackPanel Field(string label, FrameworkElement input, string muted = null, string small = null) =>
-        Col(Label(label, muted), input, small == null ? null : T(small, size: 13, color: Res("Muted")).M(0, 4, 0, 0));
+        Col(Label(label, muted), input, small == null ? null : new TextBlock { Text = small, FontSize = 13, Foreground = Res("Muted"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) });
     /// <summary>.form-grid: two equal columns, 18 px between.</summary>
     public static Grid Grid2(params FrameworkElement[] items)
     {

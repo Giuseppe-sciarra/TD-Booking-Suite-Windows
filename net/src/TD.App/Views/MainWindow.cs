@@ -188,11 +188,11 @@ public sealed class MainWindow : Window
             Add("registratore", "sliders", "Registratore di cassa", () => new RegisterPage(), Can("catalog.write") && t.Bo("cassaTitolare") && t.S("ruolo") == "owner" && !staff);
             Section("Controlli");
             Add("registro", "list", "Registro attività", () => new AuditPage(), Can("audit.read"));
-            Add("accesso", "key", "Accesso dell'amministratore", () => new Placeholder("Accesso dell'amministratore"), Can("users.manage"));
+            Add("accesso", "key", "Accesso dell'amministratore", () => new SupportPage(), Can("users.manage"));
             if (staff)
             {
                 Section("Gestione tecnica");
-                Add("persone", "badge", "Persone e permessi", () => new Placeholder("Persone e permessi"));
+                Add("persone", "badge", "Persone e permessi", () => new PeoplePage());
                 Add("impostazioni", "globe", "Impostazioni e sito", () => new Placeholder("Impostazioni e sito"));
                 Add("smtp", "mail", "Invio email", () => new Placeholder("Invio email"));
                 Add("promemoria", "bell", "Configurazione promemoria", () => new Placeholder("Configurazione promemoria"), !Can("users.manage"));

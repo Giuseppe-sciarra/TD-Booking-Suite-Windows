@@ -37,6 +37,8 @@ public static class Permissions
     /// <summary>The Windows edition calls the owner Titolare (ROLE_LABELS).</summary>
     public static string RoleLabel(string role) => role == "owner" ? "Titolare" : Roles.TryGetValue(role, out var r) ? r.Label : role;
 
+    /// <summary>What the administrator of the program may do in a business with an access of assistance granted by its owner.</summary>
+    public static readonly string[] SUPPORT = { "booking.read", "booking.write", "booking.cancel", "pii.read", "notes.read", "contacts.read", "catalog.write", "audit.read" };
     public static HashSet<string> Effective(Membership m, Tenant t, bool staff)
     {
         var perms = new HashSet<string>();

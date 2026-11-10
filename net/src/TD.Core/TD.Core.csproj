@@ -10,5 +10,5 @@
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
     <PackageReference Include="System.IO.Ports" Version="8.0.0" />
   </ItemGroup>
-  <ItemGroup><EmbeddedResource Include="Sql/baseline.sql" LogicalName="TD.Core.Sql.baseline.sql" /><EmbeddedResource Include="../../../suite/scripts/ponte_cassa.py" LogicalName="TD.Core.ponte_cassa.py" /><EmbeddedResource Include="../../../suite/locale/en/LC_MESSAGES/django.po" LogicalName="TD.Core.en.po" /><EmbeddedResource Include="Win/licenza-chiave-pubblica.txt" LogicalName="TD.Core.Win.licenza-chiave-pubblica.txt" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Sql/baseline.sql" LogicalName="TD.Core.Sql.baseline.sql" /><EmbeddedResource Include="common-passwords-12.txt" LogicalName="TD.Core.common-passwords-12.txt" /><EmbeddedResource Include="../../../suite/scripts/ponte_cassa.py" LogicalName="TD.Core.ponte_cassa.py" /><EmbeddedResource Include="../../../suite/locale/en/LC_MESSAGES/django.po" LogicalName="TD.Core.en.po" /><EmbeddedResource Include="Win/licenza-chiave-pubblica.txt" LogicalName="TD.Core.Win.licenza-chiave-pubblica.txt" /></ItemGroup>
 </Project>

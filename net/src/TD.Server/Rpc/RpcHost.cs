@@ -82,7 +82,7 @@ public static class RpcHost
             if (target.A.Staff && !u.IsStaff) return Results.Json(new { error = "Solo l'amministratore del programma." }, statusCode: 403);
             // identity.fresh: the sensitive operations want the user confirmed in the last 15 minutes
             if (target.A.Fresh && !Identity.IsFresh(ns)) return Results.Json(new { error = "Per questa operazione conferma che sei tu.", conferma = Auth.ConfirmMode(s, h, u) }, statusCode: 428);
-            Tenant tenant = null; Membership member = null; var perms = new HashSet<string>();
+            Tenant tenant = null; Membership member = null; var perms = new HashSet<string>(); Supportgrant support = null;
             if (target.A.Tenant)
             {
                 var slug = h.Request.Headers["X-TD-Attivita"].ToString();
@@ -92,11 +92,23 @@ public static class RpcHost
                 member = g.One<Membership>("SELECT * FROM core_membership WHERE tenant_id=@t AND user_id=@u", new { t = tenant.Id, u = u.Id });
                 if (member == null && !u.IsStaff) return Results.Json(new { error = "Non fai parte di questa attività." }, statusCode: 403);
                 perms = Permissions.Effective(member, tenant, u.IsStaff);
+                // the administrator of the program: the technical pages only; the contents with the access of assistance the
+                // owner granted (Accesso dell'amministratore), confirmed in the last 15 minutes, every call recorded
+                if (member == null)
+                {
+                    var content = target.A.Perm is string need && need != "catalog.write";
+                    Supportgrant grant; using (var ts = s.Db.Tenant(tenant.Id)) grant = ts.One<Supportgrant>("SELECT * FROM core_supportgrant WHERE user_id=@u AND NOT revoked AND expires>@n ORDER BY expires DESC LIMIT 1", new { u = u.Id, n = DateTime.UtcNow });
+                    if (content && grant == null) return Results.Json(new { error = "Prenotazioni e clienti di questa attività sono riservati: serve un accesso di assistenza concesso dall'amministratore dell'attività, dalla sua pagina Accesso dell'amministratore." }, statusCode: 403);
+                    if (content && !Identity.IsFresh(ns)) return Results.Json(new { error = "Per questa operazione conferma che sei tu.", conferma = Auth.ConfirmMode(s, h, u) }, statusCode: 428);
+                    if (grant != null) perms = Permissions.SUPPORT.ToHashSet();
+                    if (content) support = grant;
+                }
                 if (target.A.Perm != null && !perms.Contains(target.A.Perm)) return Results.Json(new { error = "Non hai i permessi per questa operazione." }, statusCode: 403);
             }
             using var call = new Call { S = s, Http = h, User = u, Session = ns, Tenant = tenant, Member = member, Perms = perms, Args = args };
             try
             {
+                if (support != null) call.C.Audit("support.access", support.Id, new { method = "RPC", path = name });
                 var result = target.M.Invoke(null, new object[] { call });
                 if (result is Task t) { await t; result = t.GetType().GetProperty("Result")?.GetValue(t); }
                 if (result is IResult r) { call.Commit(); return r; }
