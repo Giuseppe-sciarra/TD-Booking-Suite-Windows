@@ -140,10 +140,12 @@ public sealed class Calendar
     }
 
     /// <summary>The open windows of a day: every level that says something, intersected.</summary>
-    public List<Span> Windows(DateOnly day, Service service = null, Resource resource = null, string purpose = "service")
+    public List<Span> Windows(DateOnly day, Service service = null, Resource resource = null, string purpose = "service") => Windows(day, Levels(service, resource), purpose);
+    /// <summary>The same for the levels given: the reports read an operator in his location, without a service.</summary>
+    public List<Span> Windows(DateOnly day, List<Level> levels, string purpose = "service")
     {
         List<Span> current = null; var i = 0;
-        foreach (var sel in Levels(service, resource))
+        foreach (var sel in levels)
         {
             var key = (day, purpose, sel.Location, sel.Service, sel.Resource);
             if (!memo.TryGetValue(key, out var spans)) memo[key] = spans = LevelOf(day, purpose, sel, i);

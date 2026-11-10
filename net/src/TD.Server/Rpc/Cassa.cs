@@ -294,7 +294,7 @@ public static class Cassa
         return new { gruppi = where.Select(l => new { sede = l.Id, nome = l.Name, righe = StandbyRows(c, t, l, namesOk) }).ToList(), piuSedi = where.Count > 1, oggi = c.C.Today };
     }
 
-    static readonly Dictionary<string, string> GIFT_STATUS = new() { ["pending"] = "Da emettere", ["active"] = "Attiva", ["void"] = "Annullata" };
+    internal static readonly Dictionary<string, string> GIFT_STATUS = new() { ["pending"] = "Da emettere", ["active"] = "Attiva", ["void"] = "Annullata" };
 
     /// <summary>gift.page: every card with its credit and moves.</summary>
     [Rpc("giftcard.elenco", Perm = "sale.write")]

@@ -172,6 +172,29 @@ public static class F
         r.HorizontalAlignment = HorizontalAlignment.Center; r.Margin = new Thickness(0, 20, 0, 0); return r;
     }
     /// <summary>.empty-state: a strong line and a small one, in the middle.</summary>
+    /// <summary>The widths of a table laid out as the browser does: each column as wide as its longest text asks.</summary>
+    public static double[] Widths(string[] head, List<string[]> rows) =>
+        head.Select((h, i) => (double)Math.Clamp(Math.Max(h.Length, rows.Count == 0 ? 0 : rows.Max(r => i < r.Length ? (r[i] ?? "").Length : 0)), 4, 60)).ToArray();
+    /// <summary>table: th muted 13 with a line of 2 below, td 14 with a line of 1, the last row without.</summary>
+    public static Grid Table(string[] head, List<string[]> rows, double pad = 12)
+    {
+        var g = new Grid();
+        foreach (var w in Widths(head, rows)) g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(w, GridUnitType.Star) });
+        void Put(string text, int row, int col, bool th, bool last)
+        {
+            var t = T(text, size: th ? 13 : 14, bold: th, color: th ? Res("Muted") : null); t.TextWrapping = th ? TextWrapping.NoWrap : TextWrapping.Wrap; t.VerticalAlignment = VerticalAlignment.Center;
+            var cell = new Border { Child = t, Padding = new Thickness(12, th ? 10 : pad, 12, th ? 10 : pad), BorderBrush = Res("Line"), BorderThickness = new Thickness(0, 0, 0, th ? 2 : last ? 0 : 1) };
+            Grid.SetRow(cell, row); Grid.SetColumn(cell, col); g.Children.Add(cell);
+        }
+        g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        for (int i = 0; i < head.Length; i++) Put(head[i], 0, i, true, false);
+        for (int r = 0; r < rows.Count; r++)
+        {
+            g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            for (int i = 0; i < head.Length; i++) Put(i < rows[r].Length ? rows[r][i] : "", r + 1, i, false, r == rows.Count - 1);
+        }
+        return g;
+    }
     public static StackPanel EmptyState(string strong, FrameworkElement small)
     {
         var c = Col(T(strong, size: 14, bold: true), small); foreach (FrameworkElement e in c.Children) e.HorizontalAlignment = HorizontalAlignment.Center;
