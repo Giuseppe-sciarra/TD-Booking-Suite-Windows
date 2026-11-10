@@ -50,10 +50,75 @@ public static class PublicPages
             var more = Flags(s, site); more["policy"] = new Tpl.Safe(RenderText(custom != "" ? custom : StandardPolicy(site))); more["custom"] = custom != ""; more["updated"] = site.PrivacyUpdated;
             return PublicHost.Page(s, h, "privacy.html", null, more);
         });
+        // the web sign-in of the Python program is the program's window here: its links land on these words
+        foreach (var path in new[] { "/", "/login/" })
+            app.MapGet(path, (Server s, HttpContext h) => PublicHost.Page(s, h, "message.html", null, new() { ["title"] = "Si entra dal programma", ["text"] = "Apri TD Booking Suite sul tuo PC ed entra con le tue credenziali." }));
+
+        // identity.invite_view: the personal link of a new user, to choose the password
+        app.MapMethods("/invite/{token}/", new[] { "GET", "POST" }, async (Server s, HttpContext h, string token) =>
+        {
+            using var g = s.Db.Global(); var error = "";
+            var obj = g.One<Invitation>("SELECT * FROM core_invitation WHERE token=@t AND NOT used AND expires>@n FOR UPDATE", new { t = TD.Core.Crypto.TokenHash(token), n = DateTime.UtcNow });
+            if (obj == null) return PublicHost.Page(s, h, "message.html", null, new() { ["title"] = "Invito non valido", ["text"] = "Il collegamento è scaduto o è già stato utilizzato." }, 400);
+            if (h.Request.Method == "POST")
+            {
+                var form = await h.Request.ReadFormAsync(); if (!PublicHost.CsrfOk(h, form)) return PublicHost.Plain(403, "Verifica di sicurezza non riuscita. Ricarica la pagina e riprova.");
+                try
+                {
+                    s.Identity.Throttle("invite", s.Rete.Client(h), 10); var pw = form["password"].ToString(); TD.Core.Domain.Accounts.ValidatePassword(pw);
+                    var u = g.One<User>("SELECT * FROM core_user WHERE id=@id FOR UPDATE", new { id = obj.UserId });
+                    if (u is not { IsActive: true }) throw new TD.Core.Domain.BookingException("Account disabilitato.");
+                    u.Password = TD.Core.Passwords.Make(pw); u.AuthVersion++; g.Update(u, "password", "auth_version");
+                    g.Execute("UPDATE core_invitation SET used=true WHERE token=@t", new { t = obj.Token }); g.Commit();
+                    return PublicHost.Page(s, h, "message.html", null, new() { ["title"] = "Accesso attivato", ["text"] = "Apri TD Booking Suite ed entra con le tue credenziali e la nuova password." });
+                }
+                catch (Exception ex) when (ex is TD.Core.Domain.BookingException or UnauthorizedAccessException or ArgumentException) { error = ex.Message; }
+            }
+            return PublicHost.Page(s, h, "invite.html", null, new() { ["error"] = error });
+        });
+
+        // trial.request_view: a business asks to try the portal (Portale edition, when the agency switched it on)
+        app.MapMethods("/prova/", new[] { "GET", "POST" }, async (Server s, HttpContext h) =>
+        {
+            var site = PublicHost.SiteRow(s); h.Items["site"] = site; if (s.Edition != "cloud" || !site.TrialEnabled) return Results.StatusCode(404);
+            var error = ""; var sent = false; IFormCollection form = null;
+            if (h.Request.Method == "POST")
+            {
+                form = await h.Request.ReadFormAsync(); if (!PublicHost.CsrfOk(h, form)) return PublicHost.Plain(403, "Verifica di sicurezza non riuscita. Ricarica la pagina e riprova.");
+                if (form["website"].ToString() != "") sent = true; // filled only by bots: answer as if it went through
+                else
+                {
+                    try { s.Identity.Throttle("trial-ip", s.Rete.Client(h), 5, 3600); } catch (UnauthorizedAccessException ex) { return PublicHost.Plain(403, ex.Message); }
+                    try
+                    {
+                        var data = new System.Text.Json.Nodes.JsonObject();
+                        foreach (var (key, label, limit, required) in new[] { ("first_name", "Nome", 60, true), ("last_name", "Cognome", 60, true), ("email", "Email", 160, true), ("phone", "Telefono", 40, false), ("business", "Nome dell'attività", 120, false), ("message", "Messaggio", 600, false) })
+                        {
+                            var value = form[key].ToString().Trim();
+                            if (required && value == "") throw new TD.Core.Domain.BookingException($"Indica {label.ToLowerInvariant()}.");
+                            if (value.Length > limit) throw new TD.Core.Domain.BookingException($"{label}: massimo {limit} caratteri.");
+                            data[key] = value;
+                        }
+                        TD.Core.Domain.Accounts.ValidateEmail(data["email"].ToString());
+                        var preset = form["preset"].ToString(); if (preset != "" && !TD.Core.Domain.Presets.All.ContainsKey(preset)) throw new TD.Core.Domain.BookingException("Tipo di attività non valido.");
+                        if (form["privacy"] != "on") throw new TD.Core.Domain.BookingException("Serve il consenso per essere ricontattato.");
+                        using var g = s.Db.Global();
+                        if (g.Scalar<long>("SELECT count(*) FROM core_trialrequest WHERE status='new'") >= 500) throw new TD.Core.Domain.BookingException("Al momento non riusciamo a ricevere altre richieste. Riprova tra qualche giorno.");
+                        var r = new Trialrequest { Preset = preset }; data["privacy_at"] = TD.Core.Domain.Times.PyIso(DateTime.UtcNow); r.Pii = s.Crypto.Protect(data, "trial:" + r.Id); g.Insert(r); g.Commit();
+                        sent = true;
+                    }
+                    catch (Exception ex) when (ex is TD.Core.Domain.BookingException or ArgumentException) { error = ex.Message; }
+                }
+            }
+            var values = new Dictionary<string, object>(); if (error != "") foreach (var k in form.Keys) values[k] = form[k].ToString();
+            var types = new List<object> { new object[] { "", "Altro, appuntamenti generici" } }; types.AddRange(TD.Core.Domain.Presets.All.Select(kv => (object)new object[] { kv.Key, kv.Value.Label }));
+            return PublicHost.Page(s, h, "login.html", null, new() { ["pricing_on"] = site.PricingEnabled, ["trial_open"] = true, ["trial_sent"] = sent, ["trial_error"] = error, ["business_types"] = types, ["form_values"] = values });
+        });
+
         app.MapGet("/prezzi/", (Server s, HttpContext h) =>
         {
             var site = PublicHost.SiteRow(s); h.Items["site"] = site; if (s.Edition != "cloud" || !site.PricingEnabled) return Results.StatusCode(404);
-            List<Pricingplan> rows; using (var g = s.Db.Global()) rows = g.Query<Pricingplan>("SELECT * FROM core_pricingplan WHERE active ORDER BY \"order\", id").ToList();
+            List<Pricingplan> rows; using (var g = s.Db.Global()) rows = g.Query<Pricingplan>("SELECT * FROM core_pricingplan WHERE active ORDER BY edition, \"order\", name").ToList();
             var plans = rows.Select(p => (object)new Dictionary<string, object>
             {
                 ["pk"] = p.Id, ["highlighted"] = p.Highlighted, ["badge"] = p.Badge, ["edition"] = p.Edition, ["get_edition_display"] = p.Edition == "cloud" ? "Cloud, in abbonamento" : "Private, sul server del cliente", ["name"] = p.Name,
