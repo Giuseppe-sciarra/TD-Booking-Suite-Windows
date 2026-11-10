@@ -225,7 +225,7 @@ public sealed class MainWindow : Window
         // Guida, outside the groups
         group = new StackPanel { Margin = new Thickness(6, 0, 6, 0) }; nav.Children.Add(group);
         Add("guida", "help", "Guida", () => new Placeholder("Guida"));
-        pages["account"] = (() => new Placeholder("Account e sicurezza"), "");
+        pages["account"] = (() => new AccountPage(), "");
         pages["prenotazioni"] = (() => new BookingsPage(), "agenda");
         bar.Children.Add(new ScrollViewer { Content = nav, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden });
 
