@@ -20,6 +20,7 @@ public static class Migrations
             created timestamptz NOT NULL, seen timestamptz NOT NULL, remember boolean NOT NULL, mfa boolean NOT NULL,
             auth_version integer NOT NULL, device varchar(200) NOT NULL, address varchar(64) NOT NULL);
           CREATE INDEX IF NOT EXISTS td_net_session_user ON td_net_session(user_id);"),
+        ("002_verified", "ALTER TABLE td_net_session ADD COLUMN IF NOT EXISTS verified timestamptz NOT NULL DEFAULT now();"),
     };
 
     public static string Baseline()

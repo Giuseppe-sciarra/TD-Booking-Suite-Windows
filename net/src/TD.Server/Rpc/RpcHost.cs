@@ -80,6 +80,8 @@ public static class RpcHost
             using (var g = s.Db.Global()) { (ns, u) = s.Identity.Resume(g, Auth.Bearer(h), Auth.Idle); g.Commit(); }
             if (u == null) return Results.Json(new { error = "Sessione scaduta: entra di nuovo.", login = true }, statusCode: 401);
             if (target.A.Staff && !u.IsStaff) return Results.Json(new { error = "Solo l'amministratore del programma." }, statusCode: 403);
+            // identity.fresh: the sensitive operations want the user confirmed in the last 15 minutes
+            if (target.A.Fresh && !Identity.IsFresh(ns)) return Results.Json(new { error = "Per questa operazione conferma che sei tu.", conferma = Auth.ConfirmMode(s, h, u) }, statusCode: 428);
             Tenant tenant = null; Membership member = null; var perms = new HashSet<string>();
             if (target.A.Tenant)
             {

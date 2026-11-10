@@ -38,7 +38,7 @@ public sealed class BookingDetailPage(string id) : Page
         var d = b["dati"]; var a = Local(b.S("inizio")); var e = Local(b.S("fine")); var status = b.S("stato"); var kind = b.S("tipo");
         var write = Can("booking.write"); var cancel = Can("booking.cancel");
         // ----- heading
-        var acts = new List<FrameworkElement> { MainWindow.Pill(STATUS.GetValueOrDefault(status, status), status switch { "confirmed" => "ok", "pending" => "warn", "cancelled" => "danger", _ => "" }) };
+        var acts = new List<FrameworkElement> { F.Status(status) };
         if (b.Bo("clienteOk")) acts.Add(MainWindow.Pill("✓ Confermata dal cliente", "ok"));
         var m = b["marchi"];
         if (m != null)
@@ -195,7 +195,7 @@ public sealed class BookingDetailPage(string id) : Page
             var actions = Col(T("Azioni", "H2"));
             if (b.Bo("annulla") && cancel)
             {
-                var txt = new TextBlock { FontSize = 13.5, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap }; txt.Inlines.Add("Ora è "); txt.Inlines.Add(new Run(STATUS.GetValueOrDefault(status, status).ToLowerInvariant()) { FontWeight = FontWeights.Bold }); txt.Inlines.Add(". Sbagliato?");
+                var txt = new TextBlock { FontSize = 13.5, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap }; txt.Inlines.Add("Ora è "); txt.Inlines.Add(new Run(StatusName(status).ToLowerInvariant()) { FontWeight = FontWeights.Bold }); txt.Inlines.Add(". Sbagliato?");
                 var undo = BA("Torna indietro", () => Do("prenotazione.stato", new { id, annulla = true })); undo.Padding = new Thickness(11, 5, 11, 5); undo.FontSize = 13;
                 var bar = new DockPanel(); DockPanel.SetDock(undo, Dock.Right); bar.Children.Add(undo); bar.Children.Add(txt);
                 actions.Children.Add(F.Notice(bar));

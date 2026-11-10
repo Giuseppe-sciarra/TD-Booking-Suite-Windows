@@ -11,6 +11,8 @@ public class ApiError(string message, int status = 400) : Exception(message) { p
 /// <summary>Forza: what the booking goes beyond, to confirm (the call again with force_ok).</summary>
 public sealed class ApiWarning(string message) : ApiError(message, 409);
 public sealed class NeedsLogin(string message) : ApiError(message, 401);
+/// <summary>A sensitive operation: the user confirms it is him (quick, password or code), then the call goes again.</summary>
+public sealed class NeedsConfirm(string message, string mode) : ApiError(message, 428) { public string Mode { get; } = mode; }
 public sealed class NeedsPairing(string message) : ApiError(message, 403);
 
 /// <summary>The program's server: sign in, the workstation's pairing and every call of the windows (POST /api/rpc/name).</summary>
@@ -70,6 +72,7 @@ public sealed class Api
         {
             409 => new ApiWarning(msg),
             401 => new NeedsLogin(msg),
+            428 => new NeedsConfirm(msg, node?["conferma"]?.ToString() ?? "password"),
             403 when msg.Contains("postazione", StringComparison.OrdinalIgnoreCase) && msg.Contains("registrata") => new NeedsPairing(msg),
             _ => new ApiError(msg, (int)res.StatusCode),
         };
@@ -91,8 +94,19 @@ public sealed class Api
         return JsonNode.Parse(text);
     }
 
-    public Task<JsonNode> Call(string name, object args = null) =>
-        Post("/api/rpc/" + name, args == null ? new JsonObject() : args as JsonNode ?? JsonSerializer.SerializeToNode(args, Json));
+    /// <summary>Shows «Conferma che sei tu» and says whether the user confirmed (set by the app, Views/ConfirmDialog).</summary>
+    public static Func<string, Task<bool>> Confirm;
+
+    public async Task<JsonNode> Call(string name, object args = null)
+    {
+        var body = args == null ? new JsonObject() : args as JsonNode ?? JsonSerializer.SerializeToNode(args, Json);
+        try { return await Post("/api/rpc/" + name, body); }
+        catch (NeedsConfirm c) when (Confirm != null)
+        {
+            if (!await Confirm(c.Mode)) throw new ApiError("Operazione non confermata.");
+            return await Post("/api/rpc/" + name, body.DeepClone());
+        }
+    }
     public async Task<T> Call<T>(string name, object args = null) => (await Call(name, args)).Deserialize<T>(Json);
 
     /// <summary>A file of the server (a PDF, a photo) with the session's headers.</summary>

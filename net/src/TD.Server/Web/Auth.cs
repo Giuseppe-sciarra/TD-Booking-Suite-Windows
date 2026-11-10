@@ -17,6 +17,15 @@ public static class Auth
     static string Address(HttpContext h) => h.Connection.RemoteIpAddress?.ToString() ?? "unknown";
     static bool Trusted(HttpContext h) => h.Items["server_pc"] is true || h.Items.ContainsKey("postazione");
     static bool MfaEnabled(Server s) => !s.Standalone;
+    /// <summary>How this user confirms it is him: "quick", "password" or "code".</summary>
+    public static string ConfirmMode(Server s, HttpContext h, User u)
+    {
+        using var g = s.Db.Global();
+        var usePassword = !MfaEnabled(s) || !s.Identity.MfaReady(g, u);
+        if (!usePassword) return "code";
+        var owner = u.QuickLogin && u.IsActive && !u.IsStaff && g.Scalar<long>("SELECT count(*) FROM core_membership WHERE user_id=@u AND role='owner'", new { u = u.Id }) > 0;
+        return Trusted(h) && owner ? "quick" : "password";
+    }
 
     public static void Map(WebApplication app)
     {
@@ -80,6 +89,34 @@ public static class Auth
             var (_, token) = s.Identity.Open(g, u, pre.Remember, true, pre.Device, Address(h));
             g.Commit();
             return Results.Json(new { token });
+        });
+
+        // identity.confirm_view: the step-up of the sensitive operations: one click on a trusted device for who enters
+        // without password, the password for who has no second factor, otherwise the Authenticator or a recovery code
+        app.MapPost("/api/conferma", (Server s, HttpContext h, JsonObject body) =>
+        {
+            using var g = s.Db.Global();
+            var (ns, u) = s.Identity.Resume(g, Bearer(h), Idle);
+            if (u == null) return Results.Json(new { error = "Sessione scaduta: entra di nuovo.", login = true }, statusCode: 401);
+            var mode = ConfirmMode(s, h, u); var ok = mode == "quick"; var error = "";
+            if (mode != "quick")
+            {
+                try { s.Identity.Throttle("mfa", Address(h), 10); s.Identity.Throttle("mfa-user", u.Id.ToString(), 10); }
+                catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 429); }
+                if (mode == "password")
+                {
+                    var pw = body.Str("password"); if (pw.Length > 1024) pw = pw[..1024];
+                    ok = Passwords.Verify(pw, u.Password); error = "Password non valida.";
+                }
+                else
+                {
+                    u = g.One<User>("SELECT * FROM core_user WHERE id=@id FOR UPDATE", new { id = u.Id }); var code = body.Str("code").Trim();
+                    ok = code != "" && (s.Identity.VerifyTotp(g, u, code) || s.Identity.UseRecovery(g, u, code)); error = "Codice non valido, scaduto o già utilizzato.";
+                }
+            }
+            if (ok) s.Identity.Confirmed(g, ns);
+            g.Commit();
+            return ok ? Results.Json(new { ok = true }) : Results.Json(new { error }, statusCode: 400);
         });
 
         app.MapPost("/api/logout", (Server s, HttpContext h) =>

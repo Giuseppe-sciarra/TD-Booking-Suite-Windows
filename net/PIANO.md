@@ -115,5 +115,23 @@ Per il confronto: il programma Python gira su `tdcmp` con
 `PYTHONPATH=.:suite DJANGO_SETTINGS_MODULE=tdwin.test_settings DATABASE_URL="postgres://postgres@/tdcmp?host=/tmp&port=5433" python suite/manage.py runserver 127.0.0.1:8000 --noreload`
 (utenti `titolare` e `admin`, password `Password-di-prova-123`) e Playwright salva le pagine in `/home/claude/out/web`;
 gli screenshot delle finestre arrivano dalla build (`gh run download <id> -n screenshot`).
-Mancano ancora nell'agenda rispetto al web: icone nel menu e sugli appuntamenti (origine, forzata), colonna «Senza operatore»,
-Vai/Cerca nel giorno/Elenco/?/Stampa/Importa, Tema in alto, Dashboard, Guida, riquadro «Stai lavorando in».
+Build: **una sola, alla fine**, a mano (`gh workflow run net.yml --ref net-rewrite`): niente build a pezzi. In locale si
+compila soltanto (`dotnet build src/TD.App`, `src/TD.Server`) e si provano le chiamate con curl sul server di prova.
+
+### Pagine fatte uguali al web (finestra + chiamate del server)
+
+- `base.html` → `MainWindow` · `agenda.html` (giorno, settimana, mese) → `AgendaPage` · `bookings.html` (elenco) → `BookingsPage`
+- `booking.html` + `booking.js` → `BookingPage` · `booking_detail.html` → `BookingDetailPage` · blocco orario → `BlockDialog`
+- `dashboard.html` → `DashboardPage` (`cruscotto`, `turno.cambia`)
+- `contacts.html` → `ClientsPage` (`clienti.elenco`, `clienti.nuovo`) · `contact_detail.html` → `ClientPage` (`cliente.scheda`,
+  `cliente.azione`, `cliente.esporta`, `cliente.cancella`)
+- `confirm.html` («Conferma che sei tu», ogni 15 minuti per le operazioni delicate) → `ConfirmDialog` (`/api/conferma`,
+  `[Rpc(Fresh = true)]`, risposta 428)
+
+### Pezzi lasciati con un segnaposto dentro pagine già fatte (da chiudere, nessuno va tolto)
+
+- Dashboard: avviso «Manca la chiusura giornaliera» (arriva con la Cassa).
+- Agenda: Stampa, Importa prenotazioni. Dettaglio prenotazione: Scheda/record del servizio, Foto, «Iscritti e presenze».
+- Clienti: Importa, Esporta, Storico in PDF, Unisci due schede, scheda Foto; «Metti in lista d'attesa» e «Nuovo preventivo»
+  aprono la pagina senza il cliente già scelto; Copia dello scontrino apre la Cassa.
+- Conferma che sei tu: manca la passkey (WebAuthn di Windows).

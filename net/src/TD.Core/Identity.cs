@@ -20,6 +20,8 @@ public sealed class NetSession
     public int AuthVersion { get; set; }
     public string Device { get; set; } = "";
     public string Address { get; set; } = "";
+    /// <summary>When the user last proved it is him (sign in, or the step-up of the sensitive pages): identity.fresh.</summary>
+    public DateTime Verified { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>core/identity.py: accounts, passwords, Authenticator codes, recovery codes, the login limits.</summary>
@@ -157,5 +159,8 @@ public sealed class Identity(Db db, Crypto crypto)
         if (DateTime.UtcNow - ns.Seen > TimeSpan.FromMinutes(1)) s.Execute("UPDATE td_net_session SET seen=now() WHERE id=@i", new { i = ns.Id });
         return (ns, u);
     }
+    public const int FRESH_SECONDS = 900;
+    public static bool IsFresh(NetSession ns) => (DateTime.UtcNow - ns.Verified).TotalSeconds <= FRESH_SECONDS;
+    public void Confirmed(Scope s, NetSession ns) { ns.Verified = DateTime.UtcNow; s.Execute("UPDATE td_net_session SET verified=now() WHERE id=@i", new { i = ns.Id }); }
     public void Close(Scope s, string token) => s.Execute("DELETE FROM td_net_session WHERE digest=@d", new { d = Crypto.TokenHash(token ?? "") });
 }

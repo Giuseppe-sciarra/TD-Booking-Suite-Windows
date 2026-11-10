@@ -49,7 +49,7 @@ public sealed class DashboardPage : Page
         if (d["annulla"] is JsonNode u)
         {
             var txt = new TextBlock { FontSize = 13.5, VerticalAlignment = VerticalAlignment.Center };
-            txt.Inlines.Add($"{u.S("nome")} {u.S("cognome")}, {Local(u.S("inizio")):dd/MM HH:mm}: ora è "); txt.Inlines.Add(new Run(STATUS.GetValueOrDefault(u.S("stato"), u.S("stato")).ToLowerInvariant()) { FontWeight = FontWeights.Bold });
+            txt.Inlines.Add($"{u.S("nome")} {u.S("cognome")}, {Local(u.S("inizio")):dd/MM HH:mm}: ora è "); txt.Inlines.Add(new Run(StatusName(u.S("stato")).ToLowerInvariant()) { FontWeight = FontWeights.Bold });
             var back = F.Small(BA("Torna indietro", async () => { await Api.Current.Call("prenotazione.stato", new { id = u.S("id"), annulla = true }); undoId = ""; await Load(); }));
             var bar = new DockPanel(); DockPanel.SetDock(back, Dock.Right); bar.Children.Add(back); bar.Children.Add(txt);
             page.Children.Add(F.Notice(bar, "success"));

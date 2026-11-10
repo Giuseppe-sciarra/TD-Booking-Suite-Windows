@@ -121,7 +121,7 @@ public static class F
         return d;
     }
     /// <summary>.pill with the colour of a booking's status.</summary>
-    public static Border Status(string status) => Views.MainWindow.Pill(STATUS.GetValueOrDefault(status, status), status switch { "confirmed" => "ok", "pending" => "warn", "cancelled" => "danger", _ => "" });
+    public static Border Status(string status) => Views.MainWindow.Pill(StatusName(status), status switch { "confirmed" or "sent" or "active" or "yes" => "ok", "pending" or "trial" => "warn", "cancelled" or "failed" or "suspended" or "revoked" => "danger", _ => "" });
     /// <summary>.cmark: VIP, absences, late cancellations, not bookable online, small beside the client's name.</summary>
     public static Border Mark(string kind, string icon, string n, string tip)
     {
@@ -146,4 +146,52 @@ public static class F
     }
     /// <summary>.allergy-chip.small</summary>
     public static Border Allergy(string text) => new() { Background = Res("WarnSoft"), BorderBrush = Res("Warn"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(999), Padding = new Thickness(9, 1, 9, 1), Margin = new Thickness(0, 5, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, Child = T(text, size: 12, bold: true, color: Res("Warn")) };
+    /// <summary>.avatar: the first letter in a soft square (44, 12 round; xl 64).</summary>
+    public static Border Avatar(string name, double size = 44)
+    {
+        var t = T(string.IsNullOrEmpty(name) ? "" : name[..1].ToUpperInvariant(), size: size * 0.42, bold: true, color: Res("Brand")); t.FontFamily = (FontFamily)Application.Current.Resources["FontDisplay"];
+        t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
+        return new Border { Width = size, Height = size, CornerRadius = new CornerRadius(size >= 40 ? 12 : size / 2), Background = Res("BrandSoft"), Child = t };
+    }
+    /// <summary>.chip (client-chips): discount pink, new amber, the consent green, red or outlined.</summary>
+    public static Border ClientChip(string text, string kind = "", string icon = null)
+    {
+        var (bg, fg, line) = kind switch
+        {
+            "discount" => ((Brush)Hex("#FBEAF3"), (Brush)Hex("#B8457F"), (Brush)null), "new" => (Res("WarnSoft"), Res("Warn"), null), "ok" => (Res("OkSoft"), Res("Ok"), null), "danger" => (Res("DangerSoft"), Res("Danger"), null),
+            "vip" => (Hex("#F7EFD6"), Hex("#9C7412"), null), "none" => (Brushes.Transparent, Res("Muted"), Res("Line")), _ => (Res("BrandSoft"), Res("Brand"), null),
+        };
+        return new Border { Background = bg, BorderBrush = line, BorderThickness = new Thickness(line == null ? 0 : 1), CornerRadius = new CornerRadius(999), Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(0, 0, 6, 6),
+            Child = Row(icon == null ? null : Icons.Icon(icon, fg, 13, 1).M(0, 0, 5, 0), T(text, size: 12.5, bold: true, color: fg)) };
+    }
+    /// <summary>.pagination: ← before, n / of, after →.</summary>
+    public static FrameworkElement Pagination(int page, int pages, Action<int> go, string before = "← Precedente", string after = "Successiva →")
+    {
+        if (pages <= 1) return null;
+        var r = Row(page > 1 ? Link(before, () => go(page - 1)) : null, T($"{page} / {pages}", size: 14).M(24, 0, 24, 0), page < pages ? Link(after, () => go(page + 1)) : null);
+        r.HorizontalAlignment = HorizontalAlignment.Center; r.Margin = new Thickness(0, 20, 0, 0); return r;
+    }
+    /// <summary>.empty-state: a strong line and a small one, in the middle.</summary>
+    public static StackPanel EmptyState(string strong, FrameworkElement small)
+    {
+        var c = Col(T(strong, size: 14, bold: true), small); foreach (FrameworkElement e in c.Children) e.HorizontalAlignment = HorizontalAlignment.Center;
+        c.Margin = new Thickness(10, 18, 10, 18); return c;
+    }
+    /// <summary>details &gt; summary.button.secondary.small: a small button that opens what is under it.</summary>
+    public static StackPanel Details(string summary, UIElement body, bool open = false, bool plain = false)
+    {
+        var box = new ContentControl { Content = body, Visibility = open ? Visibility.Visible : Visibility.Collapsed, Focusable = false };
+        FrameworkElement head = plain ? Link(summary, () => { }) : Small(new Button { Content = summary });
+        void Toggle() => box.Visibility = box.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+        if (head is Button b) b.Click += (_, _) => Toggle(); else head.MouseLeftButtonUp += (_, _) => Toggle();
+        head.HorizontalAlignment = HorizontalAlignment.Left;
+        return Col(head, box);
+    }
+    /// <summary>input list=…: free text with the suggestions under it.</summary>
+    public static ComboBox Suggest(IEnumerable<string> options, string text = "", int max = 0)
+    {
+        var c = new ComboBox { IsEditable = true, ItemsSource = options.ToList(), Text = text ?? "", IsTextSearchEnabled = false };
+        if (max > 0) c.Loaded += (_, _) => { if (c.Template.FindName("PART_EditableTextBox", c) is TextBox t) t.MaxLength = max; };
+        return c;
+    }
 }

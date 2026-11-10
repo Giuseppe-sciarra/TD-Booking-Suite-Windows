@@ -86,7 +86,14 @@ public static class U
     public static readonly Dictionary<string, string> STATUS = new()
     {
         ["pending"] = "Da confermare", ["confirmed"] = "Confermata", ["arrived"] = "Arrivato", ["in_progress"] = "In corso",
-        ["completed"] = "Completata", ["no_show"] = "Non presentato", ["cancelled"] = "Annullata",
+        ["completed"] = "Completata", ["no_show"] = "Assente", ["cancelled"] = "Annullata",
+    };
+    /// <summary>presentation.status_name: the words of the pills (bookings, consents, deliveries).</summary>
+    public static string StatusName(string v) => v switch
+    {
+        "confirmed" => "Confermata", "completed" => "Completata", "cancelled" => "Annullata", "no_show" => "Assente", "arrived" => "Arrivato", "in_progress" => "In corso", "none" => "Non richiesto", "pending" => "In attesa",
+        "yes" => "Confermato", "revoked" => "Revocato", "draft" => "Bozza", "queued" => "In coda", "paused" => "In pausa", "accepted" => "Accettata da SMTP", "failed" => "Fallita", "unknown" => "Esito incerto", "skipped" => "Esclusa",
+        "sending" => "Invio in corso", "active" => "Attivo", "trial" => "Prova", "suspended" => "Sospeso", _ => v,
     };
     public static readonly Dictionary<string, string> MOVE_LABEL = new()
     {

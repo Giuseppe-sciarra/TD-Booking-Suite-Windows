@@ -274,8 +274,8 @@ public sealed partial class Privacy
         {
             // the keyed indexes of the email and phone stay, so an import from the old program cannot bring the person back
             var d = cl.Data(ct); var keys = new JsonArray();
-            if (d.Str("email") != "") keys.Add(cl.EmailIndex(d.Str("email")));
-            if (d.Str("phone") != "") keys.Add(cl.PhoneIndex(d.Str("phone")));
+            if (d.Str("email") != "") keys.Add((JsonNode)cl.EmailIndex(d.Str("email")));
+            if (d.Str("phone") != "") keys.Add((JsonNode)cl.PhoneIndex(d.Str("phone")));
             if (keys.Count > 0) anon["erased_keys"] = keys;
         }
         ct.Pii = c.Encrypt(anon, "contact:" + ct.Id);

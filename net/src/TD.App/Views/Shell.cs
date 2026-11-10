@@ -23,7 +23,7 @@ public sealed class Shell
         Application.Current.DispatcherUnhandledException += (_, e) => { Say("Errore inatteso: " + e.Exception.Message); e.Handled = true; };
         var config = ClientConfig.Load();
         if (config == null && !Setup.Choose(out config)) { Application.Current.Shutdown(); return; }
-        Api.Current = new Api(config);
+        Api.Current = new Api(config); Api.Confirm = ConfirmDialog.Ask;
         try { await Api.Current.Get("/api/info"); }
         catch (ApiError ex) when (ex.Status == 0)
         {
