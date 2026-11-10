@@ -46,6 +46,7 @@ public sealed class Server
         Notify.EmailOf = id => { using var g = Db.Global(); var u = g.Get<User>(id); return u == null ? "" : Identity.Email(u); };
         WpSync.Install(); WpSite.Face = Work.Faces.Small;  // every save of an archived row reaches the site's outbox, from the windows and from the jobs
         DjangoSigning.Secret = config.SecretKey; Mail.Env = name => config.Env(name);
+        ClientImport.Folder = Path.Combine(config.DataFolder, "import");  // tdwin IMPORT_DIR: the installer makes it, with the web service's permission
     }
 
     public Web.Rete Rete { get; private set; }

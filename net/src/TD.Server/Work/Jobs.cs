@@ -40,7 +40,7 @@ public static partial class Jobs
         list.Add(Make("backup", 15, 15, () => backup.Tick(log)));
         list.Add(Make("ora", 60, 3600, () =>
         {
-            W().Turns();
+            W().Turns(); ClientImport.Purge();  // copies left by an import never finished
             var done = W().Retention((text, ex) => log.LogWarning(ex, "{Text}", text)); if (done > 0) log.LogInformation("Conservazione dei dati applicata a {N} attività.", done);
         }));
     }

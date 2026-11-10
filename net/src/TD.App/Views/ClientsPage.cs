@@ -25,7 +25,7 @@ public sealed class ClientsPage : Page
     void Draw(JsonNode d)
     {
         var heading = F.Heading(null, "Clienti", "La rubrica dell'attività: apri un cliente per vedere tutto quello che ha prenotato, le note e le prossime prenotazioni",
-            Can("pii.read") && Can("notes.read") && Can("booking.write") ? B("Importa", () => Main.ShowPage(new Placeholder("Importa clienti"))) : null,
+            Can("pii.read") && Can("notes.read") && Can("booking.write") ? B("Importa", () => Main.ShowPage(new ImportClientsPage())) : null,
             Can("export.marketing") ? BA("Esporta", async () => Downloads.Save("td-booking-suite-contacts.csv", await Api.Current.Bytes("esporta", new { kind = "contacts" }))) : null);
         // ----- filters
         var search = Box(q); search.Tag = "Nome, cognome, telefono o email"; AgendaPage.Hint(search);
