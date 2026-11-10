@@ -8,7 +8,7 @@ namespace TD.Server.Web;
 
 /// <summary>Sign in for the windows: password, then the Authenticator code where the account has one; quick sign in
 /// without password for the owners the agency allows, only from the server PC and the registered workstations.</summary>
-public static class Auth
+public static partial class Auth
 {
     sealed record Pre(Guid User, DateTime Until, int Version, bool Remember, string Device);
     static readonly ConcurrentDictionary<string, Pre> pending = new();
@@ -154,6 +154,7 @@ public static class Auth
             return ok ? Results.Json(new { ok = true }) : Results.Json(new { error }, statusCode: 400);
         });
 
+        MapPasskeys(app);
         app.MapPost("/api/logout", (Server s, HttpContext h) =>
         {
             using var g = s.Db.Global();

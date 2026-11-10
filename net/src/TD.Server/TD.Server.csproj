@@ -14,6 +14,7 @@
   <ItemGroup><ProjectReference Include="../TD.Core/TD.Core.csproj" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="../../../suite/wordpress/td-booking-suite/**/*" LogicalName="wp/%(RecursiveDir)%(Filename)%(Extension)" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Web/privacy-standard.txt" LogicalName="privacy-standard.txt" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Web/passkey.html" LogicalName="tpl/passkey.html" /><EmbeddedResource Include="Web/passkey.js" LogicalName="static/net/passkey.js" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="../../../tdwin/static/**/*" LogicalName="static/%(RecursiveDir)%(Filename)%(Extension)" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Guide/*.json" LogicalName="guide/%(Filename)%(Extension)" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="../../../suite/templates/*.html" LogicalName="tpl/%(Filename)%(Extension)" /></ItemGroup>

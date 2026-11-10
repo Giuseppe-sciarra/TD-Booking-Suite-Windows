@@ -43,8 +43,11 @@ public sealed class AccountPage : Page
             // Passkey
             var name = Box("Il mio dispositivo"); name.MaxLength = 80;
             var pass = Col(Pill("PASSKEY"), T("Passkey", "H2").M(0, 8, 0, 0), T("Usa il dispositivo, l'impronta, il volto o una chiave di sicurezza.", size: 14), F.Field("Nome del dispositivo", name),
-                // shortcut: adding a passkey from the window needs Windows Hello (webauthn.dll) and the attestation check on the server: not there yet, see PIANO.md
-                Left(B("Aggiungi una passkey", () => Say("Le passkey dalla finestra del programma si aggiungono con Windows Hello: arriva con il prossimo aggiornamento. Authenticator funziona già."), "Primary")));
+                Left(BA("Aggiungi una passkey", async () =>
+                {
+                    var r = await Api.Current.Call("account.azione", new JsonObject { ["azione"] = "passkey_start", ["nome"] = name.Text });
+                    Main.Flash(PasskeyFlow.WAIT); await PasskeyFlow.Wait(r.S("apri")); Main.Flash("Passkey aggiunta."); await Load();
+                }, "Primary")));
             foreach (var k in keys)
             {
                 var drop = F.Small(BA("Rimuovi", () => Act(new JsonObject { ["azione"] = "delete_key", ["key"] = k.S("id") }), "Ghost")); DockPanel.SetDock(drop, Dock.Right);

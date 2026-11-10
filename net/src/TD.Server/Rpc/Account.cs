@@ -34,6 +34,8 @@ public static class Account
     public static object Action(Call c)
     {
         c.S.Identity.Throttle("security", c.User.Id.ToString(), 20); var action = c.Str("azione"); string notice = null; List<string> codes = null;
+        // Aggiungi una passkey: the page that makes it opens in the browser (Web/AuthPasskeys.cs)
+        if (action == "passkey_start") return new { apri = TD.Server.Web.Auth.RegisterTicket(c.S, c.Http, c.User, c.Session.Id, c.Str("nome")) };
         if (action is "totp_start" or "totp_confirm" or "recovery" && !Mfa(c)) throw new BookingException("Il secondo fattore non è attivo in questa installazione.");
         using (var g = c.S.Db.Global())
         {

@@ -38,7 +38,18 @@ public static class ConfirmDialog
         var body = Col(h1, T(p, size: 14, color: Res("Muted")));
         if (mode == "password") { body.Children.Add(F.Label("Password")); body.Children.Add(pw); }
         else if (mode != "quick") { body.Children.Add(F.Label("Codice dell'app di autenticazione, oppure un codice di recupero")); body.Children.Add(code); }
-        body.Children.Add(error); body.Children.Add(ok); body.Children.Add(cancel);
+        body.Children.Add(error); body.Children.Add(ok);
+        if (mode is not ("password" or "quick"))
+        {
+            var passkey = F.Link("Usa la passkey", async () =>
+            {
+                error.Foreground = Res("Muted"); error.Text = PasskeyFlow.WAIT; error.Visibility = Visibility.Visible;
+                try { await PasskeyFlow.Run(new JsonObject { ["tipo"] = "confirm" }); done = true; w.Close(); }
+                catch (ApiError ex) { error.Foreground = Res("Danger"); error.Text = ex.Message; }
+            });
+            passkey.Margin = new Thickness(0, 14, 0, 0); body.Children.Add(passkey);
+        }
+        body.Children.Add(cancel);
         w.Content = new Border { Style = Style("Card"), Margin = new Thickness(18), Child = body };
         w.Loaded += (_, _) => { if (mode == "password") pw.Focus(); else if (mode == "quick") ok.Focus(); else code.Focus(); };
         w.ShowDialog();

@@ -216,6 +216,21 @@ public sealed class LoginWindow : Window
         go.IsDefault = true; go.HorizontalAlignment = HorizontalAlignment.Stretch;
         body.Children.Add(Col(T("TD Booking Suite", "H1"), T("Entra con il tuo username o la tua email.", "MutedText").M(0, 0, 0, 18),
             Field("Username o email", login), Field("Password", pw), remember.M(0, 0, 0, 12), error.M(0, 0, 0, 8), go));
+        // identity.passkey_begin, kind login: the passkey alone, as the web sign-in; not where the second factor is off
+        var passkey = F.Link("Entra con la passkey", async () =>
+        {
+            if (login.Text.Trim() == "") { error.Text = "Inserisci prima il tuo username o la tua email."; return; }
+            error.Foreground = Res("Muted"); error.Text = PasskeyFlow.WAIT;
+            try
+            {
+                var r = await PasskeyFlow.Run(new JsonObject { ["tipo"] = "login", ["login"] = login.Text, ["remember"] = remember.IsChecked == true, ["device"] = Environment.MachineName });
+                Remember = remember.IsChecked == true; Token = r.S("token"); DialogResult = true;
+            }
+            catch (NeedsPairing) { NeedsPairing = true; DialogResult = true; }
+            catch (ApiError ex) { error.Foreground = Res("Danger"); error.Text = ex.Message; }
+        });
+        passkey.Margin = new Thickness(0, 12, 0, 0); passkey.Visibility = Visibility.Collapsed; body.Children.Add(passkey);
+        try { if (!(await Api.Current.Get("/api/info")).Bo("standalone")) passkey.Visibility = Visibility.Visible; } catch (ApiError) { }
         if (prefill != "") pw.Focus(); else login.Focus();
         try
         {
@@ -253,6 +268,13 @@ public sealed class LoginWindow : Window
         go.IsDefault = true;
         body.Children.Add(Col(T("Codice di verifica", "H1"), T("Scrivi il codice di 6 cifre dell'app Authenticator, o uno dei codici di recupero.", "MutedText").M(0, 0, 0, 18),
             Field("Codice", code), error.M(0, 0, 0, 8), Row(go, B("Indietro", Password, "Ghost").M(8, 0, 0, 0))));
+        var passkey = F.Link("Usa la passkey", async () =>
+        {
+            error.Foreground = Res("Muted"); error.Text = PasskeyFlow.WAIT;
+            try { var r = await PasskeyFlow.Run(new JsonObject { ["tipo"] = "mfa", ["pre"] = pre }); Token = r.S("token"); DialogResult = true; }
+            catch (ApiError ex) { error.Foreground = Res("Danger"); error.Text = ex.Message; }
+        });
+        passkey.Margin = new Thickness(0, 12, 0, 0); body.Children.Add(passkey);
         code.Focus();
     }
 }
