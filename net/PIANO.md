@@ -143,12 +143,16 @@ compila soltanto (`dotnet build src/TD.App`, `src/TD.Server`) e si provano le ch
 - Cassa: foto degli operatori nella barra (ora l'iniziale colorata); ponte cassa per le sedi non «diretto» (`/book/<slug>/api/cassa/`, con le pagine pubbliche).
 - Lista d'attesa: l'iscrizione dalla pagina online (con le pagine pubbliche) e l'avviso a chi aspetta (lavoro del worker).
 - Fatti dopo: Richiami, Promemoria WhatsApp, Report, Registratore di cassa (impostazioni; il ponte cassa ha codice e scaricamento, manca il suo
-  indirizzo `/book/<slug>/api/cassa/`), Registro attività.
-- Da fare, nell'ordine: Persone e permessi e Accesso dell'amministratore (con inviti, password, entra senza password: il modulo degli account, che
-  serve anche ad Account e sicurezza), Configura l'attività e catalogo, Configurazione promemoria, Impostazioni e sito, Invio email, testi
-  SMS/WhatsApp, API, Sale e tavoli, Alloggi, Guida, Account e sicurezza, Iscritti e presenze, stampa e import dell'agenda, import ed export
-  clienti, Marketing; poi configurazione del programma (Licenza, Postazioni, Backup, Rete, Stato), pagine pubbliche, sito WordPress, lavori del
-  worker, installer.
+  indirizzo `/book/<slug>/api/cassa/`), Registro attività, Persone e permessi (con `Accounts`: inviti, password, entra senza password), Accesso di
+  assistenza (l'amministratore del programma entra nei contenuti solo con la concessione, ogni chiamata registrata), API e webhook (pagina; gli
+  indirizzi `/book/<slug>/api/v1/` arrivano con le pagine pubbliche), Configura l'attività (pagina e azioni: `Profile` = profile.py, provato
+  uguale a Python su ristorante, parrucchiere, hotel, tour; logo, banco, domande, QR).
+- Segnaposto dentro Configura l'attività: `CatalogPage` (elenchi e moduli di sedi, orari, chiusure, servizi, risorse, varianti, turni, date,
+  prodotti: catalog.html, form.html, forms.py, con calendar_conflicts, shifts.materialize, Rimuovi/Elimina, festività, prezzi, import dei
+  servizi) e `AllergensPage`. È il prossimo pezzo. `Profile.Delete/Retire/Remove` (cancellare come Django: PROTECT, CASCADE, SET_NULL) è già pronto.
+- Da fare poi, nell'ordine: Configurazione promemoria, Impostazioni e sito, Invio email, testi SMS/WhatsApp, Sale e tavoli, Alloggi, Guida,
+  Account e sicurezza (pagina dell'invito compresa), Iscritti e presenze, stampa e import dell'agenda, import ed export clienti, Marketing; poi
+  configurazione del programma (Licenza, Postazioni, Backup, Rete, Stato), pagine pubbliche, sito WordPress, lavori del worker, installer.
 - Diverso da Python, apposta: Salva nel Registratore di cassa tiene lo scarto dei documenti imparato (`doc_offset`); Python lo azzera.
 - Report: a parità di data, Elenco dei trattamenti e I servizi più fatti seguono l'ora di inserimento (in Python l'ordine a parità di data è casuale).
 - Conferma che sei tu: manca la passkey (WebAuthn di Windows).
