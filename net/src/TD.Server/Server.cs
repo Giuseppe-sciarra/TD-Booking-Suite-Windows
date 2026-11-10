@@ -41,12 +41,16 @@ public sealed class Server
         Identity = new Identity(Db, Crypto);
         Licensing = new Licensing(config.DataFolder, config.InstallId, Db);
         Workstations = new Workstations(Db, Licensing);
+        Rete = new Web.Rete(this);
         // what the domain asks of the server: the accounts' emails (sealed with the master key), the signing key, the .env
         Notify.EmailOf = id => { using var g = Db.Global(); var u = g.Get<User>(id); return u == null ? "" : Identity.Email(u); };
         WpSync.Install(); WpSite.Face = Work.Faces.Small;  // every save of an archived row reaches the site's outbox, from the windows and from the jobs
         DjangoSigning.Secret = config.SecretKey; Mail.Env = name => config.Env(name);
     }
 
+    public Web.Rete Rete { get; private set; }
+    /// <summary>The address of the links in the emails: the public one from Rete e certificato, otherwise the office one.</summary>
+    public string PublicOrigin => Rete.PublicOrigin;
     public bool Standalone => Config.Standalone;
     public bool Online => Config.Online;
 

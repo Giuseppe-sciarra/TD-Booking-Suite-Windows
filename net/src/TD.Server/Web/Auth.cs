@@ -14,7 +14,7 @@ public static class Auth
     static readonly ConcurrentDictionary<string, Pre> pending = new();
     public static readonly TimeSpan Idle = TimeSpan.FromHours(12);
 
-    static string Address(HttpContext h) => h.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    static string Address(HttpContext h) => h.RequestServices.GetRequiredService<Server>().Rete.Client(h);
     static bool Trusted(HttpContext h) => h.Items["server_pc"] is true || h.Items.ContainsKey("postazione");
     static bool MfaEnabled(Server s) => !s.Standalone;
     /// <summary>How this user confirms it is him: "quick", "password" or "code".</summary>

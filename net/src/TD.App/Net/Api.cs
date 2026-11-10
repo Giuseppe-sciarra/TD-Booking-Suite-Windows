@@ -109,13 +109,21 @@ public sealed class Api
     public async Task<JsonNode> Call(string name, object args = null)
     {
         var body = args == null ? new JsonObject() : args as JsonNode ?? JsonSerializer.SerializeToNode(args, Json);
+        var started = DateTime.UtcNow;
         try { return await Post("/api/rpc/" + name, body); }
         catch (NeedsConfirm c) when (Confirm != null)
         {
             if (!await Confirm(c.Mode)) throw new ApiError("Operazione non confermata.");
             return await Post("/api/rpc/" + name, body.DeepClone());
         }
+        finally
+        {
+            // Stato del programma: the window reports what it waited for more than 5 seconds (only the name and the time)
+            var ms = (DateTime.UtcNow - started).TotalMilliseconds;
+            if (ms > 5000 && name != "stato.lento") _ = Slow(name, ms);
+        }
     }
+    async Task Slow(string name, double ms) { try { await Post("/api/rpc/stato.lento", new JsonObject { ["p"] = name, ["ms"] = ms.ToString("0", System.Globalization.CultureInfo.InvariantCulture) }); } catch (Exception) { } }
     public async Task<T> Call<T>(string name, object args = null) => (await Call(name, args)).Deserialize<T>(Json);
 
     /// <summary>A file of the server (a PDF, a photo) with the session's headers.</summary>

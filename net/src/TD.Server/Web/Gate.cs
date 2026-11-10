@@ -34,7 +34,7 @@ public static class Gate
         }
         if (!serverPc && !PUBLIC.Any(path.StartsWith))
         {
-            var ws = s.Workstations.Current(h.Request.Headers["X-TD-Postazione"].ToString(), h.Connection.RemoteIpAddress?.ToString());
+            var ws = s.Workstations.Current(h.Request.Headers["X-TD-Postazione"].ToString(), s.Rete.Client(h));
             if (ws == null) { await Text(h, 403, "Questa postazione non è registrata: aprila e inserisci il codice dalla pagina Postazioni."); return; }
             h.Items["postazione"] = ws;
         }
@@ -49,7 +49,7 @@ public static class Gate
         finally
         {
             var took = DateTime.UtcNow - started;
-            if (took.TotalSeconds > 3) Console.Error.WriteLine($"Pagina lenta: {h.Request.Method} {path} {took.TotalSeconds:0.0} s");
+            if (took.TotalSeconds > 3) { Console.Error.WriteLine($"Pagina lenta: {h.Request.Method} {path} {took.TotalSeconds:0.0} s"); Rpc.Slow.Note(s, "programma", path, took.TotalSeconds); }
         }
     }
 

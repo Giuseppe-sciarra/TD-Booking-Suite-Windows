@@ -184,7 +184,7 @@ public static class InvioEmail
         var q = h.Request.Query;
         if (!pending.TryRemove(q["state"].ToString(), out var p) || p.Until < DateTime.UtcNow) return Say("Collegamento con Google scaduto o non valido: riprova.");
         if (q["error"].ToString() is { Length: > 0 } error) return Say("Google non ha concesso l'accesso" + (error == "access_denied" ? ": hai annullato il consenso." : ": " + (error.Length > 80 ? error[..80] : error) + "."));
-        (string RefreshToken, string Account) got; var redirect = s.Config.Origin.TrimEnd('/') + "/oauth/google/";
+        (string RefreshToken, string Account) got; var redirect = s.PublicOrigin.TrimEnd('/') + "/oauth/google/";
         try { got = Mail.GoogleExchange(p.Data.Str("client_id"), p.Data.Str("client_secret"), q["code"].ToString(), redirect); } catch (MailApiError ex) { return Say(ex.Message); }
         var config = new JsonObject
         {

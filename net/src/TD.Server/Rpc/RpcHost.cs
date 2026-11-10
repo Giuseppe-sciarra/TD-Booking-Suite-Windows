@@ -38,7 +38,7 @@ public sealed class Call : IDisposable
     Ctx ctx;
     public Ctx C => ctx ??= new Ctx(S.Db, S.Crypto, Tenant.Id) { Actor = User.Id, PublicOrigin = PublicOrigin, Out = Outbox.Instance };
     public bool HasCtx => ctx != null;
-    public string PublicOrigin => S.Config.Origin;
+    public string PublicOrigin => S.PublicOrigin;
 
     public bool Can(string perm) => Perms.Contains(perm);
     public void Require(string perm) { if (!Can(perm)) throw new UnauthorizedAccessException("Non hai i permessi per questa operazione."); }
