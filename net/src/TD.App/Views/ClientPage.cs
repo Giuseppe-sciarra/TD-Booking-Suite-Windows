@@ -122,7 +122,7 @@ public sealed class ClientPage(string id) : Page
             if (spec != null) acts.Children.Add(Wide(B($"Registra {spec.S("uno")}", async () => { tab = "scheda"; openNew = true; await Guard(Load); })));
             acts.Children.Add(Wide(B("Metti in lista d'attesa", () => Main.Show("attesa"), "Ghost")));
             acts.Children.Add(Wide(B("Nuovo preventivo", () => Main.Show("preventivi"), "Ghost")));
-            if (d["note"] != null) acts.Children.Add(Wide(B("Storico in PDF", () => Main.ShowPage(new Placeholder("Storico del cliente")), "Ghost")));
+            if (d["note"] != null) acts.Children.Add(Wide(B("Storico in PDF", () => Main.ShowPage(new ClientHistoryPage(id)), "Ghost")));
             who.Children.Add(acts);
         }
         side.Children.Add(SideCard(who));

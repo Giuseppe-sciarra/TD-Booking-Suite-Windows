@@ -125,6 +125,8 @@ public static class Cruscotto
             inAttesa = x.S.Scalar<long>("SELECT count(*) FROM core_delivery WHERE status='pending' AND channel<>'webhook'"),
             daVerificare = x.S.Scalar<long>("SELECT count(*) FROM core_delivery WHERE status IN ('failed','unknown') AND channel<>'webhook'"),
             sito = Site(c),
+            // a day of receipts without its daily closure
+            chiusure = c.Can("sale.write") ? new Till(x).Places().Select(l => (l, d: new Till(x).MissingClose(l))).Where(p => p.d.HasValue).Select(p => (object)new { sede = p.l.Id, nome = p.l.Name, giorno = p.d }).ToList() : new List<object>(),
         };
     }
 

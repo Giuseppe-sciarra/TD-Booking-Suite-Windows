@@ -407,6 +407,58 @@
       </Setter.Value>
     </Setter>
   </Style>
+  <!-- .till-item, .till-op, .till-park, .till-found button: a surface to press whose colours the page sets (the operator's) -->
+  <Style x:Key="Tile" TargetType="ButtonBase">
+    <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+    <Setter Property="Background" Value="{DynamicResource Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="10,7" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ButtonBase">
+          <Border x:Name="b" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Opacity" Value="0.88" /></Trigger>
+            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="b" Property="Opacity" Value="0.5" /></Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <!-- .pay-choice: a big choice with its box to tick; chosen: the brand edge, soft inside, the box filled -->
+  <Style x:Key="PayChoice" TargetType="RadioButton">
+    <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Border x:Name="b" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1.5" CornerRadius="10" Padding="18,12">
+            <StackPanel Orientation="Horizontal">
+              <Border x:Name="box" Width="20" Height="20" CornerRadius="6" BorderThickness="2" BorderBrush="{DynamicResource Line}" Background="{DynamicResource Surface}" Margin="0,0,10,0" VerticalAlignment="Center">
+                <TextBlock x:Name="tick" Text="&#x2713;" Foreground="White" FontSize="13" FontWeight="ExtraBold" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Hidden" />
+              </Border>
+              <ContentPresenter VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="BorderBrush" Value="{DynamicResource Muted}" /></Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="b" Property="BorderBrush" Value="{DynamicResource Brand}" /><Setter TargetName="b" Property="Background" Value="{DynamicResource BrandSoft}" />
+              <Setter TargetName="box" Property="BorderBrush" Value="{DynamicResource Brand}" /><Setter TargetName="box" Property="Background" Value="{DynamicResource Brand}" /><Setter TargetName="tick" Property="Visibility" Value="Visible" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
   <Style TargetType="ToolTip">
     <Setter Property="FontSize" Value="13" />
   </Style>

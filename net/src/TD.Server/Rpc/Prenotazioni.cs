@@ -350,18 +350,22 @@ public static class Prenotazioni
     [Rpc("clienti.cerca", Perm = "contacts.read")]
     public static object Search(Call c)
     {
+        // in Cassa (cassa=true): the code for the receipt and the client's gift cards with credit
+        var till = c.Bool("cassa") && c.Can("sale.write"); var cl = new Clients(c.C); var today = c.C.Today;
+        object Row(Contact ct, JsonObject raw, JsonObject d) => new
+        {
+            id = ct.Id, nome = d.Str("first_name"), cognome = d.Str("last_name"), email = d.Str("email"), telefono = d.Str("phone"), vip = ct.Vip, bloccato = ct.OnlineBlocked,
+            cf = till && c.Can("pii.read") ? Clients.ReceiptCode(raw) : "",
+            gift = till ? new Gift(c.C).Of(ct.Id).Where(g => g.Status == "active" && g.Balance > 0 && !(g.Expires.HasValue && DateOnly.FromDateTime(g.Expires.Value) < today)).Select(g => (object)new { codice = g.Code, credito = Prices.Str(g.Balance).Replace(".", ",") }).ToList() : null,
+        };
         if (c.Id("id") is Guid cid)
         {
             var ct = c.C.S.One<Contact>("SELECT * FROM core_contact WHERE id=@id AND email_index NOT LIKE 'erased:%'", new { id = cid });
             if (ct == null || !c.Can("pii.read")) return Array.Empty<object>();
-            var d0 = new Clients(c.C).Data(ct);
-            return new[] { new { id = ct.Id, nome = d0.Str("first_name"), cognome = d0.Str("last_name"), email = d0.Str("email"), telefono = d0.Str("phone"), vip = ct.Vip, bloccato = ct.OnlineBlocked } };
+            var d0 = cl.Data(ct);
+            return new[] { Row(ct, d0, d0) };
         }
-        return new Clients(c.C).Search(c.Str("q"), Math.Clamp(c.Int("quanti", 10), 1, 50)).Select(f =>
-        {
-            var d = Permissions.Shown(c.Perms, f.Data);
-            return new { id = f.Contact.Id, nome = d.Str("first_name"), cognome = d.Str("last_name"), email = d.Str("email"), telefono = d.Str("phone"), vip = f.Contact.Vip, bloccato = f.Contact.OnlineBlocked };
-        });
+        return cl.Search(c.Str("q"), Math.Clamp(c.Int("quanti", 10), 1, 50)).Select(f => Row(f.Contact, f.Data, Permissions.Shown(c.Perms, f.Data))).ToList();
     }
 }
 

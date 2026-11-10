@@ -117,7 +117,7 @@ public static class Cassa
                 id = s.Id, tipo = s.Kind, tipoNome = SALE_KIND.GetValueOrDefault(s.Kind, s.Kind), stato = s.Status, statoNome = STATUS.GetValueOrDefault(s.Status, s.Status), totale = Prices.Str(s.Total), creato = bk.Iso(s.Created), errore = s.Error,
                 numero = s.Number, documento = Till.Doc(s), matricola = s.Serial, email = s.Mailed.HasValue, chi = Name(c, s.ContactId, namesOk), cliente = s.ContactId, prenotazione = s.BookingId,
                 daPagare = Prices.Str(s.Due), pagato = s.Settled.HasValue ? bk.Iso(s.Settled.Value) : null, giorno = s.Printed.HasValue ? x.Cal.DayOf(s.Printed.Value) : (DateOnly?)null,
-                annullato = s.VoidsId.HasValue && x.S.Get<Sale>(s.VoidsId.Value) is Sale old ? Till.Doc(old) : "", copia = Json.Truthy(t.Data(s)["copy"]),
+                annullato = s.Kind != "void" ? "" : t.Data(s) is var vd && vd.Str("number") != "" ? (vd.Str("z") != "" ? vd.Str("z") + "-" : "") + vd.Str("number") : s.VoidsId.HasValue ? x.S.Get<Sale>(s.VoidsId.Value)?.Number ?? "" : "", copia = Json.Truthy(t.Data(s)["copy"]),
                 dettaglio = i < 5 && s.Kind == "sale" ? t.CopyLines(s, true).Rows : null,
             }),
             occupata = rows.Any(s => s.Status is "queued" or "sending"), oggi = today, inizioMese = new DateOnly(today.Year, today.Month, 1),
@@ -190,6 +190,91 @@ public static class Cassa
         var (t, _, loc) = Place(c); var sale = c.C.S.One<Sale>("SELECT * FROM core_sale WHERE id=@id AND location_id=@l", new { id = c.NeedId("id"), l = loc?.Id }) ?? throw new KeyNotFoundException();
         var (head, rows) = t.CopyLines(sale);
         return new { testa = head, righe = rows, stato = sale.Status, tipo = sale.Kind };
+    }
+
+    /// <summary>cassa.summary: Riepilogo di cassa in PDF: one day or a period, everything the register did day by day: the
+    /// receipts with lines, who paid and how, the annulli, the closures, then the day's totals by payment and by operator,
+    /// the «Da pagare» collected and what was done «non nello scontrino».</summary>
+    [Rpc("cassa.riepilogo", Perm = "sale.write")]
+    public static IResult Summary(Call c)
+    {
+        var x = c.C; var (t, where, loc) = Place(c); if (loc == null) throw new KeyNotFoundException();
+        var today = x.Today; DateOnly Day(string k, DateOnly def) => DateOnly.TryParseExact(c.Str(k), "yyyy-MM-dd", out var v) ? v : def;
+        var a = Day("dal", today); var b = Day("al", a); if (b < a) (a, b) = (b, a); if (b > a.AddDays(366)) b = a.AddDays(366);
+        var start = x.Cal.Local(a, TimeSpan.Zero)!.Value; var end = x.Cal.Local(b.AddDays(1), TimeSpan.Zero)!.Value; var namesOk = c.Can("pii.read");
+        string Who(Guid? contact) => contact.HasValue ? Name(c, contact, namesOk, "Cliente") : "";
+        var sales = x.S.Query<Sale>("SELECT * FROM core_sale WHERE location_id=@l AND kind IN ('sale','void','close') AND status IN ('done','void','unknown') AND created>=@a AND created<@z ORDER BY created", new { l = loc.Id, a = start, z = end }).ToList();
+        var paid = x.S.Query<Sale>("SELECT * FROM core_sale WHERE location_id=@l AND kind='sale' AND settled>=@a AND settled<@z ORDER BY settled", new { l = loc.Id, a = start, z = end }).ToList();
+        var parked = x.S.Query<Parked>("SELECT * FROM core_parked WHERE location_id=@l AND created>=@a AND created<@z ORDER BY created", new { l = loc.Id, a = start, z = end }).ToList();
+        const double L = Pdf.MARGIN, R = Pdf.W - Pdf.MARGIN; var period = a == b ? $"{a:dd/MM/yyyy}" : $"dal {a:dd/MM/yyyy} al {b:dd/MM/yyyy}"; var it = System.Globalization.CultureInfo.GetCultureInfo("it-IT");
+        var doc = new Pdf($"Riepilogo di cassa {period}"); doc.Page();
+        doc.Line(L, $"Riepilogo di cassa · {period}", 16, true, 18); doc.Line(L, $"{c.Tenant.Name} · {loc.Name} · stampato il {x.Cal.ToLocal(x.Now):dd/MM/yyyy HH:mm}", 9); doc.Space();
+        string E(int cents) => Till.Euro(cents); string Eu(decimal v) => Prices.Euro((decimal?)v);
+        (double, string, bool) C(double px, string text, bool right = false) => (px, text, right);
+        var labels = Till.PAYMENTS.ToDictionary(p => p.Id, p => p.Label); labels["gift"] = "Gift card"; labels["settled"] = "Da pagare incassati";
+        var all = (N: 0, Cents: 0, Pay: new List<(string K, int C)>(), Staff: new List<(string K, int C)>());
+        void Add(List<(string K, int C)> list, string k, int cents) { var i = list.FindIndex(p => p.K == k); if (i < 0) list.Add((k, cents)); else list[i] = (k, list[i].C + cents); }
+        DateOnly D(DateTime utc) => x.Cal.DayOf(utc);
+        var days = sales.Select(s => D(s.Created)).Concat(paid.Select(s => D(s.Settled.Value))).Concat(parked.Select(p => D(p.Created))).Distinct().OrderBy(v => v).ToList();
+        foreach (var d in days)
+        {
+            var name = d.ToString("dddd d MMMM yyyy", it); doc.Rule(); doc.Line(L, char.ToUpper(name[0]) + name[1..], 12, true, 16);
+            var tot = (N: 0, Cents: 0, Pay: new List<(string K, int C)>(), Staff: new List<(string K, int C)>());
+            // the day's events in the order they happened: receipts, annulli and closures, the Da pagare collected, the rows left out
+            var events = sales.Where(s => D(s.Created) == d).Select(s => (At: x.Cal.ToLocal(s.Printed ?? s.Created), What: "sale", Sale: s, Park: (Parked)null))
+                .Concat(paid.Where(s => D(s.Settled.Value) == d).Select(s => (x.Cal.ToLocal(s.Settled.Value), "paid", s, (Parked)null)))
+                .Concat(parked.Where(p => D(p.Created) == d).Select(p => (x.Cal.ToLocal(p.Created), "park", (Sale)null, p))).OrderBy(e => e.Item1).ToList();
+            foreach (var (at, what, s, pk) in events)
+            {
+                var when = at.ToString("HH:mm");
+                if (what == "paid")
+                {
+                    doc.Line(new[] { C(L, when), C(L + 40, s.Number != "" ? $"Incassato il Da pagare dello scontrino n. {Till.Doc(s)} del {x.Cal.ToLocal(s.Printed.Value):dd/MM}" : "Incassato un Da pagare"), C(L + 320, Who(s.ContactId)), C(R, Eu(s.Due) + " " + (Till.SETTLE.FirstOrDefault(p => p.Id == s.SettledWith).Label ?? "").ToLowerInvariant(), true) }, 9);
+                    Add(tot.Pay, "settled", (int)(s.Due * 100)); continue;
+                }
+                if (what == "park")
+                {
+                    var pl = (t.ParkedData(pk)["lines"] as JsonArray)?.OfType<JsonObject>().ToList() ?? new(); doc.Room(1 + pl.Count);
+                    doc.Line(new[] { C(L, when), C(L + 40, "Non nello scontrino"), C(L + 170, Who(pk.ContactId)), C(R, Eu(pk.Total), true) }, 9);
+                    foreach (var l in pl) doc.Line(new[] { C(L + 40, $"{Till.Int(l["qty"])} x {l.Str("desc")}" + (l.Str("staff") != "" ? $" · {l.Str("staff")}" : "")), C(R, E(Till.Int(l["qty"]) * Till.Int(l["cents"]) - Till.Int(l["off"])), true) }, 9, false, 12);
+                    continue;
+                }
+                var state = s.Status == "void" ? "annullato" : s.Status == "unknown" ? "da verificare" : "";
+                if (s.Kind == "close") { doc.Line(new[] { C(L, when), C(L + 40, "Chiusura giornaliera" + (s.Error == "Fatta dalla cassa" ? " fatta dalla cassa" : "")) }, 10, true); continue; }
+                var dd = t.Data(s);
+                if (s.Kind == "void")
+                {
+                    var v = s.VoidsId.HasValue ? x.S.Get<Sale>(s.VoidsId.Value) : null;
+                    doc.Line(new[] { C(L, when), C(L + 40, $"Annullo del n. {(v != null && v.Number != "" ? Till.Doc(v) : dd.Str("number"))}"), C(R, "-" + Eu(s.Total), true) }, 10, true); continue;
+                }
+                var lines = (dd["lines"] as JsonArray)?.OfType<JsonObject>().ToList() ?? new(); doc.Room(3 + lines.Count);  // a receipt stays on one page
+                doc.Line(new[] { C(L, when), C(L + 40, s.Number != "" ? $"Scontrino n. {Till.Doc(s)}" : "Scontrino"), C(L + 170, Who(s.ContactId)), C(R, Eu(s.Total) + (state != "" ? $" ({state})" : ""), true) }, 10, true);
+                foreach (var l in lines) doc.Line(new[] { C(L + 40, $"{Till.Int(l["qty"])} x {l.Str("desc")}" + (l.Str("staff") != "" ? $" · {l.Str("staff")}" : "")), C(R, E(Till.Int(l["qty"]) * Till.Int(l["cents"]) - Till.Int(l["off"])), true) }, 9, false, 12);
+                var gift = Till.Int(dd["gift"]?["cents"]);
+                if (Till.Int(dd["discount"]) != 0) doc.Line(new[] { C(L + 40, "Sconto sul totale"), C(R, "-" + E(Till.Int(dd["discount"])), true) }, 9, false, 12);
+                if (gift != 0) doc.Line(new[] { C(L + 40, "Pagato con gift card"), C(R, "-" + E(gift), true) }, 9, false, 12);
+                var pays = Till.Payments(dd);
+                doc.Line(new[] { C(L + 40, "Pagamento: " + string.Join(", ", pays.Select(p => $"{Till.PayLabel(p.Kind)} {E(p.Cents)}"))) }, 9, false, 12);
+                if (s.Status == "void") continue;
+                var cents = (int)(s.Total * 100); tot.N++; tot.Cents += cents;
+                foreach (var (k, pc) in pays) Add(tot.Pay, k, pc);
+                if (gift != 0) Add(tot.Pay, "gift", gift);
+                foreach (var (k, sc) in Till.Shares(dd, cents + gift)) Add(tot.Staff, k != "" ? k : "Senza operatore", sc);
+            }
+            doc.Space(0.5); doc.Line(new[] { C(L + 40, $"Scontrini: {tot.N}"), C(R, "Totale " + E(tot.Cents), true) }, 10, true);
+            foreach (var (k, pc) in tot.Pay) doc.Line(new[] { C(L + 40, labels.GetValueOrDefault(k, k)), C(R, E(pc), true) }, 9, false, 12);
+            foreach (var (k, sc) in tot.Staff.OrderByDescending(p => p.C)) doc.Line(new[] { C(L + 40, "Operatore " + k), C(R, E(sc), true) }, 9, false, 12);
+            all.N += tot.N; all.Cents += tot.Cents; foreach (var (k, pc) in tot.Pay) Add(all.Pay, k, pc); foreach (var (k, sc) in tot.Staff) Add(all.Staff, k, sc);
+        }
+        if (days.Count == 0) doc.Line(L, "Nessuno scontrino in questi giorni.", 10);
+        if (days.Count > 1)
+        {
+            doc.Space(); doc.Rule(); doc.Line(new[] { C(L, $"Totale del periodo · scontrini: {all.N}"), C(R, E(all.Cents), true) }, 12, true, 16);
+            foreach (var (k, pc) in all.Pay) doc.Line(new[] { C(L + 40, labels.GetValueOrDefault(k, k)), C(R, E(pc), true) }, 9, false, 12);
+            foreach (var (k, sc) in all.Staff.OrderByDescending(p => p.C)) doc.Line(new[] { C(L + 40, "Operatore " + k), C(R, E(sc), true) }, 9, false, 12);
+        }
+        x.Audit("sale.summary", null, new { day = a.ToString("yyyy-MM-dd"), until = b.ToString("yyyy-MM-dd") });
+        return Results.File(doc.Render(), "application/pdf");
     }
 
     /// <summary>gift.lookup: the Cassa asks for a code: its credit, or why it cannot pay.</summary>

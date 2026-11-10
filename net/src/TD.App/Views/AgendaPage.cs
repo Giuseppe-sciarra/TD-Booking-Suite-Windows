@@ -29,6 +29,8 @@ public sealed class AgendaPage : Page
     readonly ComboBox places = new() { MinWidth = 150 }, people = new() { MinWidth = 170 };
     const double PX = 26.0 / 15;  // pixels per minute: a quarter of hour is 26 px, as the web agenda
 
+    /// <summary>UseZone, chained: a helper to turn the server's times into the business's local time.</summary>
+    public AgendaPage Also(string zoneName) { UseZone(zoneName); return this; }
     public void UseZone(string name) { try { zone = TimeZoneInfo.FindSystemTimeZoneById(name); } catch { } }
 
     public override async Task Load()

@@ -253,7 +253,7 @@ public sealed class BookingDetailPage(string id) : Page
         if (write)
         {
             if (Can("sale.write") && status != "cancelled")
-                aside.Children.Add(F.Card(T("Conto", "H2"), T("Lo scontrino lo stampa il registratore di cassa: qui restano i dati.", size: 14, color: Res("Muted")), Wide(B("Chiudi il conto", () => Main.Show("cassa"), "Primary"))));
+                aside.Children.Add(F.Card(T("Conto", "H2"), T("Lo scontrino lo stampa il registratore di cassa: qui restano i dati.", size: 14, color: Res("Muted")), Wide(B("Chiudi il conto", () => Main.ShowPage(new CassaPage { Booking = id }), "Primary"))));
             var actions = Col(T("Azioni", "H2"));
             if (b.Bo("annulla") && cancel)
             {

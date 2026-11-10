@@ -169,7 +169,7 @@ public sealed class MainWindow : Window
             Add("dashboard", "grid", "Dashboard", () => new DashboardPage(), Can("booking.read"));
             Add("agenda", "day", "Agenda e prenotazioni", () => new AgendaPage(), Can("booking.read"));
             Add("clienti", "users", "Clienti", () => new ClientsPage(), Can("contacts.read"));
-            Add("cassa", "tag", "Cassa", () => new Placeholder("Cassa"), Can("sale.write"));
+            Add("cassa", "tag", "Cassa", () => new CassaPage(), Can("sale.write"));
             Add("standby", "clock", "Stand-by", () => new Placeholder("Stand-by"), Can("sale.write"), t.I("standby"));
             Add("giftcard", "gift", "Gift card", () => new Placeholder("Gift card"), Can("sale.write"));
             Add("preventivi", "briefcase", "Preventivi", () => new Placeholder("Preventivi"), Can("booking.write") && Can("pii.read"));

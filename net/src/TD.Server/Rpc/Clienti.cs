@@ -233,6 +233,34 @@ public static class Clienti
         return new { testo = "Dati del cliente cancellati. Lo storico dei consensi resta, senza dati personali." };
     }
 
+    /// <summary>portal.contact_history: Storico del cliente, to print or save as PDF: everything recorded on his card in a
+    /// period (or always), with what he spent, what he still owes and his credit.</summary>
+    [Rpc("cliente.storico", Perm = "contacts.read")]
+    public static object HistorySheet(Call c)
+    {
+        c.Require("pii.read"); c.Require("notes.read");
+        var x = c.C; var cl = new Clients(x); var bk = new Bookings(x); var contact = Card(c); var data = cl.Data(contact); var today = x.Today;
+        DateOnly? Day(string k) => DateOnly.TryParseExact(c.Str(k), "yyyy-MM-dd", out var d) ? d : null;
+        var since = Day("dal"); var until = Day("al");
+        var rows = cl.Treatments(contact).AsEnumerable().Reverse().Where(r => (since == null || DateOnly.FromDateTime(r.Row.Date) >= since) && (until == null || DateOnly.FromDateTime(r.Row.Date) <= until)).ToList();
+        int? Amount(JsonObject info) => info["amount"] is JsonValue v && v.TryGetValue<int>(out var n) ? n : null;
+        var gifts = new Gift(x).Of(contact.Id).Where(g => g.Status == "active").ToList();
+        bool Expired(Giftcard g) => g.Expires.HasValue && DateOnly.FromDateTime(g.Expires.Value) < today;
+        x.Audit("contact.history", contact.Id);
+        return new
+        {
+            nome = data.Str("first_name"), cognome = data.Str("last_name"), telefono = data.Str("phone"), email = data.Str("email"), attivita = c.Tenant.Name, dal = since, al = until, oggi = today,
+            visite = rows.Count(r => r.Info.Str("kind") != "payment"), speso = Prices.Str(rows.Sum(r => Amount(r.Info) ?? 0) / 100m),
+            deve = Prices.Str(x.S.Scalar<decimal?>("SELECT sum(due) FROM core_sale WHERE contact_id=@c AND kind='sale' AND status='done' AND due>0 AND settled IS NULL", new { c = contact.Id }) ?? 0),
+            fuoriScontrino = Prices.Str(x.S.Scalar<decimal?>("SELECT sum(total) FROM core_parked WHERE contact_id=@c", new { c = contact.Id }) ?? 0),
+            credito = Prices.Str(gifts.Where(g => !Expired(g)).Sum(g => g.Balance)),
+            righe = rows.Select(r => new { data = DateOnly.FromDateTime(r.Row.Date), servizio = r.Info.Str("service"), tipo = r.Info.Str("kind"), dettagli = r.Info.Str("details"), operatore = r.Info.Str("staff"), importo = Amount(r.Info) is int a ? Prices.Str(a / 100m) : null }),
+            giftcard = gifts.Select(g => new { codice = g.Code, credito = Prices.Str(g.Balance), importo = Prices.Str(g.Amount), scade = g.Expires.HasValue ? DateOnly.FromDateTime(g.Expires.Value) : (DateOnly?)null, scaduta = Expired(g) }),
+            prossimi = x.S.Query<Booking>("SELECT * FROM core_booking WHERE contact_id=@c AND start>=@n AND status = ANY(@a) ORDER BY start LIMIT 5", new { c = contact.Id, n = x.Now, a = Bookings.ACCEPTED })
+                .Select(b => new { inizio = bk.Iso(b.Start), servizio = b.Snap.Str("service") is var sv && sv != "" ? sv : x.Row<Service>(b.ServiceId).Name, operatore = b.Snap.Str("resource") }),
+        };
+    }
+
     // ---------- Unisci due schede (portal.contact_merge)
     static void MergeRights(Call c) { foreach (var p in new[] { "pii.read", "booking.write", "privacy.manage" }) c.Require(p); }
 
