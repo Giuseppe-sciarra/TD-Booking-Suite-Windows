@@ -186,7 +186,7 @@ public sealed class MainWindow : Window
             Section("Comunicazioni");
             Add("richiami", "bell", "Richiami", () => new RecallsPage(), Can("contacts.read"));
             Add("whatsapp", "chat", "Promemoria WhatsApp", () => new WhatsAppPage(), Can("booking.read") && Can("pii.read"));
-            Add("marketing", "megaphone", "Marketing", () => new Placeholder("Marketing"), Can("campaign.manage") && (t.Bo("marketing") || t.Bo("esporta")));
+            Add("marketing", "megaphone", "Marketing", () => new MarketingPage(), Can("campaign.manage") && (t.Bo("marketing") || t.Bo("esporta")));
             Add("promemoria", "bell", "Configurazione promemoria", () => new NotificationsPage(), Can("users.manage"));
             Add("api", "plug", "API e webhook", () => new ApiPage(), Can("users.manage") && t.Bo("api") && !staff);
             Section("La tua attività");

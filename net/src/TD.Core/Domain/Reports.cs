@@ -21,7 +21,7 @@ public sealed class Reports(Ctx c, Viewer v)
         ("occupazione", "Occupazione per operatore e risorsa"), ("assenze", "Assenze e disdette all'ultimo momento"), ("clienti", "Clienti nuovi e di ritorno"),
         ("origine", "Da dove arrivano le prenotazioni"), ("valore", "Valore stimato"),
     };
-    static readonly Dictionary<string, string> ORIGIN = new() { ["public"] = "Pagina pubblica", ["wordpress"] = "Sito WordPress", ["desk"] = "Banco", ["walkin"] = "Senza appuntamento", ["import"] = "Importata", ["agenda"] = "Agenda del sito" };
+    public static readonly Dictionary<string, string> ORIGIN = new() { ["public"] = "Pagina pubblica", ["wordpress"] = "Sito WordPress", ["desk"] = "Banco", ["walkin"] = "Senza appuntamento", ["import"] = "Importata", ["agenda"] = "Agenda del sito" };
     static readonly Dictionary<string, string> GIFT = new() { ["pending"] = "Da emettere", ["active"] = "Attiva", ["void"] = "Annullata" };
 
     static int Minutes(IEnumerable<Span> spans) => (int)Math.Floor(spans.Sum(s => (s.B - s.A).TotalSeconds) / 60);
