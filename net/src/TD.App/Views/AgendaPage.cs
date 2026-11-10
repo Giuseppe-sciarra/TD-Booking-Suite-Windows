@@ -58,7 +58,7 @@ public sealed class AgendaPage : Page
         // .page-heading: eyebrow, h1, p on the left; the actions on the right
         var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 16), LastChildFill = true };
         DockPanel.SetDock(actions, Dock.Right); heading.Children.Add(actions);
-        subtitle.FontSize = 14;
+        subtitle.FontSize = 14; title.TextWrapping = TextWrapping.Wrap; subtitle.TextWrapping = TextWrapping.Wrap;
         heading.Children.Add(Col(eyebrow, title, subtitle));
         // .agenda-bar
         picker = new DatePicker { Width = 150 };
@@ -80,10 +80,12 @@ public sealed class AgendaPage : Page
         help.Click += (_, _) => Shortcuts();
         var dayNav = Row(Small("‹", () => Step(-1)), Small("Oggi", async () => { day = DateOnly.Parse(Business.S("oggi")); await Refresh(); }).M(6, 0, 6, 0), Small("›", () => Step(1)));
         var pick = Row(picker, places.M(8, 0, 0, 0), people.M(8, 0, 0, 0), Small("Vai", Refresh).M(8, 0, 0, 0));
-        var bar = new DockPanel { Margin = new Thickness(0, 0, 0, 14), LastChildFill = false };
-        DockPanel.SetDock(help, Dock.Right); bar.Children.Add(help);
-        DockPanel.SetDock(seg, Dock.Right); bar.Children.Add(seg.M(0, 0, 16, 0));
-        foreach (var e in new FrameworkElement[] { dayNav.M(0, 0, 16, 0), pick.M(0, 0, 16, 0), quick }) { e.VerticalAlignment = VerticalAlignment.Center; DockPanel.SetDock(e, Dock.Left); bar.Children.Add(e); }
+        // .agenda-bar wraps: on a narrow window day, place and search go on a second row, the views stay on the right
+        var bar = new Grid { Margin = new Thickness(0, 0, 0, 14) }; bar.ColumnDefinitions.Add(new ColumnDefinition()); bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var left = new WrapPanel();
+        foreach (var e in new FrameworkElement[] { dayNav.M(0, 0, 16, 6), pick.M(0, 0, 16, 6), quick.M(0, 0, 16, 6) }) { e.VerticalAlignment = VerticalAlignment.Center; left.Children.Add(e); }
+        var right = Row(seg.M(0, 0, 16, 0), help); right.VerticalAlignment = VerticalAlignment.Top; Grid.SetColumn(right, 1);
+        bar.Children.Add(left); bar.Children.Add(right);
         var top = Col(heading, bar, above);
         var root = new DockPanel { Margin = new Thickness(26, 20, 26, 16), MaxWidth = 1480 };
         DockPanel.SetDock(top, Dock.Top); DockPanel.SetDock(below, Dock.Bottom);

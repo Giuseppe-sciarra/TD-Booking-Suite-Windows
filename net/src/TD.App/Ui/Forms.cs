@@ -34,7 +34,9 @@ public static class F
         var a = Row(); a.VerticalAlignment = VerticalAlignment.Bottom;
         for (int i = 0; i < actions.Length; i++) if (actions[i] != null) a.Children.Add(actions[i].M(i == 0 ? 0 : 10, 0, 0, 0));
         DockPanel.SetDock(a, Dock.Right); d.Children.Add(a);
-        d.Children.Add(Col(eyebrow == null ? null : T(eyebrow, "Eyebrow"), T(h1, "H1"), p == null ? null : T(p, size: 14, color: Res("Muted"))));
+        // on a narrow window the title and its line go on two rows beside the buttons, never under them
+        var title = T(h1, "H1"); title.TextWrapping = TextWrapping.Wrap; var line = p == null ? null : T(p, size: 14, color: Res("Muted")); if (line != null) line.TextWrapping = TextWrapping.Wrap;
+        d.Children.Add(Col(eyebrow == null ? null : T(eyebrow, "Eyebrow"), title, line));
         return d;
     }
     public static Border Card(params UIElement[] items) => new() { Style = Style("Card"), Child = Col(items), Margin = new Thickness(0, 0, 0, 14), Effect = (System.Windows.Media.Effects.Effect)Application.Current.Resources["CardShadow"] };
