@@ -1,4 +1,4 @@
-"""TD Licenze: la finestra per creare le licenze di TD Booking Suite per Windows e di TD Velo.
+"""TD Licenze: la finestra per creare le licenze di TD Booking Suite per Windows.
 
 GitHub Actions la costruisce come TD Licenze.exe (artefatto TD-Licenze), solo per chi vende il programma.
 È portatile: chiave, registro e licenze emesse stanno nella cartella del programma, che si copia intera
@@ -58,12 +58,7 @@ class App(tk.Tk):
         self.replace_info=ttk.Label(f,text="",style="Hint.TLabel",wraplength=640,justify="left");self.replace_info.grid(row=1,column=0,columnspan=2,sticky="w")
         self.replace_reset=ttk.Button(f,text="Nuova da zero",command=self.reset_form)
         self.v={"tipo":tk.StringVar(value=tool.TIPI["server"]),"intestatario":tk.StringVar(),"attivita":tk.StringVar(value="1"),"postazioni":tk.StringVar(value="2"),
-                "installazione":tk.StringVar(),"scadenza":tk.StringVar(),"prodotto":tk.StringVar(value=tool.PRODOTTI["booking"])}
-        # TD Velo: stessa chiave e stesso registro, licenza per un PC senza tipo, attività e postazioni
-        prodotti=ttk.Frame(f);prodotti.grid(row=0,column=1,columnspan=2,sticky="e")
-        ttk.Label(prodotti,text="Programma").pack(side="left",padx=(0,8))
-        self.prodotto_box=ttk.Combobox(prodotti,textvariable=self.v["prodotto"],values=list(tool.PRODOTTI.values()),state="readonly",width=20)
-        self.prodotto_box.pack(side="left");self.prodotto_box.bind("<<ComboboxSelected>>",lambda e:self.tipo_changed())
+                "installazione":tk.StringVar(),"scadenza":tk.StringVar()}
         ttk.Label(f,text="Tipo").grid(row=2,column=0,sticky="w",padx=(0,12),pady=(10,0))
         self.tipo_box=ttk.Combobox(f,textvariable=self.v["tipo"],values=list(tool.TIPI.values()),state="readonly",width=28)
         self.tipo_box.grid(row=2,column=1,sticky="w",pady=(10,0));self.tipo_box.bind("<<ComboboxSelected>>",lambda e:self.tipo_changed())
@@ -95,19 +90,9 @@ class App(tk.Tk):
         self.tipo_changed()
 
     def tipo(self):return next(k for k,v in tool.TIPI.items() if v==self.v["tipo"].get())
-    def prodotto(self):return next(k for k,v in tool.PRODOTTI.items() if v==self.v["prodotto"].get())
 
     def tipo_changed(self):
-        """Un PC solo: one business, no workstations. Server: one business and its workstations. Portale: both.
-        TD Velo: solo intestatario, codice d'installazione del PC e scadenza."""
-        if self.prodotto()=="velo":
-            self.tipo_hint.configure(text="TD Velo: licenza per il PC del codice d'installazione (pagina Licenza del programma)")
-            self.tipo_box.configure(state="disabled")
-            for k in ("attivita","postazioni"):self.v[k].set("");self.fields[k].configure(state="disabled")
-            return
-        self.tipo_box.configure(state="readonly")
-        if self.v["attivita"].get()=="":self.v["attivita"].set("1")
-        if self.v["postazioni"].get()=="":self.v["postazioni"].set("2")
+        """Un PC solo: one business, no workstations. Server: one business and its workstations. Portale: both."""
         tipo=self.tipo()
         hints={"pc":"si usa solo dal PC dove è installato: niente postazioni","server":"una attività, il PC server più le postazioni in rete",
                "portale":"più attività sullo stesso server, con le loro postazioni"}
@@ -123,19 +108,18 @@ class App(tk.Tk):
     def change(self,row):
         """Cambia postazioni o scadenza: the same client and installation in the form, a new licence that replaces the old."""
         self.replacing=row["id"]
-        self.v["prodotto"].set(tool.PRODOTTI[tool.prodotto_of(row)])
         self.v["tipo"].set(tool.TIPI[tool.tipo_of(row)])
         for k in ("intestatario","attivita","postazioni","installazione","scadenza"):self.v[k].set(row[k])
         self.tipo_changed()
         for k in ("attivita","postazioni"):self.v[k].set(row[k])
         self.replace_info.configure(text=f"Sostituisce la licenza {row['id']}: cambia postazioni, scadenza o tipo e premi Crea la licenza. Il cliente la incolla al posto della vecchia.")
         self.replace_reset.grid(row=1,column=2,sticky="e")
-        self.fields["installazione"].configure(state="disabled");self.prodotto_box.configure(state="disabled")
+        self.fields["installazione"].configure(state="disabled")
         self.tabs.select(self.new_tab);self.fields["postazioni"].focus_set()
 
     def reset_form(self):
         self.replacing=None;self.replace_info.configure(text="");self.replace_reset.grid_remove()
-        self.fields["installazione"].configure(state="normal");self.prodotto_box.configure(state="readonly")
+        self.fields["installazione"].configure(state="normal")
         for k in ("intestatario","installazione","scadenza"):self.v[k].set("")
         self.v["tipo"].set(tool.TIPI["server"]);self.v["postazioni"].set("2");self.tipo_changed()
 
@@ -154,9 +138,8 @@ class App(tk.Tk):
         if not self.ask_password():return
         self.sync(quiet=True)  # the latest register first: the new number follows the licences made on other PCs
         try:
-            velo=self.prodotto()=="velo"
-            licence,path,data=tool.create(self.folder,self.v["intestatario"].get(),None if velo else self.v["attivita"].get() or 0,None if velo else self.v["postazioni"].get() or 0,
-                self.v["installazione"].get(),self.v["scadenza"].get(),self.out,self.password,"" if velo else self.tipo(),self.replacing or "",self.prodotto())
+            licence,path,data=tool.create(self.folder,self.v["intestatario"].get(),self.v["attivita"].get() or 0,self.v["postazioni"].get() or 0,
+                self.v["installazione"].get(),self.v["scadenza"].get(),self.out,self.password,self.tipo(),self.replacing or "")
         except ValueError as ex:
             messagebox.showerror("TD Licenze","Attività e postazioni sono numeri." if "invalid literal" in str(ex) else str(ex),parent=self);return
         self.result.configure(state="normal");self.result.delete("1.0","end");self.result.insert("1.0",licence);self.result.configure(state="disabled")
@@ -166,7 +149,7 @@ class App(tk.Tk):
             sent=self.sync(quiet=True)
             self.result_info.configure(text=self.result_info.cget("text")+(" Registro su GitHub aggiornato." if sent else " Non mandata a GitHub: la mando alla prossima sincronizzazione.")
                 +(self.publish(bound=bool(data["installazione"])) if self.replacing else ""))
-        if self.replacing:self.replacing=None;self.replace_info.configure(text="");self.replace_reset.grid_remove();self.fields["installazione"].configure(state="normal");self.prodotto_box.configure(state="readonly")
+        if self.replacing:self.replacing=None;self.replace_info.configure(text="");self.replace_reset.grid_remove();self.fields["installazione"].configure(state="normal")
         self.refresh()
 
     # issued licences
@@ -201,8 +184,7 @@ class App(tk.Tk):
         replaced={r.get("sostituisce"):r["id"] for r in rows if r.get("sostituisce")}
         for r in reversed(rows):
             state=f"sostituita da {replaced[r['id']]}" if r["id"] in replaced else f"revocata il {r['revocata']}" if r.get("revocata") else "in uso"
-            velo=tool.prodotto_of(r)=="velo"
-            item=self.tree.insert("","end",values=(r["id"],r["emessa"],r["intestatario"],"TD Velo" if velo else tool.TIPI[tool.tipo_of(r)],"—" if velo else r["attivita"],"—" if velo else r["postazioni"],
+            item=self.tree.insert("","end",values=(r["id"],r["emessa"],r["intestatario"],tool.TIPI[tool.tipo_of(r)],r["attivita"],r["postazioni"],
                 r["installazione"] or "a stock",r["scadenza"] or "per sempre",state))
             self.rows[item]=r
 
@@ -386,9 +368,8 @@ class App(tk.Tk):
     def revoke_selected(self):
         row=self.selected_row()
         if not row:return
-        effetto=("restano consultabili archivio, legende e ripristino, i dati restano salvati." if tool.prodotto_of(row)=="velo"
-                 else "restano aperte solo Licenza e Backup, e prenotazioni e clienti restano salvati.")
-        if not messagebox.askyesno("TD Licenze",f"Revoco la licenza {row['id']} di {row['intestatario']}? Quando il suo programma va online smette di funzionare: "+effetto,parent=self):return
+        if not messagebox.askyesno("TD Licenze",f"Revoco la licenza {row['id']} di {row['intestatario']}? Quando il suo programma va online smette di funzionare: "
+            "restano aperte solo Licenza e Backup, e prenotazioni e clienti restano salvati.",parent=self):return
         if not self.ask_password():return
         self.sync(quiet=True)
         try:tool.revoke(self.folder,row["id"])

@@ -1,4 +1,4 @@
-"""TD Licenze: crea le licenze di TD Booking Suite per Windows e di TD Velo.
+"""TD Licenze: crea le licenze di TD Booking Suite per Windows.
 
 Gira sul PC di chi vende il programma, non va mai installato dai clienti. La finestra è TD Licenze.exe,
 costruito da GitHub Actions (td_licenze_gui.py); da riga di comando serve Python con il pacchetto cryptography:
@@ -8,7 +8,6 @@ costruito da GitHub Actions (td_licenze_gui.py); da riga di comando serve Python
     python td_licenze.py chiave     la prima volta: crea la chiave privata e stampa quella pubblica
     python td_licenze.py crea --intestatario "Bar Roma" --tipo server --postazioni 3 --installazione ABCD-EFGH-IJKL-MNOP
     python td_licenze.py crea --sostituisce TD-2026-0007 --postazioni 5     stessa installazione, postazioni cambiate
-    python td_licenze.py crea --prodotto velo --intestatario "Studio Bianchi" --installazione ABCD-EFGH-IJKL-MNOP
     python td_licenze.py verifica   controlla una licenza incollata e ne mostra i dati
     python td_licenze.py elenco     le licenze emesse, dal registro
     python td_licenze.py collega Giuseppe-sciarra/TD-Licenze-Dati    il registro anche nella repo privata di GitHub
@@ -26,23 +25,12 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey,Ed25519PublicKey
 
 PREFIX="TDBS1."
-# 1.0 di TD Velo: stessa chiave, prefisso e numerazione propri. Il prefisso fa parte del firmato: una licenza di un
-# programma non passa per l'altro. Nel registro le righe senza «prodotto» sono di TD Booking Suite.
-PRODOTTI={"booking":"TD Booking Suite","velo":"TD Velo"}
-PREFISSI={"booking":PREFIX,"velo":"TDVL1."}
-NUMERI={"booking":"TD","velo":"TDV"}
-FIELDS=["id","emessa","intestatario","tipo","attivita","postazioni","installazione","scadenza","sostituisce","licenza","revocata","prodotto"]
-def prodotto_of(row):
-    """booking o velo: dalla colonna del registro, o dal numero e dal prefisso per le righe scritte prima."""
-    p=(row.get("prodotto") or "").strip()
-    if p in PRODOTTI:return p
-    return "velo" if str(row.get("id","")).startswith("TDV-") or str(row.get("licenza","")).startswith(PREFISSI["velo"]) else "booking"
+FIELDS=["id","emessa","intestatario","tipo","attivita","postazioni","installazione","scadenza","sostituisce","licenza","revocata"]
 # the three kinds of licence: Un PC solo has no workstations, a server one business, a portal more businesses
 TIPI={"pc":"Un PC solo","server":"Server con postazioni","portale":"Portale, più attività"}
 def tipo_of(data):
     """The kind written in the licence, or the one its numbers say (licences made before kinds existed)."""
     if data.get("tipo") in TIPI:return data["tipo"]
-    if prodotto_of(data)=="velo":return "pc"  # TD Velo: un PC, senza attività e postazioni
     return "portale" if int(data["attivita"])>1 else "pc" if int(data["postazioni"])==0 else "server"
 
 def b64(raw):return base64.urlsafe_b64encode(raw).decode().rstrip("=")
@@ -99,18 +87,17 @@ def load_key(folder,password=None):
         raise ValueError("La chiave dentro TD Licenze non è la coppia della chiave pubblica del programma: controlla il secret TD_LICENZE_CHIAVE e tdwin/licenza-chiave-pubblica.txt.")
     return key
 
-def sign(key,data,prefix=PREFIX):
+def sign(key,data):
     body=b64(json.dumps(data,ensure_ascii=False,separators=(",",":"),sort_keys=True).encode())
-    return prefix+body+"."+b64(key.sign((prefix+body).encode()))
+    return PREFIX+body+"."+b64(key.sign((PREFIX+body).encode()))
 
 def read(text,public=None):
     """The data of a licence; ValueError when the signature does not match the public key."""
     text="".join(text.split())
-    prefix=next((p for p in PREFISSI.values() if text.startswith(p)),None)
-    if not prefix:raise ValueError("Non è una licenza TDBS1. (TD Booking Suite) o TDVL1. (TD Velo).")
+    if not text.startswith(PREFIX):raise ValueError("Non è una licenza TDBS1.")
     try:
-        body,signature=text[len(prefix):].split(".")
-        if public:Ed25519PublicKey.from_public_bytes(unb64(public)).verify(unb64(signature),(prefix+body).encode())
+        body,signature=text[len(PREFIX):].split(".")
+        if public:Ed25519PublicKey.from_public_bytes(unb64(public)).verify(unb64(signature),(PREFIX+body).encode())
         return json.loads(unb64(body))
     except Exception:raise ValueError("Licenza non valida o modificata.") from None
 
@@ -365,33 +352,26 @@ def new_password(length=16):
 # the names of the clients stay private), and the ids of the licences revoked or replaced. Signed with the key.
 STATE_PREFIX="TDST1."
 STATE_FILE="stato-licenze.json"
-# TD Velo: un file di stato suo, con il prodotto dentro e chiavi ricavate con «tdvl-»: uno stato non vale per l'altro
-STATE_FILES={"booking":STATE_FILE,"velo":"stato-licenze-velo.json"}
-SALI={"booking":"tdbs","velo":"tdvl"}
 def bare(code):return "".join(ch for ch in (code or "").upper() if ch.isalnum())
-def code_digest(code,purpose,prodotto="booking"):
+def code_digest(code,purpose):
     import hashlib
-    return hashlib.sha256(f"{SALI[prodotto]}-{purpose}\n{bare(code)}".encode()).digest()
-def revoked_id(licence_id,prodotto="booking"):
+    return hashlib.sha256(f"tdbs-{purpose}\n{bare(code)}".encode()).digest()
+def revoked_id(licence_id):
     import hashlib
-    return hashlib.sha256(f"{SALI[prodotto]}-revoca\n{licence_id}".encode()).hexdigest()
+    return hashlib.sha256(f"tdbs-revoca\n{licence_id}".encode()).hexdigest()
 def out_of_use(rows):
     """The licences that no longer count: revoked, or replaced by a newer one."""
     return {r["id"] for r in rows if r.get("revocata")}|{r["sostituisce"] for r in rows if r.get("sostituisce")}
-def state(rows,key,issued,prodotto="booking"):
+def state(rows,key,issued):
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-    rows=[r for r in rows if prodotto_of(r)==prodotto]
     gone=out_of_use(rows);current={}
     for r in rows:  # oldest first: the newest in use for an installation wins
         if r.get("installazione") and r["id"] not in gone:current[bare(r["installazione"])]=r
     sealed={}
-    aad=f"{SALI[prodotto]}-stato".encode()
     for code,r in sorted(current.items()):
         nonce=os.urandom(12)
-        sealed[code_digest(code,"installazione",prodotto).hex()]={"nonce":b64(nonce),"licenza":b64(AESGCM(code_digest(code,"licenza",prodotto)).encrypt(nonce,r["licenza"].encode(),aad))}
-    data={"v":1,"emesso":issued,"installazioni":sealed,"revocate":sorted(revoked_id(i,prodotto) for i in gone)}
-    if prodotto!="booking":data["prodotto"]=PRODOTTI[prodotto]
-    body=b64(json.dumps(data,separators=(",",":"),sort_keys=True).encode())
+        sealed[code_digest(code,"installazione").hex()]={"nonce":b64(nonce),"licenza":b64(AESGCM(code_digest(code,"licenza")).encrypt(nonce,r["licenza"].encode(),b"tdbs-stato"))}
+    body=b64(json.dumps({"v":1,"emesso":issued,"installazioni":sealed,"revocate":sorted(revoked_id(i) for i in gone)},separators=(",",":"),sort_keys=True).encode())
     return STATE_PREFIX+body+"."+b64(key.sign((STATE_PREFIX+body).encode()))
 def state_repo(cfg):
     """The public repo of the state: the one chosen, else TD-Licenze-Stato of the owner of the register's repo."""
@@ -399,20 +379,14 @@ def state_repo(cfg):
     return cfg.get("stato") or cfg["repo"].split("/")[0]+"/TD-Licenze-Stato"
 def publish_state(folder,password):
     """The state of every licence in the public repo, now: (licences in use, out of use), or None without a repo.
-    A program that finds its licence changed installs the new one; one revoked or replaced stops.
-    Un file per programma: stato-licenze.json (TD Booking Suite) e stato-licenze-velo.json (TD Velo)."""
+    A program that finds its licence changed installs the new one; one revoked or replaced stops."""
     from datetime import datetime,timezone
     cfg=sync_settings(folder)
     if not cfg:return None
     repo=state_repo(cfg);token=sync_token(folder,password);key=load_key(folder,password)
     rows=registry(folder)
-    for prodotto,name in STATE_FILES.items():
-        if prodotto!="booking" and not any(prodotto_of(r)==prodotto for r in rows):continue  # niente file finché non c'è una licenza
-        text=state(rows,key,datetime.now(timezone.utc).isoformat(),prodotto)  # to the microsecond: two states never tie
-        _put_state(repo,token,name,text)
-    gone=out_of_use(rows);return len([r for r in rows if r["id"] not in gone]),len(gone)
-def _put_state(repo,token,name,text):
-    path=f"/repos/{repo}/contents/{name}"
+    text=state(rows,key,datetime.now(timezone.utc).isoformat())  # to the microsecond: two states never tie
+    path=f"/repos/{repo}/contents/{STATE_FILE}"
     for _ in range(3):
         status,data=github("GET",path,token)
         if status==200:sha=data["sha"]
@@ -426,7 +400,8 @@ def _put_state(repo,token,name,text):
         body={"message":"TD Licenze: stato delle licenze","content":base64.b64encode(text.encode()).decode()}
         if sha:body["sha"]=sha
         status,_=github("PUT",path,token,body)
-        if status in (200,201):return
+        if status in (200,201):
+            gone=out_of_use(rows);return len([r for r in rows if r["id"] not in gone]),len(gone)
         if status in (401,403,404):raise SyncError(f"Il token non può scrivere in {repo}: aggiungila al token con il permesso Contents, Read and write.")
         if status not in (409,422):raise SyncError(f"GitHub risponde {status}: riprova più tardi.")
     raise SyncError("Lo stato delle licenze su GitHub cambia di continuo: riprova tra poco.")
@@ -440,9 +415,6 @@ def revoke(folder,licence_id):
     return row
 
 def describe(data):
-    if prodotto_of(data)=="velo":
-        return ("TD Velo, "+(f"solo per l'installazione {data['installazione']}" if data["installazione"] else "valida su qualunque PC")
-                +(f", fino al {date.fromisoformat(data['scadenza']):%d/%m/%Y}" if data["scadenza"] else ", senza scadenza"))
     return (f"{TIPI[tipo_of(data)]}. Attività: {data['attivita']}, postazioni in rete: {data['postazioni']}, "
             +(f"solo per l'installazione {data['installazione']}" if data["installazione"] else "valida su qualunque installazione")
             +(f", fino al {date.fromisoformat(data['scadenza']):%d/%m/%Y}" if data["scadenza"] else ", senza scadenza"))
@@ -452,18 +424,12 @@ def find(folder,licence_id):
     if not row:raise ValueError(f"La licenza {licence_id} non è nel registro di questa cartella.")
     return row
 
-def create(folder,intestatario,attivita,postazioni,installazione,scadenza,out,password=None,tipo="",sostituisce="",prodotto=None):
+def create(folder,intestatario,attivita,postazioni,installazione,scadenza,out,password=None,tipo="",sostituisce=""):
     """A signed licence, written to its file and to the register: (licence, file, data).
     sostituisce: the number of the licence it replaces, for the same installation (more or fewer workstations,
-    another expiry): the client pastes the new one over the old one.
-    prodotto: booking (di serie) o velo; con sostituisce, quello della licenza sostituita."""
-    if sostituisce and prodotto is None:prodotto=prodotto_of(find(folder,sostituisce))
-    prodotto=prodotto or "booking"
-    if prodotto not in PRODOTTI:raise ValueError("Prodotto: booking (TD Booking Suite) o velo (TD Velo).")
-    if prodotto=="velo":return create_velo(folder,intestatario,installazione,scadenza,out,password,sostituisce)
+    another expiry): the client pastes the new one over the old one."""
     if sostituisce:
         old=find(folder,sostituisce)
-        if prodotto_of(old)!="booking":raise ValueError(f"La licenza {sostituisce} è di TD Velo: la sostituisce solo una licenza di TD Velo.")
         intestatario=intestatario or old["intestatario"];installazione=installazione or old["installazione"]
         # what is not given (None) stays as in the licence it replaces; with new numbers and no kind, the numbers say it
         if not tipo and attivita is None and postazioni is None:tipo=tipo_of(old)
@@ -501,37 +467,6 @@ def create(folder,intestatario,attivita,postazioni,installazione,scadenza,out,pa
         +"\n\nApri TD Booking Suite, entra con l'amministratore del programma, menu Licenza, e incolla tutta la riga qui sotto:\n\n"+licence+"\n",encoding="utf-8")
     return licence,path,data
 
-def create_velo(folder,intestatario,installazione,scadenza,out,password=None,sostituisce=""):
-    """Licenza di TD Velo: intestatario, codice d'installazione del PC (vuoto = qualunque PC), scadenza. Numeri TDV-anno-n."""
-    if sostituisce:
-        old=find(folder,sostituisce)
-        if prodotto_of(old)!="velo":raise ValueError(f"La licenza {sostituisce} non è di TD Velo.")
-        intestatario=intestatario or old["intestatario"];installazione=installazione or old["installazione"]
-        scadenza=old["scadenza"] if scadenza is None else scadenza
-    intestatario=" ".join((intestatario or "").split())
-    if not intestatario:raise ValueError("Serve l'intestatario.")
-    installazione=normalize_code(installazione or "")
-    scadenza=(scadenza or "").strip()
-    if scadenza:
-        try:date.fromisoformat(scadenza)
-        except ValueError:raise ValueError("Scadenza nel formato AAAA-MM-GG, per esempio 2027-12-31.") from None
-    key=load_key(folder,password)
-    today=date.today()
-    number=1+sum(1 for r in registry(folder) if r["id"].startswith(f"TDV-{today.year}-"))
-    data={"id":f"TDV-{today.year}-{number:04d}","prodotto":PRODOTTI["velo"],"emessa":today.isoformat(),"intestatario":intestatario,
-          "installazione":installazione,"scadenza":scadenza}
-    if sostituisce:data["sostituisce"]=sostituisce
-    licence=sign(key,data,PREFISSI["velo"])
-    record(folder,{"id":data["id"],"emessa":data["emessa"],"intestatario":intestatario,"tipo":"","attivita":"","postazioni":"","installazione":installazione,
-                   "scadenza":scadenza,"sostituisce":sostituisce,"licenza":licence,"revocata":"","prodotto":"velo"})
-    out=Path(out);out.mkdir(parents=True,exist_ok=True)
-    slug=re.sub(r"[^a-z0-9]+","-",intestatario.lower()).strip("-")[:40] or "cliente"
-    path=out/f"licenza-{data['id']}-{slug}.txt"
-    path.write_text(f"Licenza TD Velo per {intestatario}\n{describe(data)}"
-        +(f"\nSostituisce la licenza {sostituisce}: incollala al posto di quella." if sostituisce else "")
-        +"\n\nApri TD Velo, pagina Licenza, e incolla tutta la riga qui sotto:\n\n"+licence+"\n",encoding="utf-8")
-    return licence,path,data
-
 # command line
 def password_for(folder):return getpass.getpass("Password della chiave: ") if has_key(folder) and key_encrypted(folder) else None
 
@@ -550,10 +485,10 @@ def cli_sync(folder,password):
         if result:print("GitHub: "+sync_message(result))
     except SyncError as ex:print("GitHub: "+str(ex))
 
-def cli_create(folder,intestatario,attivita,postazioni,installazione,scadenza,out,tipo="",sostituisce="",prodotto=None):
+def cli_create(folder,intestatario,attivita,postazioni,installazione,scadenza,out,tipo="",sostituisce=""):
     password=password_for(folder)
     cli_sync(folder,password)  # the latest register first: the new number follows the licences made on other PCs
-    licence,path,data=create(folder,intestatario,attivita,postazioni,installazione,scadenza,out,password,tipo,sostituisce,prodotto)
+    licence,path,data=create(folder,intestatario,attivita,postazioni,installazione,scadenza,out,password,tipo,sostituisce)
     print(f"\nLicenza {data['id']} per {data['intestatario']}:\n\n{licence}\n\nSalvata anche in {path}")
     cli_sync(folder,password)
 
@@ -569,7 +504,7 @@ def ask(prompt,default=""):
     return value or default
 
 def main(argv=None):
-    p=argparse.ArgumentParser(description="Crea le licenze di TD Booking Suite per Windows e di TD Velo.")
+    p=argparse.ArgumentParser(description="Crea le licenze di TD Booking Suite per Windows.")
     p.add_argument("--cartella",type=Path,default=default_folder(),help="dove stanno chiave privata e registro")
     p.add_argument("--uscita",type=Path,default=None,help="dove salvare i file delle licenze, di serie licenze-emesse nella cartella")
     sub=p.add_subparsers(dest="cmd")
@@ -582,20 +517,18 @@ def main(argv=None):
     c.add_argument("--installazione",default="");c.add_argument("--scadenza",default=None,help='AAAA-MM-GG; "" per sempre')
     c.add_argument("--tipo",choices=sorted(TIPI),default="",help="pc (Un PC solo), server (Server con postazioni), portale")
     c.add_argument("--sostituisce",default="",help="numero della licenza da sostituire: stessa installazione e intestatario")
-    c.add_argument("--prodotto",choices=sorted(PRODOTTI),default=None,help="booking (TD Booking Suite, di serie) o velo (TD Velo)")
     a=p.parse_args(argv)
     a.uscita=a.uscita or a.cartella/"licenze-emesse"
     try:
         if a.cmd=="chiave":cli_make_key(a.cartella)
-        elif a.cmd=="crea":cli_create(a.cartella,a.intestatario,a.attivita,a.postazioni,a.installazione,a.scadenza,a.uscita,a.tipo,a.sostituisce,a.prodotto)
+        elif a.cmd=="crea":cli_create(a.cartella,a.intestatario,a.attivita,a.postazioni,a.installazione,a.scadenza,a.uscita,a.tipo,a.sostituisce)
         elif a.cmd=="collega":cli_connect(a.cartella,a.repo)
         elif a.cmd=="sincronizza":
             if not sync_settings(a.cartella):raise ValueError("Nessuna repo collegata: usa  td_licenze.py collega proprietario/nome")
             cli_sync(a.cartella,password_for(a.cartella))
         elif a.cmd=="elenco":
             for r in registry(a.cartella):
-                what="TD Velo" if prodotto_of(r)=="velo" else f"{TIPI[tipo_of(r)]}, attività {r['attivita']}, postazioni {r['postazioni']}"
-                print(f"{r['id']}  {r['emessa']}  {r['intestatario']}  {what}  "
+                print(f"{r['id']}  {r['emessa']}  {r['intestatario']}  {TIPI[tipo_of(r)]}, attività {r['attivita']}, postazioni {r['postazioni']}  "
                       f"{r['installazione'] or 'a stock'}  {('scade '+r['scadenza']) if r['scadenza'] else 'per sempre'}")
         elif a.cmd=="verifica":
             text=a.licenza or input("Incolla la licenza: ")
