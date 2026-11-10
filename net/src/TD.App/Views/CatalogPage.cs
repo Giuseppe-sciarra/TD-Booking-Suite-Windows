@@ -313,18 +313,101 @@ public sealed class CatalogExtras
     }
 }
 
-/// <summary>templates/holidays.html. Still to come in this build.</summary>
+/// <summary>templates/holidays.html: the Italian public holidays of a year, Easter and the patron saint: the ticked ones
+/// become closures of the whole business; again on the same year it adds only what is missing.</summary>
 public sealed class HolidaysPage : Page
 {
-    public override Task Load() { Content = F.Page(1180, Col(F.Back("Chiusure e giorni speciali", () => Main.ShowPage(new CatalogPage { Kind = "exceptions" })), F.Heading(null, "Festività italiane", "Questa pagina arriva con il prossimo pezzo."))); return Task.CompletedTask; }
+    int year;
+    public override async Task Load() => Draw(await Api.Current.Call("festivita", new { anno = year }));
+    void Back() => Main.ShowPage(new CatalogPage { Kind = "exceptions" });
+
+    void Draw(JsonNode d)
+    {
+        year = d.I("anno"); var It = AgendaPage.It;
+        var years = new ComboBox { ItemsSource = d.A("anni").Select(y => new ComboBoxItem { Content = y.ToString(), Tag = y.GetValue<int>() }).ToList(), Width = 100 };
+        years.SelectedItem = years.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (int)i.Tag == year);
+        years.SelectionChanged += async (_, _) => { year = (int)((ComboBoxItem)years.SelectedItem).Tag; await Guard(Load); };
+        var top = new Border { Visibility = Visibility.Collapsed }; var list = Col(); var rows = d.A("righe").ToList(); var boxes = new List<CheckBox>();
+        for (int i = 0; i < rows.Count; i++)
+        {
+            var r = rows[i]; var day = DateOnly.Parse(r.S("giorno")); var label = day.ToString("dddd d MMMM", It);
+            var box = new CheckBox { IsChecked = r.Bo("segnata") || r.Bo("spuntata"), IsEnabled = !r.Bo("segnata"), Tag = r.S("giorno"), Content = Col(T(r.S("nome"), size: 14, bold: true), T(char.ToUpper(label[0], It) + label[1..], size: 13, color: Res("Muted"))) };
+            if (!r.Bo("segnata")) boxes.Add(box);
+            var line = new DockPanel(); if (r.Bo("segnata")) { var pill = MainWindow.Pill("Già segnata", "ok"); DockPanel.SetDock(pill, Dock.Right); line.Children.Add(pill); }
+            line.Children.Add(box);
+            list.Children.Add(new Border { Child = line, Padding = new Thickness(0, 12, 0, 12), BorderBrush = Res("Line"), BorderThickness = new Thickness(0, 0, 0, i == rows.Count - 1 ? 0 : 1) });
+        }
+        var patron = new DatePicker { SelectedDate = DateTime.TryParse(d.S("patrono"), out var pd) ? pd : null }; var name = Box(d.S("nomePatrono")); name.MaxLength = 60; name.Tag = "Santi Pietro e Paolo"; AgendaPage.Hint(name);
+        var hint = T("Facoltativo: il giorno e il nome, per esempio 29 giugno, Santi Pietro e Paolo a Roma. Resta per gli anni dopo", size: 14, color: Res("Muted")); hint.TextWrapping = TextWrapping.Wrap;
+        var confirm = new CheckBox { Content = T("Ho verificato le prenotazioni segnalate e confermo la chiusura", size: 14), Margin = new Thickness(0, 14, 0, 0), Visibility = Visibility.Collapsed };
+        var save = new Button { Content = "Segna come chiusure", Style = Style("Primary") };
+        save.Click += async (_, _) =>
+        {
+            save.IsEnabled = false;
+            try
+            {
+                var r = await Api.Current.Call("festivita.segna", new JsonObject { ["anno"] = year, ["day"] = new JsonArray(boxes.Where(b => b.IsChecked == true).Select(b => (JsonNode)(string)b.Tag).ToArray()),
+                    ["patron_day"] = patron.SelectedDate?.ToString("yyyy-MM-dd") ?? "", ["patron_name"] = name.Text, ["confirm_conflicts"] = confirm.IsChecked == true });
+                Main.Flash(r.S("testo")); Back();
+            }
+            catch (FormError ex) { top.Child = F.Notice(new TextBlock { Text = ex.Message, FontSize = 13.5, TextWrapping = TextWrapping.Wrap }, "error"); top.Visibility = Visibility.Visible; top.BringIntoView(); if (ex.Confirm) confirm.Visibility = Visibility.Visible; }
+            catch (NeedsLogin) { Shell.Instance?.SignedOut(); }
+            catch (ApiError ex) { Main.Flash(ex.Message, true); }
+            finally { save.IsEnabled = true; }
+        };
+        var actions = Row(save, F.Link("Torna a Chiusure e giorni speciali", Back).M(14, 0, 0, 0)); ((TextBlock)actions.Children[1]).VerticalAlignment = VerticalAlignment.Center;
+        Content = F.Page(1180, Col(F.Back("Chiusure e giorni speciali", Back),
+            F.Heading(null, $"Festività del {year}", "Le feste nazionali, Pasqua e Pasquetta già calcolate e il santo patrono della tua città: quelle spuntate diventano giorni di chiusura di tutta l'attività. Quelle in cui lavori le lasci senza spunta. Rifarlo non crea doppioni", years),
+            F.Card(top, list, F.Legend("Santo patrono").M(0, 18, 0, 0), hint, F.Grid2(F.Field("Giorno", patron), F.Field("Nome", name)), confirm, actions.M(0, 18, 0, 0))));
+    }
 }
 /// <summary>templates/services_import.html. Still to come in this build.</summary>
 public sealed class ServicesImportPage : Page
 {
     public override Task Load() { Content = F.Page(1180, Col(F.Back("Servizi", () => Main.ShowPage(new CatalogPage { Kind = "services" })), F.Heading(null, "Importa i servizi da Excel", "Questa pagina arriva con il prossimo pezzo."))); return Task.CompletedTask; }
 }
-/// <summary>templates/allergens.html: Intolleranze e allergie. Still to come in this build.</summary>
+/// <summary>templates/allergens.html: Intolleranze e allergie: on or off in the booking form, the items, the standard
+/// list, and how the client sees them.</summary>
 public sealed class AllergensPage : Page
 {
-    public override Task Load() { Content = F.Page(1180, Col(F.Back("Configura l'attività", () => Main.Show("configura")), F.Heading(null, "Intolleranze e allergie", "Questa pagina arriva con il prossimo pezzo."))); return Task.CompletedTask; }
+    public override async Task Load() => Draw(await Api.Current.Call("allergie", new { }));
+    async Task Act(object args)
+    {
+        try { var d = await Api.Current.Call("allergie.azione", args); Main.Flash(d.S("testo")); Draw(d); }
+        catch (ApiError ex) when (ex is not NeedsLogin and not NeedsConfirm) { Main.Flash(ex.Message, true); }
+    }
+    static TextBlock Muted(string text, double size = 14) { var t = T(text, size: size, color: Res("Muted")); t.TextWrapping = TextWrapping.Wrap; return t; }
+
+    void Draw(JsonNode d)
+    {
+        var on = d.Bo("accese"); var items = d.A("voci").Select(v => v.ToString()).ToList();
+        var toggle = BA(on ? "Non chiederle più" : "Chiedile nel modulo", () => Act(new { azione = "toggle", on = !on }), on ? null : "Primary"); DockPanel.SetDock(toggle, Dock.Right); toggle.VerticalAlignment = VerticalAlignment.Center;
+        var dot = new Border { Width = 12, Height = 12, CornerRadius = new CornerRadius(6), Background = Res(on ? "Ok" : "Line"), Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center }; DockPanel.SetDock(dot, Dock.Left);
+        var sw = new DockPanel(); sw.Children.Add(toggle); sw.Children.Add(dot);
+        sw.Children.Add(Col(T(on ? "Il modulo le chiede" : "Il modulo non le chiede", size: 14, bold: true), Muted(on ? "Il cliente spunta quelle di chi viene: sono facoltative" : "Accendile per far segnare al cliente le intolleranze già quando prenota", 13)));
+        var chips = new WrapPanel { Margin = new Thickness(0, 8, 0, 8) };
+        foreach (var i in items) { var chip = F.Pill(i, () => _ = Guard(() => Act(new { azione = "remove", name = i }))); chip.Margin = new Thickness(0, 0, 8, 8); chip.ToolTip = "Togli " + i; chips.Children.Add(chip); }
+        if (items.Count == 0) chips.Children.Add(Muted("Nessuna voce: aggiungine qui sotto o ripristina l'elenco standard"));
+        var fresh = Box(); fresh.MaxLength = 60; fresh.Tag = "Per esempio: Vegano, Senza aglio, Kiwi"; AgendaPage.Hint(fresh);
+        var add = BA("Aggiungi", () => Act(new { azione = "add", name = fresh.Text })); DockPanel.SetDock(add, Dock.Right); add.Margin = new Thickness(8, 0, 0, 0);
+        var addRow = new DockPanel(); addRow.Children.Add(add); addRow.Children.Add(fresh);
+        var reset = F.Small(BA("Ripristina l'elenco standard", async () => { if (Ask("Rimettere l'elenco standard? Le voci aggiunte a mano vengono tolte, le prenotazioni non cambiano.")) await Act(new { azione = "reset" }); }, "Ghost")); reset.HorizontalAlignment = HorizontalAlignment.Left;
+        var left = F.Card(new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(14), Margin = new Thickness(0, 0, 0, 14), Child = sw },
+            F.Section("Le voci", null, Muted($"{items.Count} su 40")), chips, F.Label("Aggiungi una voce"), addRow, reset.M(0, 12, 0, 0));
+        var preview = Col(T("Come lo vede il cliente", "H2"));
+        if (on && items.Count > 0)
+        {
+            preview.Children.Add(T("Intolleranze o allergie?", size: 14, bold: true)); preview.Children.Add(Muted("Segna quelle di chi viene, le passiamo alla cucina. Altro? Scrivilo qui sotto", 13));
+            var boxes = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) }; foreach (var i in items) boxes.Children.Add(new CheckBox { IsEnabled = false, Content = T(i, size: 13.5), Margin = new Thickness(0, 0, 14, 6) }); preview.Children.Add(boxes);
+        }
+        else preview.Children.Add(Muted("Nel modulo non compare nulla"));
+        var soft = new Border { Style = Style("Card"), Background = Res("BrandSoft"), Child = preview, Margin = new Thickness(0, 0, 0, 14) };
+        var why = new Border { Style = Style("Card"), Child = Col(T("Perché queste voci", size: 16, bold: true),
+            Muted("L'elenco standard sono i 14 allergeni che il Regolamento UE 1169/2011 obbliga a indicare nel menu (cereali con glutine, crostacei, uova, pesce, arachidi, soia, latte, frutta a guscio, sedano, senape, sesamo, solfiti, lupini e molluschi), più il lattosio, l'intolleranza che si chiede più spesso.").M(0, 6, 0, 8),
+            Muted("Sono dati sulla salute: li vede solo chi nel portale vede le note, non finiscono nelle notifiche email e Telegram e si cancellano con i dati del cliente. Citali nell'informativa delle prenotazioni.")) };
+        var aside = Col(soft, why); var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) }); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(360) });
+        Grid.SetColumn(aside, 2); grid.Children.Add(left); grid.Children.Add(aside);
+        Content = F.Page(1180, Col(F.Back("Configura l'attività", () => Main.Show("configura")),
+            F.Heading(null, "Intolleranze e allergie", "Le caselle che il cliente trova nel modulo di prenotazione, anche nel sito WordPress. Quelle segnate compaiono evidenziate nella prenotazione, nell'agenda e nella scheda del cliente"), grid));
+    }
 }
