@@ -1,0 +1,29 @@
+{
+ "keys": {
+  "v1": "eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHg=",
+  "index": "aWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWk="
+ },
+ "active": "v1",
+ "tenant": "11111111-2222-3333-4444-555555555555",
+ "wrapped": "v1._xzvfnD-7EpuhFq19IjxR1bvS-I9VGd1udOHpRXlNqK6LTnZwEYYJuwRFsIbV4jROc0acRywpt9qgwC1RdPP_TDhae8lzNiaBVg=",
+ "sealed": "v4rC5_rzRqKuNKByE7Ovq4WPeXIoktOhlsNKbZj_9YXrLw4sH1yjl0-ben07KLiAOqN5s13T7NhXLy3yVnYocqOZMX6ysgMiu4q21EQdXoCv3IAaXSghJqogPA8YsBciYtDcvdW3fCxwfgI72POtL85lNa9CdQkVzu-wK6Yr-4FEDF0Adf5cI3TapQNcA_nM275nV_xyN4y1",
+ "plain": {
+  "first_name": "Màrio",
+  "last_name": "Rossi",
+  "note": "è \"citato\" € ☕",
+  "n": 3,
+  "x": 1.5,
+  "ok": true,
+  "none": null,
+  "list": [
+   1,
+   "a"
+  ]
+ },
+ "bytes": "sSZ9q7uLb2HVd1Z7LJ1dpzIcLq0oYFqGtuqbFWQhXADFk04=",
+ "login_index": "cd6bbf51c9ff0090645ec3b20cd1707712cbffae4dd2f7432bdd5400bfb7b0e1",
+ "index_value": "fcc42e22b11bfb79b0cd459a575bb219b3b07a6aea08670b7322b9378651572c",
+ "token_hash": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+ "argon2": "argon2$argon2id$v=19$m=102400,t=2,p=8$UUlmYTVwakVWU3dtZW1PMUR2bFU1Vg$F1H6u6BDl0WIijUW0H1bCHrDfNeEWAH/xHRI5V25xKU",
+ "pbkdf2": "pbkdf2_sha256$1000000$Ix0DbVVm4M95W3faj7bz8D$RmVafjlifO5HMu98WWQOp0KqBOijPM0idlzk1jIWMx8="
+}
