@@ -40,6 +40,7 @@ public static class Prenotazioni
             ruolo = c.Member?.Role ?? "", permessi = c.Perms.OrderBy(x => x), oggi = c.C.Today, uno = one, molti = many,
             cassa = t.TillOn, servizio = Presets.ServiceWord(t.BusinessType), appuntamenti = new Agenda(c.C, V(c)).Fits(),
             standby = c.C.S.Scalar<long>("SELECT count(*) FROM core_standby"),
+            paginaPubblica = c.S.Config.Online ? c.PublicOrigin.TrimEnd('/') + "/book/" + t.Slug + "/" : "",
         };
     }
 

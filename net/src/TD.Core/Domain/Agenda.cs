@@ -124,7 +124,7 @@ public sealed class Agenda(Ctx c, Viewer v)
     }
 
     /// <summary>The marks of the clients (VIP, not bookable online, tags, absences, late cancellations) for who may see the cards.</summary>
-    void Mark(List<AgendaItem> items)
+    public void Mark(List<AgendaItem> items)
     {
         var ids = items.Where(i => i.ContactId.HasValue).Select(i => i.ContactId.Value).Distinct().ToArray();
         if (ids.Length == 0 || !v.Can("contacts.read")) return;

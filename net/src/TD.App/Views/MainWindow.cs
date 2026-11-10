@@ -166,7 +166,7 @@ public sealed class MainWindow : Window
         {
             var type = t.S("tipo");
             Section("Ogni giorno");
-            Add("dashboard", "grid", "Dashboard", () => new Placeholder("Dashboard"), Can("booking.read"));
+            Add("dashboard", "grid", "Dashboard", () => new DashboardPage(), Can("booking.read"));
             Add("agenda", "day", "Agenda e prenotazioni", () => new AgendaPage(), Can("booking.read"));
             Add("clienti", "users", "Clienti", () => new Placeholder("Clienti"), Can("contacts.read"));
             Add("cassa", "tag", "Cassa", () => new Placeholder("Cassa"), Can("sale.write"));

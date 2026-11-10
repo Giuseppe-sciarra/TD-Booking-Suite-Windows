@@ -97,4 +97,53 @@ public static class F
     }
     /// <summary>.check: a box and its sentence, 18 px above and below.</summary>
     public static CheckBox Check(UIElement content) => new() { Content = content, Margin = new Thickness(0, 18, 0, 18) };
+    /// <summary>button.small: 5 11, 13 px.</summary>
+    public static T Small<T>(T b) where T : Control { b.Padding = new Thickness(11, 5, 11, 5); b.FontSize = 13; b.MinHeight = 0; b.VerticalAlignment = VerticalAlignment.Center; return b; }
+    /// <summary>.grid.two / .three: equal columns with a gap, as many rows as needed.</summary>
+    public static Grid Cols(int n, double gap, params FrameworkElement[] items)
+    {
+        var g = new Grid(); var list = items.Where(i => i != null).ToList();
+        for (int i = 0; i < n; i++) { if (i > 0) g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(gap) }); g.ColumnDefinitions.Add(new ColumnDefinition()); }
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (i % n == 0) { if (i > 0) g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(gap) }); g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); }
+            Grid.SetRow(list[i], i / n * 2); Grid.SetColumn(list[i], i % n * 2); g.Children.Add(list[i]);
+        }
+        return g;
+    }
+    /// <summary>.section-heading: h2 (with its count) on the left, a link or a control on the right.</summary>
+    public static DockPanel Section(string h2, int? count = null, FrameworkElement right = null)
+    {
+        var d = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
+        if (right != null) { right.VerticalAlignment = VerticalAlignment.Center; DockPanel.SetDock(right, Dock.Right); d.Children.Add(right); }
+        var h = T(h2, "H2"); h.Margin = new Thickness(0);
+        d.Children.Add(Row(h, count == null ? null : new Border { Background = Res("BrandSoft"), CornerRadius = new CornerRadius(999), Padding = new Thickness(8, 1, 8, 1), Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Child = T(count.ToString(), size: 12, bold: true, color: Res("Brand")) }));
+        return d;
+    }
+    /// <summary>.pill with the colour of a booking's status.</summary>
+    public static Border Status(string status) => Views.MainWindow.Pill(STATUS.GetValueOrDefault(status, status), status switch { "confirmed" => "ok", "pending" => "warn", "cancelled" => "danger", _ => "" });
+    /// <summary>.cmark: VIP, absences, late cancellations, not bookable online, small beside the client's name.</summary>
+    public static Border Mark(string kind, string icon, string n, string tip)
+    {
+        var (bg, fg) = kind switch { "vip" => (Hex("#F7EFD6"), Hex("#9C7412")), "late" => (Res("WarnSoft"), Res("Warn")), "absent" or "blocked" => (Res("DangerSoft"), Res("Danger")), _ => (Res("BrandSoft"), Res("Brand")) };
+        return new Border { Background = bg, CornerRadius = new CornerRadius(999), Height = 18, Padding = new Thickness(3, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center, ToolTip = tip,
+            Child = Row(Icons.Icon(icon, fg, 12, 1), n == "" ? null : new TextBlock { Text = n, FontSize = 11.5, FontWeight = FontWeights.Bold, Foreground = fg, Margin = new Thickness(2, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center }) };
+    }
+    /// <summary>presentation.client_marks for a row that carries vip, assenze, tardive, bloccato.</summary>
+    public static IEnumerable<Border> Marks(System.Text.Json.Nodes.JsonNode r)
+    {
+        if (r.Bo("vip")) yield return Mark("vip", "star", "", "Cliente VIP");
+        if (r.I("assenze") > 0) yield return Mark("absent", "absent", r.I("assenze").ToString(), $"{r.I("assenze")} assenz{(r.I("assenze") == 1 ? "a" : "e")}");
+        if (r.I("tardive") > 0) yield return Mark("late", "late", r.I("tardive").ToString(), $"{r.I("tardive")} disdett{(r.I("tardive") == 1 ? "a" : "e")} all'ultimo momento");
+        if (r.Bo("bloccato")) yield return Mark("blocked", "absent", "", "Non prenotabile online");
+    }
+    /// <summary>.empty: an icon, a title, a line, in the middle.</summary>
+    public static StackPanel Empty(string icon, string h3, string p)
+    {
+        var c = Col(T(icon, size: 32, color: Res("Pastel")), T(h3, size: 15, bold: true).M(0, 6, 0, 4), T(p, size: 14, color: Res("Muted")));
+        foreach (FrameworkElement e in c.Children) e.HorizontalAlignment = HorizontalAlignment.Center;
+        c.Margin = new Thickness(20, 40, 20, 40); return c;
+    }
+    /// <summary>.allergy-chip.small</summary>
+    public static Border Allergy(string text) => new() { Background = Res("WarnSoft"), BorderBrush = Res("Warn"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(999), Padding = new Thickness(9, 1, 9, 1), Margin = new Thickness(0, 5, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, Child = T(text, size: 12, bold: true, color: Res("Warn")) };
 }
