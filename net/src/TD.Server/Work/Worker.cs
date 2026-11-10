@@ -9,8 +9,6 @@ public sealed class Worker(Server s, ILogger<Worker> log) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stop)
     {
-        WpSync.Install();
-        WpSite.Face = Faces.Small;
         var jobs = Jobs.All(s, log).Select(j => Loop(j, stop)).ToList();
         await Task.WhenAll(jobs);
     }

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using TD.Core.Data;
 
 namespace TD.Core.Domain;
 
@@ -46,6 +47,27 @@ public static class TextMessages
             if (!Full("wa_lang", "[a-z]{2}(_[A-Z]{2})?")) conf["wa_lang"] = "it";
         }
         return Channel(conf) != "" ? conf : new JsonObject();
+    }
+
+    /// <summary>remind(): the reminder as a text, to the phone of the booking, when a channel is set and the client did not
+    /// say no to the messages about his bookings; the channel the client chose when the business has it ("email" = no text).
+    /// The words are the business's; for WhatsApp the values go in the order of the {fields} of the template text.</summary>
+    public static Delivery Remind(Ctx c, Booking b, string kind)
+    {
+        if (kind is not ("reminder" or "reminder2")) return null;
+        var conf = Config(c); var ch = Channel(conf); var contact = b.ContactId is Guid k ? c.S.Get<Contact>(k) : null;
+        if (ch == "" || b.Snap["notices"] is JsonValue nv && nv.TryGetValue<bool>(out var no) && !no || contact != null && !contact.Notices) return null;
+        var pref = b.Snap.Str("channel") is var p && p != "" ? p : contact?.Channel ?? "";
+        if (pref == "email") return null;
+        if (pref == "sms" && conf.Str("provider") != "" || pref == "whatsapp" && conf.Str("wa_token") != "") ch = pref;
+        var bk = new Bookings(c); var data = bk.Data(b); var phone = Clients.NormalizePhone(data.Str("phone"));
+        if (phone == "") return null;
+        var v = ClientMails.Values(c, b, data); var own = Json.Obj(c.Tenant.ClientMails)["texts"] as JsonObject ?? new JsonObject();
+        string Or(string key) => v.TryGetValue(key, out var x) && x != "" ? x : "-";
+        var parameters = own.Str("wa") != "" ? Regex.Matches(own.Str("wa"), @"\{(\w+)\}").Select(m => Or(m.Groups[1].Value)).ToArray() : new[] { Or("nome"), v["servizio"], v["quando"], v["attivita"] };
+        var d = bk.Queue(new JsonObject { ["to"] = phone, ["body"] = Texts.Fill(own.Str("sms") != "" ? own.Str("sms") : ClientMails.SMS_TEXT, v), ["params"] = new JsonArray(parameters.Select(x => (JsonNode)x).ToArray()) }, b.ContactId);
+        d.Channel = ch; d.BookingId = b.Id; c.S.Update(d, "channel", "booking_id");
+        return d;
     }
 
     /// <summary>spent(): the texts of the last day, against the daily budget.</summary>

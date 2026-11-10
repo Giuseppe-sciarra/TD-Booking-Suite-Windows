@@ -40,6 +40,18 @@ public static class Network
 public static class DjangoSigning
 {
     static string B64(byte[] b) => Convert.ToBase64String(b).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    /// <summary>settings.SECRET_KEY, set by the server.</summary>
+    public static string Secret = "";
+    const string B62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    /// <summary>signing.dumps(obj, salt=salt): the object, the moment in base 62, the signature of both.</summary>
+    public static string Dumps(string salt, string compactJson, DateTime? now = null)
+    {
+        var n = new DateTimeOffset(DateTime.SpecifyKind(now ?? DateTime.UtcNow, DateTimeKind.Utc)).ToUnixTimeSeconds(); var ts = "";
+        do { ts = B62[(int)(n % 62)] + ts; n /= 62; } while (n > 0);
+        var value = B64(System.Text.Encoding.Latin1.GetBytes(compactJson)) + ":" + ts;
+        var key = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(salt + "signer" + Secret));
+        return value + ":" + B64(System.Security.Cryptography.HMACSHA256.HashData(key, System.Text.Encoding.UTF8.GetBytes(value)));
+    }
     /// <summary>Signer(salt=salt).sign_object(obj), obj given as its compact JSON.</summary>
     public static string SignObject(string salt, string compactJson, string secret)
     {

@@ -369,6 +369,41 @@ public sealed partial class Privacy
         }
     }
 
+    /// <summary>privacy.apply_retention: bookings past retention lose personal data and their link to the contact;
+    /// contacts left without recent bookings, record entries or a place in the waiting list, and without confirmed
+    /// consent, are erased. Old record entries, photos, quotes, parked bills and the payload of old messages go too.</summary>
+    public Dictionary<string, long> ApplyRetention(bool apply)
+    {
+        var now = c.Now; var cutoff = now.AddDays(-c.Tenant.RetentionDays); var since = c.Cal.DayOf(cutoff).ToString("yyyy-MM-dd"); var today = c.Today.ToString("yyyy-MM-dd");
+        long N(string sql) => c.S.Scalar<long>("SELECT count(*) FROM " + sql, new { cutoff, since, today, now });
+        const string OLD = "core_booking WHERE \"end\"<@cutoff AND NOT (snapshot ? 'anonymized')";
+        const string STALE = @"core_contact k WHERE k.consent<>'yes' AND k.email_index NOT LIKE 'erased:%' AND k.created<@cutoff
+            AND NOT EXISTS (SELECT 1 FROM core_booking b WHERE b.contact_id=k.id AND b.""end"">=@cutoff) AND NOT EXISTS (SELECT 1 FROM core_treatment t WHERE t.contact_id=k.id AND t.date>=@since::date)
+            AND NOT EXISTS (SELECT 1 FROM core_waitentry w WHERE w.contact_id=k.id)";
+        var report = new Dictionary<string, long>
+        {
+            ["bookings"] = N(OLD), ["contacts"] = N(STALE), ["deliveries"] = N("core_delivery WHERE created<@cutoff AND payload<>''"), ["waits"] = N("core_waitentry WHERE last<@today::date"),
+            ["treatments"] = N("core_treatment WHERE date<@since::date"), ["photos"] = N("core_clientphoto WHERE date<@since::date"), ["standby"] = N("core_standby WHERE created<@cutoff"), ["quotes"] = N("core_quote WHERE created<@cutoff"),
+        };
+        if (!apply) return report;
+        c.Lock(); var args = new { cutoff, since, today, now };
+        var stale = c.S.Query<Contact>("SELECT k.* FROM " + STALE, args).ToList();
+        foreach (var b in c.S.Query<Booking>("SELECT * FROM " + OLD, args).ToList()) AnonymizeBooking(b);
+        foreach (var k in stale) { AnonymizeContact(k, false); Record(k.Id, "erased", "retention"); }
+        c.S.Execute("DELETE FROM core_treatment WHERE date<@since::date", args); c.S.Execute("DELETE FROM core_waitentry WHERE last<@today::date", args); c.S.Execute("DELETE FROM core_quote WHERE created<@cutoff", args);
+        c.S.Execute("DELETE FROM core_clientphoto WHERE date<@since::date", args); c.S.Execute("DELETE FROM core_standby WHERE created<@cutoff", args);
+        // the receipts keep lines and totals, not the codice fiscale; an empty actor marks it done (cassa.forget)
+        foreach (var s in c.S.Query<Sale>("SELECT * FROM core_sale WHERE created<@cutoff AND actor<>''", args).ToList())
+        {
+            var d = c.Decrypt(s.Pii, "sale:" + s.Id); foreach (var key in new[] { "cf", "lottery", "email" }) d.Remove(key);
+            s.Pii = c.Encrypt(d, "sale:" + s.Id); s.ContactId = null; s.Actor = ""; c.S.Update(s, "pii", "contact_id", "actor");
+        }
+        c.S.Execute("UPDATE core_delivery SET payload='', status=CASE WHEN status IN ('pending','sending') THEN 'skipped' ELSE status END WHERE created<@cutoff AND payload<>''", args);
+        c.S.Execute("DELETE FROM core_actiontoken WHERE expires<@now", args);
+        if (report.Values.Any(v => v > 0)) { var actor = c.Actor; c.Actor = null; c.Audit("retention.applied", null, report); c.Actor = actor; }  // a line only when it changed something
+        return report;
+    }
+
     /// <summary>erase_contact(): erasure request. Future open bookings must be handled first.</summary>
     public void Erase(Contact contact)
     {

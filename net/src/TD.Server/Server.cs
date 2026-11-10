@@ -2,6 +2,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Nodes;
 using TD.Core;
 using TD.Core.Data;
+using TD.Core.Domain;
 using TD.Core.Win;
 
 namespace TD.Server;
@@ -40,6 +41,10 @@ public sealed class Server
         Identity = new Identity(Db, Crypto);
         Licensing = new Licensing(config.DataFolder, config.InstallId, Db);
         Workstations = new Workstations(Db, Licensing);
+        // what the domain asks of the server: the accounts' emails (sealed with the master key), the signing key, the .env
+        Notify.EmailOf = id => { using var g = Db.Global(); var u = g.Get<User>(id); return u == null ? "" : Identity.Email(u); };
+        WpSync.Install(); WpSite.Face = Work.Faces.Small;  // every save of an archived row reaches the site's outbox, from the windows and from the jobs
+        DjangoSigning.Secret = config.SecretKey; Mail.Env = name => config.Env(name);
     }
 
     public bool Standalone => Config.Standalone;
