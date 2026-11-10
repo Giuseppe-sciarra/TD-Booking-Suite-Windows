@@ -104,3 +104,16 @@ Legenda: ☐ da fare · ◐ in corso · ☑ fatto e provato
 - Finestre: non girano su Linux. `TDBookingSuite.exe --demo tests/demo --shot cartella` le apre sulle risposte registrate dal server (tests/demo/*.json, rifarle con curl quando cambia una risposta) e salva gli screenshot; lo fa la build `.github/workflows/net.yml`, artefatto `screenshot` (`gh run download`).
 - Ordine dei prossimi pezzi: Clienti (elenco, scheda con tab, trattamenti, foto, privacy, unisci) → Cassa (+ registratori RCH/Epson, stand-by, gift card, preventivi) → Lista d'attesa, richiami, promemoria WhatsApp → Catalogo e impostazioni → Report → pagine pubbliche e sito WordPress (wpsync) → lavori del worker (email SMTP, promemoria, sito, backup, licenza) → Licenza/Postazioni/Backup/Rete nelle finestre → installer MSI.
 - Le postazioni dovranno rifare l'abbinamento una volta (il token del 2.x è nel cookie del vecchio client, non leggibile): revocare le vecchie da Postazioni.
+
+## Grafica: UGUALE al programma di adesso (richiesta esplicita)
+
+Non «simile»: ogni finestra va messa a confronto con la pagina web corrispondente e portata a coincidere (colori e misure da
+`suite/static/app.css`, caratteri Figtree/Poppins in `src/TD.App/Fonts`, barra scura a gruppi, barra in alto, intestazione
+con occhiello, schede, tasti con ombra, select/checkbox/barre di scorrimento ridisegnati in `Ui/Theme.xaml`). E **tutte le funzioni**
+di ogni pagina (95 template in `suite/templates`), nessuna tolta.
+Per il confronto: il programma Python gira su `tdcmp` con
+`PYTHONPATH=.:suite DJANGO_SETTINGS_MODULE=tdwin.test_settings DATABASE_URL="postgres://postgres@/tdcmp?host=/tmp&port=5433" python suite/manage.py runserver 127.0.0.1:8000 --noreload`
+(utenti `titolare` e `admin`, password `Password-di-prova-123`) e Playwright salva le pagine in `/home/claude/out/web`;
+gli screenshot delle finestre arrivano dalla build (`gh run download <id> -n screenshot`).
+Mancano ancora nell'agenda rispetto al web: icone nel menu e sugli appuntamenti (origine, forzata), colonna «Senza operatore»,
+Vai/Cerca nel giorno/Elenco/?/Stampa/Importa, Tema in alto, Dashboard, Guida, riquadro «Stai lavorando in».

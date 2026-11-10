@@ -62,11 +62,12 @@ public sealed class AgendaPage : Page
         if (Can("booking.write"))
         {
             actions.Children.Add(B("Blocca orario", () => BlockDialog.Open(this, null, day, null)).M(0, 0, 8, 0));
-            actions.Children.Add(B("+ Nuova prenotazione", () => NewBooking(null, null), "Primary"));
+            actions.Children.Add(B("Nuova prenotazione", () => NewBooking(null, null), "Primary"));
         }
+        actions.VerticalAlignment = VerticalAlignment.Bottom; left.VerticalAlignment = VerticalAlignment.Bottom;
         DockPanel.SetDock(actions, Dock.Right); tools.Children.Add(actions);
         var filters = new WrapPanel();
-        foreach (var e in new FrameworkElement[] { nav.M(0, 0, 16, 6), seg.M(0, 0, 16, 6), places.M(0, 0, 8, 6), people.M(0, 0, 16, 6), show.M(0, 0, 0, 6) }) filters.Children.Add(e);
+        foreach (var e in new FrameworkElement[] { nav.M(0, 0, 16, 6), places.M(0, 0, 8, 6), people.M(0, 0, 16, 6), show.M(0, 0, 16, 6), seg.M(0, 0, 0, 6) }) { e.VerticalAlignment = VerticalAlignment.Center; filters.Children.Add(e); }
         var top = Col(tools, filters.M(0, 12, 0, 6));
         var root = new DockPanel { Margin = new Thickness(28, 22, 28, 16) };
         DockPanel.SetDock(top, Dock.Top);
@@ -92,7 +93,7 @@ public sealed class AgendaPage : Page
         Fill(places, data.A("places").Select(p => (p.S("id"), p.S("name"))).ToList(), data.S("location"), null);
         places.Visibility = places.Items.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         var ops = data.A("operators").Select(o => (o.S("id"), o.S("name"))).ToList();
-        Fill(people, ops, op, "Tutti gli operatori");
+        Fill(people, ops, op, "Operatori: tutti");
         people.Visibility = ops.Count > 1 || op != "" ? Visibility.Visible : Visibility.Collapsed;
         if (view == "giorno") DrawDay();
         else if (view == "settimana") DrawWeek();
