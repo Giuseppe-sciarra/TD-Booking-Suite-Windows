@@ -48,6 +48,8 @@ public sealed class Api
             },
         };
         http = new HttpClient(handler) { BaseAddress = new Uri(config.Server), Timeout = TimeSpan.FromSeconds(60) };
+        // the window says its version: the server proposes Aggiorna ora to a postazione older than itself
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("TDBookingSuite/" + (typeof(Api).Assembly.GetName().Version?.ToString(3) ?? "0.0.0"));
     }
 
     HttpRequestMessage Request(string path, JsonNode body)

@@ -23,6 +23,17 @@ public static partial class Jobs
             if (w.Evening() > 0) log.LogInformation("Riepiloghi serali accodati.");
         }));
         list.Add(Make("esiti", 40, 300, () => { if (w.Receipts() > 0) log.LogInformation("Esiti degli SMS letti."); }));
+        // tdwin_worker: the licence's state online once a day (every hour while offline), the new versions the same
+        list.Add(new Job("licenza", TimeSpan.FromSeconds(90), TimeSpan.FromDays(1), async _ =>
+        {
+            try { var said = await s.Licensing.CheckOnline(); if (said != "") log.LogInformation("Licenza: {Esito}", said); s.Licensing.Apply(true); return null; }
+            catch (Exception ex) when (ex is not OperationCanceledException || ex is TaskCanceledException) { return TimeSpan.FromHours(1); }
+        }));
+        list.Add(new Job("aggiornamenti", TimeSpan.FromSeconds(120), TimeSpan.FromDays(1), async _ =>
+        {
+            try { if (Updates.Get(s).Modo != "spento") await Updates.Check(s); return null; }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or System.Text.Json.JsonException) { return TimeSpan.FromHours(1); }
+        }));
         list.Add(Make("ora", 60, 3600, () =>
         {
             w.Turns();
