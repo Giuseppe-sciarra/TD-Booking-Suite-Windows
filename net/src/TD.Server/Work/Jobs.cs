@@ -23,6 +23,7 @@ public static partial class Jobs
             if (W().Remind() > 0) log.LogInformation("Messaggi accodati ai clienti.");
             if (W().Evening() > 0) log.LogInformation("Riepiloghi serali accodati.");
         }));
+        list.Add(Make("richieste", 30, 60, () => { if (Portale.Notify(s) > 0) log.LogInformation("Richieste di prova inviate all'amministratore."); }));
         list.Add(Make("esiti", 40, 300, () => { if (W().Receipts() > 0) log.LogInformation("Esiti degli SMS letti."); }));
         // tdwin_worker: the licence's state online once a day (every hour while offline), the new versions the same
         list.Add(new Job("licenza", TimeSpan.FromSeconds(90), TimeSpan.FromDays(1), async _ =>

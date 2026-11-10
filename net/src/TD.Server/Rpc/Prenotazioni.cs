@@ -25,6 +25,7 @@ public static class Prenotazioni
             attivita = rows.Select(x => new { slug = x.Item1, nome = x.Item2, ruolo = x.Item3, ruoloNome = x.Item3 == "" ? "Amministratore del programma" : Permissions.RoleLabel(x.Item3) }),
             licenza = new { lic.Kind, lic.Giorni, lic.Problema, lic.Attivita, lic.Postazioni },
             standalone = c.S.Standalone, online = c.S.Online, serverPc = c.ServerPc, versione = Server.Version,
+            edizione = c.S.Edition, richieste = c.User.IsStaff && c.S.Edition == "cloud" ? g.Scalar<long>("SELECT count(*) FROM core_trialrequest WHERE status='new'") : 0,
         };
     }
 

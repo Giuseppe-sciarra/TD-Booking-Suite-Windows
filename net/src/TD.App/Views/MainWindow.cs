@@ -220,6 +220,8 @@ public sealed class MainWindow : Window
             Section("Configurazione del programma");
             Add("programma", "grid", "Dashboard", () => new ProgramDashboardPage());
             Add("attivita", "briefcase", "Clienti", () => new ProgramClientsPage());
+            var cloud = Me.S("edizione") == "cloud";
+            Add("richieste", "inbox", "Richieste di prova", () => new TrialRequestsPage(), cloud, int.TryParse(Me.S("richieste"), out var waiting) ? waiting : 0);
             Add("generali", "sliders", "Impostazioni generali", () => new GeneralPage());
             Add("inizia", "compass", "Configurazione guidata", () => new SetupGuidePage(), !SetupDone || StartKey == "inizia");
             Add("licenza", "key", "Licenza", () => new LicencePage());
@@ -227,6 +229,8 @@ public sealed class MainWindow : Window
             Add("backup", "archive", "Backup", () => new BackupPage());
             Add("rete", "globe", Me.Bo("standalone") ? "Online e sito" : "Rete e certificato", () => new NetworkPage());
             Add("stato", "list", "Stato del programma", () => new StatePage());
+            Add("prezzi", "tag", "Prezzi e versioni", () => new PricingPage(), cloud);
+            Add("plugin", "plug", "Plugin WordPress", () => new PluginPage(), cloud);
         }
         foreach (var box in nav.Children.OfType<Border>().Where(x => x.Tag is StackPanel sp && sp.Children.Count == 0).ToList()) nav.Children.Remove(box);
         // Guida, outside the groups

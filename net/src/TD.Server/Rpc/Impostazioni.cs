@@ -182,7 +182,7 @@ public static class Impostazioni
             yield return (name[3..].Replace('\\', '/'), ms.ToArray());
         }
     }
-    static string PluginVersion() =>
+    internal static string PluginVersion() =>
         PluginFiles().FirstOrDefault(f => f.Path == "td-booking-suite.php").Data is byte[] php && Regex.Match(Encoding.UTF8.GetString(php), @"^ \* Version: (\S+)", RegexOptions.Multiline) is { Success: true } m ? m.Groups[1].Value : Server.Version;
 
     [Rpc("impostazioni.plugin")]
