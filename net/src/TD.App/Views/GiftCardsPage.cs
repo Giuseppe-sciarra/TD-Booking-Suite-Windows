@@ -138,7 +138,7 @@ public sealed class GiftPrintPage(JsonNode card, string q) : Page
             doc.Blocks.Add(C(Printing.P(Business.S("nome").ToUpperInvariant(), 10, true, Printing.Grey, 6))); doc.Blocks.Add(C(Printing.P("Gift card " + code, 20, true, null, 10))); doc.Blocks.Add(C(Printing.P(Euro(card.S("valore")), 36, true, null, 10)));
             if (card.S("chi") != "") doc.Blocks.Add(C(Printing.P("Per " + card.S("chi"), 14, true, null, 10)));
             var codeP = C(Printing.P(code, 28, true, null, 12)); codeP.FontFamily = new System.Windows.Media.FontFamily("Consolas"); doc.Blocks.Add(codeP); doc.Blocks.Add(C(Printing.P(valid, 11, false, Printing.Grey)));
-            Printing.Print(doc, "Gift card " + code);
+            Printing.SavePdf(doc, "Gift card " + code);
         }
         Content = F.Page(1480, F.Heading(null, "Gift card " + code, "Da stampare o salvare in PDF e dare al cliente insieme allo scontrino.", B("Torna alle gift card", () => Main.Show("giftcard"), "Ghost"), B("PDF", Print, "Primary")), sheet);
         return Task.CompletedTask;

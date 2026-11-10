@@ -35,13 +35,68 @@ public static class Printing
         return t;
     }
 
-    /// <summary>The Windows print dialog; false when the user closes it.</summary>
-    public static bool Print(FlowDocument doc, string title)
+    /// <summary>Every «PDF» and «Stampa» of the program does the same thing: the document becomes a PDF in the Download
+    /// folder (as the program of before did), and the line on top says where. No print dialog. The pages are laid out for
+    /// A4 and kept as they look on screen (logo, fonts), one picture a page.</summary>
+    public static void SavePdf(FlowDocument doc, string name)
     {
-        var dlg = new PrintDialog();
-        if (dlg.ShowDialog() != true) return false;
-        doc.PageWidth = dlg.PrintableAreaWidth; doc.PageHeight = dlg.PrintableAreaHeight; doc.ColumnWidth = dlg.PrintableAreaWidth;
-        dlg.PrintDocument(((IDocumentPaginatorSource)doc).DocumentPaginator, title);
-        return true;
+        const double W = 793.7, H = 1122.5, SCALE = 2;  // A4 at 96 dpi, drawn at 192
+        doc.PageWidth = W; doc.PageHeight = H; doc.ColumnWidth = W;
+        var pages = ((IDocumentPaginatorSource)doc).DocumentPaginator; pages.PageSize = new Size(W, H); pages.ComputePageCount();
+        var jpegs = new List<byte[]>(); int pw = (int)(W * SCALE), ph = (int)(H * SCALE);
+        for (int i = 0; i < pages.PageCount; i++)
+        {
+            var page = pages.GetPage(i); var dv = new DrawingVisual();
+            using (var dc = dv.RenderOpen()) { dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, W, H)); dc.DrawRectangle(new VisualBrush(page.Visual) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top }, null, new Rect(0, 0, W, H)); }
+            dv.Transform = new ScaleTransform(SCALE, SCALE);
+            var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap(pw, ph, 96, 96, PixelFormats.Pbgra32); bmp.Render(dv);
+            var enc = new System.Windows.Media.Imaging.JpegBitmapEncoder { QualityLevel = 92 }; enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));
+            using var ms = new System.IO.MemoryStream(); enc.Save(ms); jpegs.Add(ms.ToArray());
+        }
+        Downloads.Save(name + ".pdf", PdfOfPictures(jpegs, pw, ph, name));
+    }
+
+    /// <summary>A PDF whose pages are JPEG pictures filling an A4 page each.</summary>
+    static byte[] PdfOfPictures(List<byte[]> jpegs, int w, int h, string title)
+    {
+        static byte[] A(string s) => System.Text.Encoding.ASCII.GetBytes(s);
+        var n = jpegs.Count; var objs = new List<byte[]> { A("<< /Type /Catalog /Pages 2 0 R >>"), A($"<< /Type /Pages /Kids [{string.Join(" ", Enumerable.Range(0, n).Select(i => $"{3 + 3 * i} 0 R"))}] /Count {n} >>") };
+        for (int i = 0; i < n; i++)
+        {
+            var content = A("q 595.28 0 0 841.89 0 0 cm /Im0 Do Q");
+            objs.Add(A($"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Im0 {5 + 3 * i} 0 R >> >> /Contents {4 + 3 * i} 0 R >>"));
+            objs.Add(A($"<< /Length {content.Length} >>\nstream\n").Concat(content).Concat(A("\nendstream")).ToArray());
+            objs.Add(A($"<< /Type /XObject /Subtype /Image /Width {w} /Height {h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {jpegs[i].Length} >>\nstream\n").Concat(jpegs[i]).Concat(A("\nendstream")).ToArray());
+        }
+        var safe = new string(title.Select(ch => ch is >= ' ' and < (char)127 && ch is not ('(' or ')' or '\\') ? ch : ' ').ToArray());
+        objs.Add(A($"<< /Title ({safe}) /Producer (TD Booking Suite) >>"));
+        var o = new List<byte>(); o.AddRange(A("%PDF-1.4\n%")); o.AddRange(new byte[] { 0xe2, 0xe3, 0xcf, 0xd3 }); o.Add((byte)'\n'); var at = new List<int>();
+        for (int i = 0; i < objs.Count; i++) { at.Add(o.Count); o.AddRange(A($"{i + 1} 0 obj\n")); o.AddRange(objs[i]); o.AddRange(A("\nendobj\n")); }
+        var x = o.Count; o.AddRange(A($"xref\n0 {objs.Count + 1}\n0000000000 65535 f \n")); foreach (var a in at) o.AddRange(A($"{a:0000000000} 00000 n \n"));
+        o.AddRange(A($"trailer\n<< /Size {objs.Count + 1} /Root 1 0 R /Info {objs.Count} 0 R >>\nstartxref\n{x}\n%%EOF\n"));
+        return o.ToArray();
+    }
+}
+
+/// <summary>What the program gives as a file (a PDF, the data of a client, a photo): always into the Download folder of
+/// this PC, under a name not taken, with the same line on top telling where it is and a button to open it.</summary>
+public static class Downloads
+{
+    [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, PreserveSig = false)]
+    static extern string SHGetKnownFolderPath([System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPStruct)] Guid id, uint flags, IntPtr token);
+    static string Folder()
+    {
+        try { return SHGetKnownFolderPath(new Guid("374DE290-123F-4565-9164-39C4925E467B"), 0, IntPtr.Zero); }
+        catch (Exception) { return System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"); }
+    }
+    public static string Save(string name, byte[] data)
+    {
+        foreach (var ch in System.IO.Path.GetInvalidFileNameChars()) name = name.Replace(ch, '-');
+        var dir = Folder(); System.IO.Directory.CreateDirectory(dir);
+        var stem = System.IO.Path.GetFileNameWithoutExtension(name); var ext = System.IO.Path.GetExtension(name); var path = System.IO.Path.Combine(dir, name);
+        for (int i = 2; System.IO.File.Exists(path); i++) path = System.IO.Path.Combine(dir, $"{stem} ({i}){ext}");
+        System.IO.File.WriteAllBytes(path, data);
+        Views.Shell.Instance?.Saved(path);
+        return path;
     }
 }

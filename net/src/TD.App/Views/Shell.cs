@@ -74,6 +74,10 @@ public sealed class Shell
     }
 
     /// <summary>Esci, or a session that ended on the server: back to the sign in.</summary>
+    /// <summary>A file the program has just put in the Download folder: the same line everywhere, with Apri.</summary>
+    public void Saved(string path) =>
+        main?.Flash($"Salvato nella cartella Download: {System.IO.Path.GetFileName(path)}", false, "Apri", () => { try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true }); } catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or System.IO.IOException) { } });
+
     public async void SignedOut(bool byUser = false)
     {
         if (byUser) try { await Api.Current.Post("/api/logout"); } catch { }

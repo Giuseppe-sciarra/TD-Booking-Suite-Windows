@@ -560,8 +560,7 @@ public sealed class ClientPage(string id) : Page
             var download = Wide(BA("Scarica i dati del cliente", async () =>
             {
                 var r = await Api.Current.Call("cliente.esporta", new { id });
-                var dlg = new Microsoft.Win32.SaveFileDialog { FileName = r.S("nome"), Filter = "JSON|*.json" };
-                if (dlg.ShowDialog() == true) { File.WriteAllText(dlg.FileName, r.S("testo")); Main.Flash("Dati del cliente salvati in " + dlg.FileName); }
+                Downloads.Save(r.S("nome"), System.Text.Encoding.UTF8.GetBytes(r.S("testo")));
             }));
             var confirm = Box("");
             var erase = BA("Cancella i dati", async () =>

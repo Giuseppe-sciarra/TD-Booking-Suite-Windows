@@ -281,14 +281,16 @@ public sealed class MainWindow : Window
     void Put(Page page) { currentPage = page; content.Content = page; }
 
     /// <summary>The green or red line on top of the pages, as Django's messages; it goes with OK or by itself.</summary>
-    public void Flash(string text, bool error = false)
+    public void Flash(string text, bool error = false, string doLabel = null, Action doIt = null)
     {
         var ok = new Button { Content = "OK", Style = Style("Ghost"), Padding = new Thickness(10, 3, 10, 3) };
-        var row = new DockPanel(); DockPanel.SetDock(ok, Dock.Right); row.Children.Add(ok); row.Children.Add(T(text, size: 14.5));
+        var row = new DockPanel(); DockPanel.SetDock(ok, Dock.Right); row.Children.Add(ok);
+        if (doLabel != null) { var act = new Button { Content = doLabel, Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(0, 0, 8, 0) }; act.Click += (_, _) => doIt(); DockPanel.SetDock(act, Dock.Right); row.Children.Add(act); }
+        var line = T(text, size: 14.5); line.TextWrapping = TextWrapping.Wrap; line.VerticalAlignment = VerticalAlignment.Center; row.Children.Add(line);
         var box = new Border { Background = Res(error ? "DangerSoft" : "OkSoft"), BorderBrush = Res(error ? "Danger" : "Ok"), BorderThickness = new Thickness(1.5), CornerRadius = new CornerRadius(10), Padding = new Thickness(16, 10, 10, 10), Margin = new Thickness(26, 12, 26, 0), Child = row };
         ok.Click += (_, _) => notices.Children.Remove(box);
         notices.Children.Clear(); notices.Children.Add(box);
-        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(error ? 12 : 6) };
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(error || doLabel != null ? 12 : 6) };
         timer.Tick += (_, _) => { timer.Stop(); notices.Children.Remove(box); }; timer.Start();
     }
 }

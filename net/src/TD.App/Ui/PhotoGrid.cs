@@ -97,8 +97,7 @@ public static class PhotoGrid
             var w = new Window { Title = "Foto", Owner = Application.Current.MainWindow, WindowStartupLocation = WindowStartupLocation.CenterOwner, Width = 900, Height = 760, Background = new SolidColorBrush(Color.FromRgb(36, 26, 48)), ShowInTaskbar = false };
             var save = F.Small(B("Scarica", () =>
             {
-                var dlg = new Microsoft.Win32.SaveFileDialog { FileName = $"foto-{id[..6]}.jpg", Filter = "JPEG|*.jpg" };
-                if (dlg.ShowDialog() == true) File.WriteAllBytes(dlg.FileName, data);
+                Downloads.Save($"foto-{id[..6]}.jpg", data);
             }));
             var close = F.Small(B("Chiudi", () => w.Close(), "Ghost"));
             var bar = Row(save, close.M(8, 0, 0, 0)); bar.HorizontalAlignment = HorizontalAlignment.Right; bar.Margin = new Thickness(12);

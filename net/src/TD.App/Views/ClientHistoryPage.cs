@@ -121,6 +121,6 @@ public sealed class ClientHistoryPage(string id) : Page
         doc.Blocks.Add(Printing.Table(new[] { 1.1, 4, 1.6, 1.3 }, new[] { "Data", "Cosa", "Con", "Importo" }, rows, new[] { 3 }, d.A("righe").Any() ? new[] { "Totale", "", "", Euro(d.S("speso")) } : null));
         if (d.A("giftcard").Any()) { doc.Blocks.Add(Printing.P("Gift card", 13, true)); foreach (var g in d.A("giftcard")) doc.Blocks.Add(Printing.P("• " + GiftLine(g), 10, false, null, 2)); }
         if (d.A("prossimi").Any()) { doc.Blocks.Add(Printing.P("Prossimi appuntamenti", 13, true)); foreach (var x in d.A("prossimi")) doc.Blocks.Add(Printing.P("• " + NextLine(x), 10, false, null, 2)); }
-        Printing.Print(doc, $"Storico {d.S("nome")} {d.S("cognome")}".Trim());
+        Printing.SavePdf(doc, $"Storico {d.S("nome")} {d.S("cognome")}".Trim());
     }
 }

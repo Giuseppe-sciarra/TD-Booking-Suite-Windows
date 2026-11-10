@@ -601,8 +601,7 @@ public sealed class CassaPage : Page
         async Task Summary(string a, string b)
         {
             var data = await Api.Current.Bytes("cassa.riepilogo", new { sede, dal = a, al = b });
-            var dlg = new Microsoft.Win32.SaveFileDialog { FileName = $"riepilogo-cassa-{a}{(b == a || b == "" ? "" : "-" + b)}.pdf", Filter = "PDF|*.pdf" };
-            if (dlg.ShowDialog() == true) { File.WriteAllBytes(dlg.FileName, data); Main.Flash("Riepilogo salvato in " + dlg.FileName); }
+            Downloads.Save($"riepilogo-cassa-{a}{(b == a || b == "" ? "" : "-" + b)}.pdf", data);
         }
         var sum = Block(H3("Riepilogo di cassa in PDF"), Small("Tutto quello fatto in cassa, giorno per giorno: scontrini con le righe e chi ha pagato, annulli, chiusure, totali per pagamento e per operatore, Da pagare incassati, non nello scontrino. Si scarica, non blocca niente"),
             Left(BA("Riepilogo di oggi (PDF)", () => Summary(d.S("oggi"), d.S("oggi")))), F.Grid2(F.Field("Dal", from), F.Field("Al", to)),
@@ -666,7 +665,7 @@ public sealed class ReceiptCopyPage(string sede, string id) : Page
             foreach (var x in d.A("righe")) doc.Blocks.Add(Printing.P(x.ToString(), 11, false, null, 1));
             if (d.S("stato") == "void") doc.Blocks.Add(Printing.P("Annullato", 11, true));
             doc.Blocks.Add(Printing.P("Copia non valida ai fini fiscali", 9, false, Printing.Grey));
-            Printing.Print(doc, "Copia dello scontrino");
+            Printing.SavePdf(doc, "Copia dello scontrino");
         }
         Content = F.Page(1480, F.Heading(null, "Copia dello scontrino", "Una copia di cortesia per il cliente: il documento commerciale valido è quello emesso dal registratore",
             B("Torna alla cassa", () => Main.ShowPage(new CassaPage()), "Ghost"), B("Stampa", Print, "Primary")), card);

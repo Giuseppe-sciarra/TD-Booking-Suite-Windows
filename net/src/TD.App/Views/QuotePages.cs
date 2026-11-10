@@ -200,6 +200,6 @@ public sealed class QuoteSheetPage(string id) : Page
         doc.Blocks.Add(Printing.Table(new[] { 5, 1, 1.6, 1.8 }, new[] { "Descrizione", "Q.tà", "Prezzo", "Importo" }, d.A("righe").Select(l => new[] { l.S("desc"), l.S("qty"), Euro(l.S("prezzo")), Euro(l.S("importo")) }), new[] { 1, 2, 3 }, new[] { "Totale", "", "", Euro(d.S("totale")) }));
         if (d.S("note") != "") { doc.Blocks.Add(Printing.P("NOTE", 9, true, Printing.Grey, 2)); doc.Blocks.Add(Printing.P(d.S("note"), 11, false, null, 10)); }
         doc.Blocks.Add(Printing.P("Prezzi IVA inclusa. Questo preventivo non è un documento fiscale: lo scontrino si emette al pagamento.", 9, false, Printing.Grey));
-        Printing.Print(doc, "Preventivo " + d.S("numero"));
+        Printing.SavePdf(doc, "Preventivo " + d.S("numero"));
     }
 }
