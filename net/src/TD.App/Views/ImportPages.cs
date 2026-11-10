@@ -271,3 +271,55 @@ public sealed class DaySheetPage : Page
         Content = F.Page(1180, page);
     }
 }
+
+/// <summary>attendees.html: Iscritti e presenze of a class or an event date: who came, and the substitute instructor.</summary>
+public sealed class AttendeesPage : Page
+{
+    public string Id = "";
+    public override async Task Load() => Draw(await Api.Current.Call("prenotazione.iscritti", new { id = Id }));
+    async Task Act(object args) { await Api.Current.Call("prenotazione.iscritti.azione", args); await Load(); }
+
+    void Draw(JsonNode d)
+    {
+        var rows = d.A("righe").ToList(); var people = d.I("persone"); var what = d.Bo("evento") ? "data" : "lezione";
+        var sub = new TextBlock { FontSize = 14, TextWrapping = TextWrapping.Wrap }; sub.SetResourceReference(TextBlock.ForegroundProperty, "Muted");
+        sub.Inlines.Add($"{d.S("quando")} · {people} person{(people == 1 ? "a" : "e")} su {rows.Count} prenotazion{(rows.Count == 1 ? "e" : "i")}");
+        if (d.S("sostituto") != "") { sub.Inlines.Add(" · sostituto: "); sub.Inlines.Add(new System.Windows.Documents.Run(d.S("sostituto")) { FontWeight = FontWeights.Bold }); }
+        var page = Col(F.Back("Torna alla prenotazione", () => Main.ShowPage(new BookingDetailPage(Id))), Col(T("ISCRITTI E PRESENZE", size: 12, bold: true, color: Res("Brand")), T(d.S("titolo"), "H1"), sub).M(0, 0, 0, 20));
+        var list = Col(Row(T("Iscritti", "H2"), Prog.Muted(rows.Count.ToString(), 14).M(8, 0, 0, 0)));
+        if (!d.Bo("iniziata")) list.Children.Add(Prog.Muted($"La spunta delle presenze si mette dall'inizio della {what}").M(0, 6, 0, 0));
+        foreach (var b in rows)
+        {
+            var id = b.S("id"); var status = b.S("stato");
+            var who = Col(F.Link(b.S("nome"), () => Main.ShowPage(new BookingDetailPage(id))));
+            if (b.I("persone") > 1) who.Children.Add(Prog.Muted($"{b.I("persone")} persone" + (b.S("partecipanti") != "" ? ": " + b.S("partecipanti") : ""), 13));
+            var pill = status == "completed" ? MainWindow.Pill("Presente", "ok") : F.Status(status); pill.VerticalAlignment = VerticalAlignment.Center; pill.Margin = new Thickness(12, 0, 12, 0);
+            var actions = Row(); actions.VerticalAlignment = VerticalAlignment.Center;
+            if (Can("booking.write") && d.Bo("iniziata"))
+            {
+                if (status is "completed" or "no_show") actions.Children.Add(F.Small(BA("Togli la spunta", () => Act(new { id = Id, booking = id, azione = "reset" }), "Ghost")));
+                else
+                {
+                    actions.Children.Add(F.Small(BA("✓ Presente", () => Act(new { id = Id, booking = id, azione = "present" }))));
+                    if (status == "confirmed") actions.Children.Add(F.Small(BA("Assente", () => Act(new { id = Id, booking = id, azione = "absent" }), "Ghost")).M(8, 0, 0, 0));
+                }
+            }
+            var row = new DockPanel { Margin = new Thickness(0, 0, 0, 0) }; DockPanel.SetDock(actions, Dock.Right); DockPanel.SetDock(pill, Dock.Right); row.Children.Add(actions); row.Children.Add(pill); row.Children.Add(who);
+            list.Children.Add(new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(0, 10, 0, 10), Margin = new Thickness(0, list.Children.Count == 1 ? 10 : 0, 0, 0), Child = row });
+        }
+        if (rows.Count == 0) list.Children.Add(T("Nessun iscritto", size: 14, bold: true).M(0, 14, 0, 0));
+        var g = new Grid(); g.ColumnDefinitions.Add(new ColumnDefinition()); g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) }); g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(360) });
+        g.Children.Add(F.Card(list));
+        if (Can("booking.write"))
+        {
+            var options = d.A("risorse").Select(r => (Id: r.S("id"), Name: r.S("nome"))).ToList(); options.Insert(0, ("", "Nessun sostituto"));
+            var pick = new ComboBox { ItemsSource = options.Select(o => o.Name).ToList(), SelectedIndex = Math.Max(0, options.FindIndex(o => o.Name == d.S("sostituto") && o.Id != "")) };
+            var notify = new CheckBox { Content = T("Avvisa gli iscritti via email", size: 14), Margin = new Thickness(0, 12, 0, 0) };
+            var note = Prog.Muted($"In agenda la {what} passa a lui; su ogni prenotazione resta scritto chi la teneva. "); note.Inlines.Add(new System.Windows.Documents.Run("Nessun sostituto") { FontStyle = FontStyles.Italic }); note.Inlines.Add(" la riporta a chi la teneva");
+            var side = F.Card(T("Istruttore sostituto", "H2"), note.M(0, 6, 0, 10), pick, notify, Prog.Left(F.Small(BA("Salva", () => Act(new { id = Id, azione = "substitute", resource = options[Math.Max(0, pick.SelectedIndex)].Id, notify = notify.IsChecked == true })))));
+            side.VerticalAlignment = VerticalAlignment.Top; Grid.SetColumn(side, 2); g.Children.Add(side);
+        }
+        page.Children.Add(g);
+        Content = F.Page(1180, page);
+    }
+}

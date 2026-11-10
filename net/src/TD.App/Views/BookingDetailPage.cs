@@ -239,7 +239,7 @@ public sealed class BookingDetailPage(string id) : Page
             left.Children.Add(F.Card(T("Sposta la serie", "H2"), T("Scegli il nuovo giorno e l'ora di questa data: le prossime si spostano degli stessi giorni, alla stessa ora. Prima vedi quelle che non si possono spostare e perché, poi sposti le altre. Il cliente riceve un'email sola", size: 14, color: Res("Muted")),
                 F.Grid2(F.Field("Nuovo giorno e ora", Row(day, time.M(8, 0, 0, 0))), ops.Items.Count > 0 ? F.Field("Con", ops) : null), following, check, plan));
         }
-        if (b.Bo("iscritti") && Can("booking.read")) left.Children.Add(B($"Iscritti e presenze di questa {(kind == "event" ? "data" : "lezione")}", () => Say("Iscritti e presenze arrivano con i prossimi passaggi.")).M(0, 0, 0, 14));
+        if (b.Bo("iscritti") && Can("booking.read")) left.Children.Add(B($"Iscritti e presenze di questa {(kind == "event" ? "data" : "lezione")}", () => Main.ShowPage(new AttendeesPage { Id = id })).M(0, 0, 0, 14));
         // ----- Partecipanti
         if (b.I("persone") > 1 && write && !d.Bo("masked"))
         {

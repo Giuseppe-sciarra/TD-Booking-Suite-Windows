@@ -336,6 +336,18 @@ public static class ClientMails
         return bk.Queue(payload, b.ContactId);
     }
 
+    /// <summary>The class is held by another instructor (Iscritti e presenze), when the desk chooses to tell the enrolled:
+    /// to whoever wants the emails about his bookings.</summary>
+    public static Delivery Substitute(Ctx c, Booking b)
+    {
+        var bk = new Bookings(c); var data = bk.Data(b);
+        if (WpSync.BySite(c) || data.Str("email") == "" || b.Snap["notices"] is JsonValue nv && nv.TryGetValue<bool>(out var no) && !no) return null;
+        var contact = c.Row<Contact>(b.ContactId); if (contact != null && !contact.Notices) return null;
+        var v = Values(c, b, data);
+        var body = Texts.Fill("Ciao {nome}, {servizio} di {quando} la tiene {operatore}.", v) + (b.Snap.Str("original") != "" ? "\nPrima era con " + b.Snap.Str("original") + "." : "");
+        return bk.Queue(new JsonObject { ["to"] = data.Str("email"), ["subject"] = "Cambio di istruttore · " + c.Tenant.Name, ["body"] = body, ["html"] = Texts.EmailHtml(c.Tenant, body, new List<(string, string)>()) }, b.ContactId);
+    }
+
     public static readonly (string Id, string Label)[] WA_WHEN = { ("", "Spenti"), ("d1", "Il giorno di apertura prima (consigliato): il sabato per il martedì, se domenica e lunedì è chiuso"),
         ("t0", "La mattina stessa: gli appuntamenti di oggi"), ("h24", "Nelle prossime 24 ore"), ("h3", "Nelle prossime 3 ore"), ("h2", "Nelle prossime 2 ore") };
     /// <summary>Which of the n days from first the business works: opening hours on that weekday, no closure of the whole
