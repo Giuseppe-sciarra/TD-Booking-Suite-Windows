@@ -117,3 +117,82 @@ public sealed class ImportClientsPage : Page
         Content = F.Page(1180, page);
     }
 }
+
+/// <summary>bookings_import.html: Importa appuntamenti: the file, the columns, the preview with the conflicts, the import.</summary>
+public sealed class ImportBookingsPage : Page
+{
+    string token = ""; List<string> columns; bool force;
+    public override async Task Load() => Draw(await Api.Current.Call("prenotazioni.importa", new { token }));
+    async Task Send(string action, string check = "")
+    {
+        var d = await Api.Current.Call("prenotazioni.importa", new JsonObject { ["azione"] = action, ["token"] = token, ["colonne"] = new JsonArray((columns ?? new()).Select(v => (JsonNode)v).ToArray()), ["force"] = force, ["checked"] = check });
+        if (d.S("fatto") != "") { Main.Flash(d.S("fatto")); Main.Show("agenda"); return; }
+        Draw(d);
+    }
+    static TextBlock Li(string text) { var t = Prog.Text("• " + text); t.Margin = new Thickness(0, 6, 0, 0); return t; }
+
+    void Draw(JsonNode d)
+    {
+        var file = d["file"];
+        var page = Col(F.Heading(null, "Importa appuntamenti", "Gli appuntamenti già presi nel programma che usavi prima: esportali in Excel o CSV e caricali qui. Prima vedi l'anteprima con i conflitti, poi importi. Ai clienti non parte nessuna email",
+            B("Torna all'agenda", () => Main.Show("agenda"))));
+        if (d.S("errore") != "") page.Children.Add(F.Notice(d.S("errore"), "danger").M(0, 0, 0, 14));
+        if (file == null)
+        {
+            token = ""; columns = null;
+            var pick = BA("Carica e scegli le colonne", async () =>
+            {
+                var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "Excel o CSV|*.xlsx;*.csv;*.txt" }; if (dlg.ShowDialog(Application.Current.MainWindow) != true) return;
+                if (new System.IO.FileInfo(dlg.FileName).Length > 20 * 1024 * 1024) { Main.Flash("File troppo grande: al massimo 20 MB.", true); return; }
+                Draw(await Api.Current.Call("prenotazioni.importa", new { azione = "upload", nome = System.IO.Path.GetFileName(dlg.FileName), file = Convert.ToBase64String(System.IO.File.ReadAllBytes(dlg.FileName)) }));
+            }, "Primary");
+            var tips = Col(T("Come funziona", "H2"), Li("Una riga per appuntamento, la prima riga sono i titoli delle colonne"), Li("Servono la data con l'ora, il servizio con il nome che ha qui e il telefono o l'email del cliente; l'operatore con il nome che ha qui"),
+                Li("Si importano solo gli appuntamenti futuri: quelli passati si saltano"), Li("Il cliente si ritrova dall'email o dal telefono, altrimenti nasce la sua scheda"), Li("Gli appuntamenti hanno origine «Importata». I promemoria partono come per gli altri, se sono accesi"));
+            var g = new Grid(); g.ColumnDefinitions.Add(new ColumnDefinition()); g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) }); g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(420) });
+            var left = F.Card(T("Scegli il file", "H2"), Prog.Muted("File Excel (.xlsx) o CSV, fino a 20 MB").M(0, 8, 0, 0), Prog.Left(pick)); left.VerticalAlignment = VerticalAlignment.Top;
+            var right = F.Card(tips); Grid.SetColumn(right, 2); g.Children.Add(left); g.Children.Add(right); page.Children.Add(g);
+            Content = F.Page(1180, page); return;
+        }
+        token = file.S("token"); var report = file["esito"]; var cols = file.A("colonne").ToList(); var fields = file.A("campi").Select(f => (Id: f.S("id"), Name: f.S("nome"))).ToList();
+        columns = cols.Select(c => c.S("campo")).ToList(); force = file.Bo("force");
+        var change = F.Small(BA("Cambia file", () => Send("reset"), "Ghost")); change.VerticalAlignment = VerticalAlignment.Top;
+        var top = new DockPanel(); DockPanel.SetDock(change, Dock.Right); top.Children.Add(change);
+        top.Children.Add(Col(T(file.S("nome"), "H2"), Prog.Muted($"{file.S("righe")} righe. Per ogni colonna scegli cosa contiene")));
+        var map = new Grid { Margin = new Thickness(0, 12, 0, 0) }; foreach (var w in new[] { 1.4, 2.2, 1.6 }) map.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(w, GridUnitType.Star) });
+        void Cell(FrameworkElement e, int row, int col) { e.VerticalAlignment = VerticalAlignment.Center; var b = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(0, 7, 12, 7), Child = e }; Grid.SetRow(b, row); Grid.SetColumn(b, col); map.Children.Add(b); }
+        map.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); var heads = new[] { "Colonna del file", "Primi valori", "Cosa contiene" };
+        for (int i = 0; i < 3; i++) Cell(T(heads[i], size: 13, bold: true, color: Res("Muted")), 0, i);
+        for (int i = 0; i < cols.Count; i++)
+        {
+            var n = i; map.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var box = new ComboBox { ItemsSource = fields.Select(f => f.Name).ToList(), SelectedIndex = Math.Max(0, fields.FindIndex(f => f.Id == columns[n])) };
+            box.SelectionChanged += (_, _) => columns[n] = fields[Math.Max(0, box.SelectedIndex)].Id;
+            Cell(T(cols[i].S("titolo"), size: 14, bold: true), i + 1, 0); Cell(Prog.Muted(cols[i].S("esempi") != "" ? cols[i].S("esempi") : "vuota", 13), i + 1, 1); Cell(box, i + 1, 2);
+        }
+        var card = Col(top, map);
+        if (report != null)
+        {
+            var line = new TextBlock { FontSize = 14, TextWrapping = TextWrapping.Wrap };
+            void Plain(string s) => line.Inlines.Add(s); void Bold(string s) => line.Inlines.Add(new System.Windows.Documents.Run(s) { FontWeight = FontWeights.Bold });
+            Plain("Pronti da importare: "); Bold(report.S("ok")); if (report.I("same") > 0) Plain($" · già importati prima: {report.I("same")}");
+            Plain(" · in conflitto: "); Bold(report.S("conflicts")); Plain($" · con errori: {report.I("errors")}"); if (report.I("past") > 0) Plain($" · già passati: {report.I("past")}");
+            card.Children.Add(F.Notice(line).M(0, 14, 0, 0));
+            var problems = file.A("problemi").ToList();
+            if (problems.Count > 0)
+                card.Children.Add(Agency.Table(new[] { "Riga", "Cosa succede", "Perché" }, new[] { 0.5, 1.0, 4.0 }, problems.Select(p => (new FrameworkElement[] { T(p.S("riga"), size: 14), T(p.Bo("conflitto") ? "Conflitto" : "Saltata", size: 14), Prog.Text(p.S("testo")) }, (Action)null)).ToList()));
+            if (report.I("conflicts") > 0)
+            {
+                if (d.Bo("forza"))
+                {
+                    var box = new CheckBox { Content = Prog.Text("Forza anche quelli in conflitto: entrano lo stesso, segnati come forzati"), IsChecked = force, Margin = new Thickness(0, 14, 0, 0) };
+                    box.Checked += (_, _) => force = true; box.Unchecked += (_, _) => force = false; card.Children.Add(box);
+                }
+                else card.Children.Add(Prog.Muted("Quelli in conflitto si saltano: per farli entrare serve chi può forzare").M(0, 12, 0, 0));
+            }
+        }
+        var buttons = Row(BA(report != null ? "Aggiorna l'anteprima" : "Anteprima", () => Send("preview"), report != null ? null : "Primary")); buttons.Margin = new Thickness(0, 16, 0, 0);
+        if (report != null) buttons.Children.Add(BA("Importa", () => Send("import", file.S("verificato")), "Primary").M(10, 0, 0, 0));
+        card.Children.Add(buttons); page.Children.Add(F.Card(card));
+        Content = F.Page(1180, page);
+    }
+}
