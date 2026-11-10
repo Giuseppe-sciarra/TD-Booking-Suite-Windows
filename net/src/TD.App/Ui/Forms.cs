@@ -194,4 +194,44 @@ public static class F
         if (max > 0) c.Loaded += (_, _) => { if (c.Template.FindName("PART_EditableTextBox", c) is TextBox t) t.MaxLength = max; };
         return c;
     }
+    /// <summary>[data-client-search] of app.js: a client chosen by typing (gift card, quote): the box, what is found under
+    /// it, the id chosen (empty again as soon as the text changes); picked: for who wants the rest of the client.</summary>
+    public static (TextBox Box, FrameworkElement Found, Func<string> Id, Action<string, string> Set) ClientSearch(Action<System.Text.Json.Nodes.JsonNode> picked = null)
+    {
+        var box = Box(""); box.Tag = "Nome, email o telefono"; Views.AgendaPage.Hint(box); var id = ""; var quiet = false; var found = Col(); System.Windows.Threading.DispatcherTimer timer = null;
+        var foundBox = new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Background = Res("Surface"), Child = found, Margin = new Thickness(0, 6, 0, 0), Visibility = Visibility.Collapsed };
+        box.TextChanged += (_, _) =>
+        {
+            if (quiet) return; id = ""; timer?.Stop(); var text = box.Text.Trim();
+            if (text.Length < 2) { found.Children.Clear(); foundBox.Visibility = Visibility.Collapsed; return; }
+            timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+            timer.Tick += async (_, _) =>
+            {
+                timer.Stop();
+                try
+                {
+                    var r = await Net.Api.Current.Call("clienti.cerca", new { q = text, quanti = 8 }) as System.Text.Json.Nodes.JsonArray ?? new();
+                    if (box.Text.Trim() != text) return; found.Children.Clear();
+                    foreach (var c in r)
+                    {
+                        var name = $"{c.S("nome")} {c.S("cognome")}".Trim();
+                        var b = new Button { Content = name + (c.S("telefono") != "" ? " · " + c.S("telefono") : c.S("email") != "" ? " · " + c.S("email") : ""), Style = Style("Tile"), BorderThickness = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(14, 12, 14, 12) };
+                        b.Click += (_, _) => { quiet = true; id = c.S("id"); box.Text = name; quiet = false; found.Children.Clear(); foundBox.Visibility = Visibility.Collapsed; picked?.Invoke(c); };
+                        found.Children.Add(b);
+                    }
+                    foundBox.Visibility = r.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+                }
+                catch (Net.ApiError) { }
+            };
+            timer.Start();
+        };
+        return (box, foundBox, () => id, (name, cid) => { quiet = true; box.Text = name; id = cid; quiet = false; });
+    }
+    /// <summary>The business's logo (attivita.io sends it in base64), null without one.</summary>
+    public static Image Logo(System.Text.Json.Nodes.JsonNode business, double height)
+    {
+        if (business.S("logo") == "") return null;
+        try { var bi = new System.Windows.Media.Imaging.BitmapImage(); bi.BeginInit(); bi.StreamSource = new System.IO.MemoryStream(Convert.FromBase64String(business.S("logo"))); bi.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad; bi.EndInit(); bi.Freeze(); return new Image { Source = bi, Height = height, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left }; }
+        catch (Exception ex) when (ex is FormatException or NotSupportedException or System.IO.IOException) { return null; }
+    }
 }

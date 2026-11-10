@@ -293,4 +293,50 @@ public static class Cassa
         var t = new Till(c.C); var where = t.Places(); var namesOk = c.Can("pii.read");
         return new { gruppi = where.Select(l => new { sede = l.Id, nome = l.Name, righe = StandbyRows(c, t, l, namesOk) }).ToList(), piuSedi = where.Count > 1, oggi = c.C.Today };
     }
+
+    static readonly Dictionary<string, string> GIFT_STATUS = new() { ["pending"] = "Da emettere", ["active"] = "Attiva", ["void"] = "Annullata" };
+
+    /// <summary>gift.page: every card with its credit and moves.</summary>
+    [Rpc("giftcard.elenco", Perm = "sale.write")]
+    public static object Gifts(Call c)
+    {
+        var x = c.C; var g = new Gift(x); var namesOk = c.Can("pii.read") && c.Can("contacts.read"); var today = x.Today; var bk = new Bookings(x);
+        var q = Gift.Clean(c.Str("q"));
+        var cards = x.S.Query<Giftcard>("SELECT * FROM core_giftcard" + (q != "" ? " WHERE code LIKE @q" : "") + " ORDER BY created DESC LIMIT 200", new { q = q + "%" }).ToList();
+        var t = today.ToDateTime(TimeOnly.MinValue);
+        return new
+        {
+            q, oggi = today, nomi = namesOk, importi = Gift.PRESETS, scade = Gift.Proposed(today),
+            credito = Prices.Str(x.S.Scalar<decimal?>("SELECT sum(balance) FROM core_giftcard WHERE status='active' AND (expires IS NULL OR expires>=@t)", new { t }) ?? 0),
+            conCredito = x.S.Scalar<long>("SELECT count(*) FROM core_giftcard WHERE status='active' AND (expires IS NULL OR expires>=@t) AND balance>0", new { t }),
+            righe = cards.Select(k => new
+            {
+                id = k.Id, codice = k.Code, stato = k.Status, statoNome = k.Status == "active" && k.Expires.HasValue && DateOnly.FromDateTime(k.Expires.Value) < today ? "Scaduta" : k.Status == "active" && k.Balance <= 0 ? "Usata tutta" : GIFT_STATUS.GetValueOrDefault(k.Status, k.Status),
+                inSospeso = k.Status != "active" || k.Expires.HasValue && DateOnly.FromDateTime(k.Expires.Value) < today, valore = Prices.Str(k.Amount), credito = Prices.Str(k.Balance), venduta = bk.Iso(k.Created),
+                scade = k.Expires.HasValue ? DateOnly.FromDateTime(k.Expires.Value) : (DateOnly?)null, chi = g.Holder(k, namesOk), cliente = k.ContactId,
+                movimenti = x.S.Query<Giftmove>("SELECT * FROM core_giftmove WHERE card_id=@c ORDER BY created", new { c = k.Id }).Select(m => new { quando = bk.Iso(m.Created), centesimi = m.Cents }),
+            }),
+        };
+    }
+
+    [Rpc("giftcard.azione", Perm = "sale.write")]
+    public static object GiftAction(Call c)
+    {
+        var x = c.C; var g = new Gift(x); var card = x.S.Get<Giftcard>(c.NeedId("card")) ?? throw new KeyNotFoundException();
+        if (c.Str("azione") == "assign" && c.Can("pii.read") && c.Can("contacts.read"))
+        {
+            var ct = c.Id("contact") is Guid cid ? x.S.Get<Contact>(cid) : null;
+            if (ct == null) throw new BookingException("Scegli il cliente dall'elenco che compare mentre scrivi.");
+            card.ContactId = ct.Id; x.S.Update(card, "contact_id"); x.Audit("gift.assigned", card.Id, new { contact = ct.Id.ToString() });
+            return new { testo = $"Gift card {card.Code} intestata a {g.Holder(card, true)}." };
+        }
+        if (c.Str("azione") == "expires")
+        {
+            var v = c.Str("expires").Trim(); DateOnly? day = null;
+            if (v != "") { if (!DateOnly.TryParseExact(v, "yyyy-MM-dd", out var d)) throw new BookingException("Data non valida."); day = d; }
+            card.Expires = day?.ToDateTime(TimeOnly.MinValue); x.S.Update(card, "expires"); x.Audit("gift.expires", card.Id, new { expires = day?.ToString("yyyy-MM-dd") ?? "" });
+            return new { testo = day.HasValue ? "Scadenza salvata." : "Scadenza tolta: la gift card non scade." };
+        }
+        return new { testo = "" };
+    }
 }

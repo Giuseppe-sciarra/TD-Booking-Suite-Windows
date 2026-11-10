@@ -170,9 +170,9 @@ public sealed class MainWindow : Window
             Add("agenda", "day", "Agenda e prenotazioni", () => new AgendaPage(), Can("booking.read"));
             Add("clienti", "users", "Clienti", () => new ClientsPage(), Can("contacts.read"));
             Add("cassa", "tag", "Cassa", () => new CassaPage(), Can("sale.write"));
-            Add("standby", "clock", "Stand-by", () => new Placeholder("Stand-by"), Can("sale.write"), t.I("standby"));
-            Add("giftcard", "gift", "Gift card", () => new Placeholder("Gift card"), Can("sale.write"));
-            Add("preventivi", "briefcase", "Preventivi", () => new Placeholder("Preventivi"), Can("booking.write") && Can("pii.read"));
+            Add("standby", "clock", "Stand-by", () => new StandbyPage(), Can("sale.write"), t.I("standby"));
+            Add("giftcard", "gift", "Gift card", () => new GiftCardsPage(), Can("sale.write"));
+            Add("preventivi", "briefcase", "Preventivi", () => new QuotesPage(), Can("booking.write") && Can("pii.read"));
             Add("tavoli", "grid", "Sale e tavoli", () => new Placeholder("Sale e tavoli"), Can("booking.read") && type == "ristorante");
             Add("alloggi", "home", "Alloggi", () => new Placeholder("Alloggi"), Can("booking.read") && t.Bo("soggiorni"));
             Section("Comunicazioni");

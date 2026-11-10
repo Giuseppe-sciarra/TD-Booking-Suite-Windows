@@ -112,7 +112,7 @@ public sealed class ClientPage(string id) : Page
         if (d.A("preventivi").Any())
         {
             var line = new WrapPanel { Margin = new Thickness(0, 2, 0, 0) }; var first = true;
-            foreach (var qv in d.A("preventivi")) { if (!first) line.Children.Add(T(" · ", size: 13)); first = false; line.Children.Add(F.Link(qv.S("numero"), () => Main.Show("preventivi"), 13)); line.Children.Add(T(" " + Euro(qv.S("totale")), size: 13)); }
+            foreach (var qv in d.A("preventivi")) { if (!first) line.Children.Add(T(" · ", size: 13)); first = false; { var qid = qv.S("id"); line.Children.Add(F.Link(qv.S("numero"), () => Main.ShowPage(new QuoteSheetPage(qid)), 13)); } line.Children.Add(T(" " + Euro(qv.S("totale")), size: 13)); }
             who.Children.Add(Alert(Icons.Icon("briefcase", Res("Surface"), 13, 1), true, T("Preventivi", size: 13.5, bold: true), line));
         }
         if (write)
@@ -121,7 +121,7 @@ public sealed class ClientPage(string id) : Page
             acts.Children.Add(Wide(B("Nuova prenotazione", () => Main.ShowPage(new BookingPage { PrefillClient = id }), "Primary")));
             if (spec != null) acts.Children.Add(Wide(B($"Registra {spec.S("uno")}", async () => { tab = "scheda"; openNew = true; await Guard(Load); })));
             acts.Children.Add(Wide(B("Metti in lista d'attesa", () => Main.Show("attesa"), "Ghost")));
-            acts.Children.Add(Wide(B("Nuovo preventivo", () => Main.Show("preventivi"), "Ghost")));
+            acts.Children.Add(Wide(B("Nuovo preventivo", () => Main.ShowPage(new QuoteFormPage { Client = id }), "Ghost")));
             if (d["note"] != null) acts.Children.Add(Wide(B("Storico in PDF", () => Main.ShowPage(new ClientHistoryPage(id)), "Ghost")));
             who.Children.Add(acts);
         }

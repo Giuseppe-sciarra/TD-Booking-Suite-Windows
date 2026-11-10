@@ -24,6 +24,8 @@ public sealed class CassaPage : Page
     /// <summary>How the Cassa is opened: on a booking, with suspended bills, a quote, a gift card to sell, a client.</summary>
     public string Booking = "", Quote = "", GiftAmount = "", GiftExpires = "", Client = "";
     public List<string> Suspended = new();
+    /// <summary>From the Stand-by page: this bill of the Parcheggio is taken back as the Cassa opens, on its register.</summary>
+    public string ResumeStandby = "", ResumeSede = "";
 
     sealed class Line
     {
@@ -83,6 +85,14 @@ public sealed class CassaPage : Page
     {
         z = new AgendaPage { Main = Main }.Also(Business.S("fuso"));
         Unloaded += (_, _) => { Save(); poll?.Stop(); };
+        if (ResumeStandby != "")
+        {
+            // the bill left open on that register goes to the Parcheggio, it is not lost
+            sede = ResumeSede; var left = ReadDraft(sede); var id = ResumeStandby; ResumeStandby = "";
+            var r = await Api.Current.Call("cassa.azione", new JsonObject { ["sede"] = sede, ["azione"] = "resume", ["standby_id"] = id, ["swap"] = left != null && Typed(left) ? left : null });
+            if (r.S("testo") != "") Main.Flash(r.S("testo")); DropDraft(sede);
+            await Reload(r["conto"] as JsonObject, true); return;
+        }
         await Reload(null, true);
     }
     /// <summary>Asks the page again; fresh: the bill is rebuilt (first time, after a bill is sent, set aside, taken back).</summary>
