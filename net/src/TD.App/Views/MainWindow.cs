@@ -224,7 +224,7 @@ public sealed class MainWindow : Window
         foreach (var box in nav.Children.OfType<Border>().Where(x => x.Tag is StackPanel sp && sp.Children.Count == 0).ToList()) nav.Children.Remove(box);
         // Guida, outside the groups
         group = new StackPanel { Margin = new Thickness(6, 0, 6, 0) }; nav.Children.Add(group);
-        Add("guida", "help", "Guida", () => new Placeholder("Guida"));
+        Add("guida", "help", "Guida", () => new GuidePage());
         pages["account"] = (() => new AccountPage(), "");
         pages["prenotazioni"] = (() => new BookingsPage(), "agenda");
         bar.Children.Add(new ScrollViewer { Content = nav, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden });

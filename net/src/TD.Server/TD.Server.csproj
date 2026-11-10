@@ -11,4 +11,5 @@
   </ItemGroup>
   <ItemGroup><ProjectReference Include="../TD.Core/TD.Core.csproj" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="../../../suite/wordpress/td-booking-suite/**/*" LogicalName="wp/%(RecursiveDir)%(Filename)%(Extension)" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Guide/*.json" LogicalName="guide/%(Filename)%(Extension)" /></ItemGroup>
 </Project>
