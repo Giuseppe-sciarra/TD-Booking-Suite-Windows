@@ -213,4 +213,44 @@ public static class Clienti
         new Privacy(c.C).Erase(contact);
         return new { testo = "Dati del cliente cancellati. Lo storico dei consensi resta, senza dati personali." };
     }
+
+    // ---------- Unisci due schede (portal.contact_merge)
+    static void MergeRights(Call c) { foreach (var p in new[] { "pii.read", "booking.write", "privacy.manage" }) c.Require(p); }
+
+    /// <summary>The page before the merge: the other card searched, or the two cards side by side, field by field.</summary>
+    [Rpc("cliente.unisci.dati", Perm = "contacts.read")]
+    public static object MergeForm(Call c)
+    {
+        MergeRights(c);
+        var x = c.C; var cl = new Clients(x); var contact = Card(c); var a = cl.Data(contact);
+        var other = c.Id("con") is Guid oid && oid != contact.Id ? x.S.One<Contact>("SELECT * FROM core_contact WHERE id=@id AND email_index NOT LIKE 'erased:%'", new { id = oid }) : null;
+        long Count(Contact k) => x.S.Scalar<long>("SELECT count(*) FROM core_booking WHERE contact_id=@c", new { c = k.Id });
+        object Side(Contact k) => new { id = k.Id, creato = x.Cal.DayOf(k.Created), prenotazioni = Count(k), consenso = k.Consent };
+        if (other == null)
+            return new
+            {
+                nome = a.Str("first_name"), cognome = a.Str("last_name"),
+                trovati = c.Str("q") == "" ? null : cl.Search(c.Str("q"), 10).Where(f => f.Contact.Id != contact.Id).Select(f => new { id = f.Contact.Id, nome = f.Data.Str("first_name"), cognome = f.Data.Str("last_name"), telefono = f.Data.Str("phone"), email = f.Data.Str("email"), creato = x.Cal.DayOf(f.Contact.Created) }),
+            };
+        var b = cl.Data(other);
+        return new
+        {
+            nome = a.Str("first_name"), cognome = a.Str("last_name"), questa = Side(contact), altra = Side(other), scheda = Spec(c) != null,
+            righe = Clients.MERGE_FIELDS.Where(f => f.Key is "first_name" or "last_name" or "email" or "phone" or "birthday" || a.Str(f.Key) != "" || b.Str(f.Key) != "")  // fiscal data only when a card has them
+                .Select(f => new { chiave = f.Key, nome = f.Label, mio = a.Str(f.Key), suo = b.Str(f.Key), scelta = a.Str(f.Key) != "" || b.Str(f.Key) == "" ? "this" : "other" }),
+        };
+    }
+
+    [Rpc("cliente.unisci", Perm = "contacts.read", Fresh = true)]
+    public static object Merge(Call c)
+    {
+        MergeRights(c);
+        var contact = Card(c); var other = c.NeedId("con");
+        if (c.Str("conferma") != "UNISCI") throw new BookingException("Scrivi UNISCI per confermare.");
+        var mainIsOther = c.Str("main") == "other"; var keepArgs = c.Obj("keep");
+        // the choices are made on the page as "this card" and "the other one": turned to main and second here
+        var keep = Clients.MERGE_FIELDS.ToDictionary(f => f.Key, f => (keepArgs.Str(f.Key) == "other") == !mainIsOther ? "other" : "main");
+        var main = new Clients(c.C).Merge(mainIsOther ? other : contact.Id, mainIsOther ? contact.Id : other, keep);
+        return new { id = main.Id, testo = "Schede unite: prenotazioni, scheda, lista d'attesa e consensi sono ora qui." };
+    }
 }

@@ -265,7 +265,7 @@ public sealed class ClientPage(string id) : Page
             }
             side.Children.Add(SideCard(body));
         }
-        if (d.Bo("unisci")) side.Children.Add(SideCard(H2("Scheda doppia?"), Small("Se la stessa persona ha due schede, uniscile: prenotazioni, scheda e consensi finiscono in una"), Wide(B("Unisci con un'altra scheda", () => Main.ShowPage(new Placeholder("Unisci due schede"))))));
+        if (d.Bo("unisci")) side.Children.Add(SideCard(H2("Scheda doppia?"), Small("Se la stessa persona ha due schede, uniscile: prenotazioni, scheda e consensi finiscono in una"), Wide(B("Unisci con un'altra scheda", () => Main.ShowPage(new ClientMergePage(id))))));
         if (hasRaw && write)
         {
             var first = Box(raw.S("first_name")); first.MaxLength = 100; var last = Box(raw.S("last_name")); last.MaxLength = 100; var phone = Box(raw.S("phone")); phone.MaxLength = 30; var email = Box(raw.S("email")); email.MaxLength = 254;

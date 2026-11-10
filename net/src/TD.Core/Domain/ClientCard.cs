@@ -220,6 +220,75 @@ public sealed partial class Clients
     };
 }
 
+public sealed partial class Clients
+{
+    public static readonly (string Key, string Label)[] MERGE_FIELDS =
+        new[] { ("first_name", "Nome"), ("last_name", "Cognome"), ("email", "Email"), ("phone", "Telefono"), ("birthday", "Data di nascita") }.Concat(FISCAL).ToArray();
+
+    /// <summary>merge(): two cards of the same person made one, for good. main keeps its place; each field takes the value
+    /// chosen (keep: field → "main" or "other"), notes and tags of both; VIP and "not bookable online" if either has them,
+    /// the emails of the bookings only if both want them. Bookings, record, waiting list, photos, emails and links move to
+    /// main. The marketing consent follows the email kept. The other card stays, without data and merged into main, for
+    /// its consent history.</summary>
+    public Contact Merge(Guid mainId, Guid otherId, Dictionary<string, string> keep)
+    {
+        c.Lock();
+        var main = c.S.One<Contact>("SELECT * FROM core_contact WHERE id=@id FOR UPDATE", new { id = mainId }); var other = c.S.One<Contact>("SELECT * FROM core_contact WHERE id=@id FOR UPDATE", new { id = otherId });
+        if (main == null || other == null || main.Id == other.Id || other.EmailIndex.StartsWith(ERASED)) throw new BookingException("Scegli due schede diverse.");
+        var a = Data(main); var b = Data(other); var d = (JsonObject)a.DeepClone();
+        foreach (var (f, _) in MERGE_FIELDS)
+        {
+            var v = (keep.GetValueOrDefault(f) == "other" ? b : a).Str(f);
+            if (v != "") d[f] = v; else d.Remove(f);
+        }
+        if (d.Str("first_name") == "") d["first_name"] = b.Str("first_name");
+        if (d.Str("email") == "" && d.Str("phone") == "") throw new BookingException("Tieni almeno il telefono o l'email.");
+        var notes = string.Join("\n", new[] { a.Str("staff_notes"), b.Str("staff_notes") }.Where(x => x != "")); if (notes.Length > 4000) notes = notes[..4000];
+        if (notes != "") d["staff_notes"] = notes;
+        List<string> Tags(JsonObject x) => Json.Strings(x["tags"]?.ToJsonString() ?? "[]");
+        var tags = Tags(a).Concat(Tags(b)).Distinct().Take(20).ToList();
+        if (tags.Count > 0) d["tags"] = new JsonArray(tags.Select(t => (JsonNode)t).ToArray());
+        if (d.Str("import_code") == "" && b.Str("import_code") != "") d["import_code"] = b["import_code"].DeepClone();
+        // the signed consents of both, the last test and the category if main has none
+        if (b["signed"] is JsonArray bs && bs.Count > 0)
+            d["signed"] = new JsonArray(((a["signed"] as JsonArray)?.Select(x => x.DeepClone()) ?? Enumerable.Empty<JsonNode>()).Concat(bs.Select(x => x.DeepClone())).TakeLast(50).ToArray());
+        foreach (var k in new[] { "test_date", "category" }) if (d.Str(k) == "" && b.Str(k) != "") d[k] = b.Str(k);
+        var moved = d.Str("email") != a.Str("email");
+        if (moved)
+        {
+            var mine = d.Str("email") != "";  // the kept email is the other card's: its consent comes with it, otherwise none
+            (main.Consent, main.ConsentAt, main.Suppressed) = mine ? (other.Consent, other.ConsentAt, other.Suppressed) : ("none", null, false);
+            main.ConsentProof = mine && !string.IsNullOrEmpty(other.ConsentProof) ? c.Encrypt(c.DecryptNode(other.ConsentProof, "consent:" + other.Id), "consent:" + main.Id) : "";
+        }
+        if (string.IsNullOrEmpty(main.DiscountKind) && !string.IsNullOrEmpty(other.DiscountKind)) { main.DiscountKind = other.DiscountKind; main.Discount = other.Discount; }
+        main.Vip |= other.Vip; main.OnlineBlocked |= other.OnlineBlocked; main.Notices = main.Notices && other.Notices;
+        other.EmailIndex = ERASED + "merged-" + Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(20)).ToLowerInvariant();
+        other.Pii = c.Encrypt(new JsonObject { ["first_name"] = "Scheda unita", ["last_name"] = "", ["email"] = "", ["phone"] = "" }, "contact:" + other.Id);
+        other.ConsentProof = ""; other.Suppressed = true; other.MergedIntoId = main.Id; other.Vip = other.OnlineBlocked = false;
+        other.PhoneIndex = other.NameIndex = other.TagIndex = other.BirthdayIndex = "";
+        c.S.Update(other);
+        var key = KeyFor(d); bool Taken(string k) => c.S.Scalar<long>("SELECT count(*) FROM core_contact WHERE email_index=@k AND id<>@id", new { k, id = main.Id }) > 0;
+        if (d.Str("email") == "" && Taken(key)) key = KeyFor(d, true);
+        if (Taken(key)) throw new BookingException("Un altro cliente ha già questa email o questo telefono.");
+        main.EmailIndex = key; SealCard(main, d); c.S.Update(main);
+        var ids = new { o = other.Id, m = main.Id };
+        foreach (var (table, kind) in new[] { ("core_booking", "booking"), ("core_treatment", "treatment"), ("core_waitentry", ""), ("core_clientphoto", "") })
+        {
+            if (kind != "") WpSync.Touch(c, kind, c.S.Query<Guid>($"SELECT id FROM {table} WHERE contact_id=@o", ids));  // the site's archive moves them too
+            c.S.Execute($"UPDATE {table} SET contact_id=@m WHERE contact_id=@o", ids);
+        }
+        // a confirmation asked to a mailbox the card no longer has must not confirm anything
+        c.S.Execute("DELETE FROM core_actiontoken WHERE contact_id=@c AND kind='consent'", new { c = moved ? main.Id : other.Id });
+        c.S.Execute("UPDATE core_actiontoken SET contact_id=@m WHERE contact_id=@o", ids);
+        c.S.Execute("UPDATE core_delivery SET contact_id=@m WHERE contact_id=@o AND (campaign_id IS NULL OR campaign_id NOT IN (SELECT campaign_id FROM core_delivery WHERE contact_id=@m AND campaign_id IS NOT NULL))", ids);
+        foreach (var x in c.S.Query<Delivery>("SELECT * FROM core_delivery WHERE contact_id=@o AND payload<>''", ids).ToList())  // the same campaign to both: the copy is history
+        { x.Payload = c.Encrypt(new JsonObject { ["redacted"] = true }, "delivery:" + x.Id); c.S.Update(x, "payload"); }
+        var pr = new Privacy(c); pr.Record(main.Id, "merged", "operator", reference: other.Id.ToString()); pr.Record(other.Id, "merged", "operator", reference: main.Id.ToString());
+        c.Audit("contact.merged", main.Id, new { other = other.Id.ToString(), kept = MERGE_FIELDS.ToDictionary(f => f.Key, f => keep.GetValueOrDefault(f.Key) ?? "main"), consent = moved && d.Str("email") != "" ? "other" : moved ? "none" : "main" });
+        return main;
+    }
+}
+
 /// <summary>core/privacy.py: the history of the consent, the access request (everything held about a client) and the erasure.</summary>
 public sealed partial class Privacy
 {
