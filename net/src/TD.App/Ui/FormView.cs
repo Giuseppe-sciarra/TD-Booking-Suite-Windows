@@ -30,6 +30,7 @@ public sealed class FormView
         Layout();
     }
 
+    static T Small<T>(T b) where T : Control => F.Small(b);
     static TextBlock Small(string text, bool error = false) => new() { Text = text, FontSize = 13, Foreground = Res(error ? "Danger" : "Muted"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0), Visibility = text == "" ? Visibility.Collapsed : Visibility.Visible };
     static IEnumerable<(string Id, string Name)> Choices(JsonNode f) => f.A("scelte").Select(c => (c.S("id"), c.S("nome")));
 
@@ -44,6 +45,21 @@ public sealed class FormView
                 {
                     var c = new CheckBox { IsChecked = v is JsonValue b && b.TryGetValue<bool>(out var on) && on, Content = new TextBlock { Text = f.S("etichetta"), FontSize = 14, TextWrapping = TextWrapping.Wrap }, Margin = new Thickness(0, 14, 0, 0) };
                     c.Checked += (_, _) => Changed?.Invoke(); c.Unchecked += (_, _) => Changed?.Invoke(); it.Box = c; it.Read = () => c.IsChecked == true; it.Label = null; break;
+                }
+            case "photo":
+                {
+                    // branding.clean_photo: turned upright, 800 px at most, on white, a JPEG
+                    string data = ""; var preview = new Border { Width = 72, Height = 72, CornerRadius = new CornerRadius(12), Background = Res("BrandSoft"), Margin = new Thickness(0, 0, 12, 0) };
+                    void Show(byte[] jpeg) { try { preview.Background = new System.Windows.Media.ImageBrush(Views.SetupPage.PictureOf(jpeg)) { Stretch = System.Windows.Media.Stretch.UniformToFill }; } catch (Exception ex) when (ex is NotSupportedException or System.IO.IOException) { } }
+                    if (text != "") try { Show(Convert.FromBase64String(text)); } catch (FormatException) { }
+                    var pick = Small(B(text != "" ? "Cambia la foto" : "Scegli la foto", () =>
+                    {
+                        var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "Immagini (PNG, JPEG, WebP)|*.png;*.jpg;*.jpeg;*.webp" };
+                        if (dlg.ShowDialog(Application.Current.MainWindow) != true) return;
+                        try { var jpeg = Views.Pictures.Photo(dlg.FileName); data = Convert.ToBase64String(jpeg); Show(jpeg); it.Error.Text = ""; it.Error.Visibility = Visibility.Collapsed; }
+                        catch (Net.ApiError ex) { it.Error.Text = ex.Message; it.Error.Visibility = Visibility.Visible; }
+                    }));
+                    it.Box = Row(preview, pick); it.Read = () => data; break;
                 }
             case "select":
                 {

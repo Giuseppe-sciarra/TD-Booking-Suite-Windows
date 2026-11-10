@@ -35,3 +35,16 @@ public static class Network
         PublicAddresses(u.Host);
     }
 }
+
+/// <summary>django.core.signing.Signer: the links signed with the program's secret (the calendar of an operator).</summary>
+public static class DjangoSigning
+{
+    static string B64(byte[] b) => Convert.ToBase64String(b).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    /// <summary>Signer(salt=salt).sign_object(obj), obj given as its compact JSON.</summary>
+    public static string SignObject(string salt, string compactJson, string secret)
+    {
+        var value = B64(System.Text.Encoding.Latin1.GetBytes(compactJson));
+        var key = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(salt + "signer" + secret));
+        return value + ":" + B64(System.Security.Cryptography.HMACSHA256.HashData(key, System.Text.Encoding.UTF8.GetBytes(value)));
+    }
+}

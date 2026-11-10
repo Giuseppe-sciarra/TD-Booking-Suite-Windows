@@ -124,7 +124,7 @@ public sealed class CatalogFormPage : Page
                 var r = await Api.Current.Call("catalogo.salva", new JsonObject { ["tipo"] = Kind, ["id"] = Id, ["preset"] = Preset, ["valori"] = values, ["confirm_conflicts"] = confirm.IsChecked == true });
                 Main.Flash(r.S("testo")); Back();
             }
-            catch (FormError ex) { form.Errors(ex.Errors); extra?.Errors(ex.Errors); if (ex.Confirm) confirm.Visibility = Visibility.Visible; }
+            catch (FormError ex) { form.Errors(ex.Errors.Where(e => extra?.Owns(e.Key) != true).ToDictionary(e => e.Key, e => e.Value)); extra?.Errors(ex.Errors); if (ex.Confirm) confirm.Visibility = Visibility.Visible; }
             catch (NeedsLogin) { Shell.Instance?.SignedOut(); }
             catch (ApiError ex) { Main.Flash(ex.Message, true); }
             finally { save.IsEnabled = true; }
@@ -160,14 +160,157 @@ public sealed class RemoveCheckPage : Page
     }
 }
 
-/// <summary>What a form has besides its fields (a resource: what it does and its hours; a service: its questions).
-/// Still to come: the forms of services and resources.</summary>
-public sealed class CatalogExtras(CatalogFormPage page, JsonNode extra, FormView form)
+/// <summary>Pictures prepared by the window before they go to the program.</summary>
+public static class Pictures
+{
+    /// <summary>branding.clean_photo: PNG, JPEG or WebP up to 5 MB, kept as a JPEG of at most 800 px on white, upright.</summary>
+    public static byte[] Photo(string path)
+    {
+        var data = System.IO.File.ReadAllBytes(path); if (data.Length > 5 * 1024 * 1024) throw new ApiError("Foto massimo 5 MB.");
+        try
+        {
+            var frame = System.Windows.Media.Imaging.BitmapDecoder.Create(new System.IO.MemoryStream(data), System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad).Frames[0];
+            if ((long)frame.PixelWidth * frame.PixelHeight > 40000000) throw new NotSupportedException();
+            System.Windows.Media.Imaging.BitmapSource src = frame;
+            // the orientation the phone wrote (EXIF 274): 3 upside down, 6 and 8 on a side
+            try
+            {
+                if (frame.Metadata is System.Windows.Media.Imaging.BitmapMetadata m && m.ContainsQuery("/app1/ifd/{ushort=274}") && m.GetQuery("/app1/ifd/{ushort=274}") is ushort o && o is 3 or 6 or 8)
+                    src = new System.Windows.Media.Imaging.TransformedBitmap(frame, new RotateTransform(o == 3 ? 180 : o == 6 ? 90 : 270));
+            }
+            catch (Exception ex) when (ex is NotSupportedException or InvalidOperationException or ArgumentException) { }
+            var scale = Math.Min(1, 800.0 / Math.Max(src.PixelWidth, src.PixelHeight)); int w = Math.Max(1, (int)Math.Round(src.PixelWidth * scale)), h = Math.Max(1, (int)Math.Round(src.PixelHeight * scale));
+            var dv = new DrawingVisual(); using (var dc = dv.RenderOpen()) { dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, w, h)); dc.DrawImage(src, new Rect(0, 0, w, h)); }
+            var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32); bmp.Render(dv);
+            var enc = new System.Windows.Media.Imaging.JpegBitmapEncoder { QualityLevel = 85 }; enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp)); using var ms = new System.IO.MemoryStream(); enc.Save(ms); return ms.ToArray();
+        }
+        catch (Exception ex) when (ex is NotSupportedException or System.IO.FileFormatException or System.IO.IOException or ArgumentException or System.Runtime.InteropServices.COMException) { throw new ApiError("Usa una foto PNG, JPEG o WebP valida, massimo 40 megapixel."); }
+    }
+}
+
+/// <summary>What a form has besides its fields. A resource: what it does (a row a service, with its own duration, price
+/// and posa) and its working days; a service: Richieste aggiuntive alla prenotazione, the questions of the booking form.</summary>
+public sealed class CatalogExtras
 {
     public List<FrameworkElement> Sections { get; } = new();
     public List<FrameworkElement> After { get; } = new();
-    public void Collect(JsonObject values) { }
-    public void Errors(Dictionary<string, string> errors) { }
+    readonly List<Action<JsonObject>> collect = new();
+    readonly TextBlock error = new() { FontSize = 13, Foreground = Res("Danger"), TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed, Margin = new Thickness(0, 6, 0, 0) };
+    readonly List<string> mine = new();
+    static TextBlock Muted(string text) { var t = T(text, size: 14, color: Res("Muted")); t.TextWrapping = TextWrapping.Wrap; return t; }
+    static TextBox Small(string value, string hint, double width = 74) { var b = Box(value); b.Width = width; b.Tag = hint; AgendaPage.Hint(b); return b; }
+
+    public CatalogExtras(CatalogFormPage page, JsonNode extra, FormView form)
+    {
+        if (extra.Bo("risorsa")) Resource(page, extra); else if (extra.Bo("servizio")) Service(extra);
+    }
+    public bool Owns(string key) => mine.Any(m => key == m || m.EndsWith('_') && key.StartsWith(m));
+    public void Collect(JsonObject values) { foreach (var c in collect) c(values); }
+    /// <summary>The errors of the rows drawn here, which the list of fields does not know.</summary>
+    public void Errors(Dictionary<string, string> errors)
+    {
+        var rest = errors.Where(e => Owns(e.Key)).Select(e => e.Value).ToList();
+        error.Text = string.Join(" ", rest); error.Visibility = rest.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    void Resource(CatalogFormPage page, JsonNode x)
+    {
+        mine.AddRange(new[] { "services", "dur_", "price_", "pa_", "pm_" });
+        // ----- Cosa fa
+        var appointments = x.Bo("appuntamenti"); var body = Col(F.Legend(x.S("etichettaServizi")).M(0, 18, 0, 0), Muted(x.S("aiutoServizi")), error);
+        var rows = new List<(string Id, CheckBox On, TextBox Dur, TextBox Price, TextBox At, TextBox Pause)>(); var grid = new Grid { Margin = new Thickness(0, 8, 0, 0) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition()); foreach (var _ in Enumerable.Range(0, 4)) grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        void Put(FrameworkElement e, int row, int col) { e.Margin = new Thickness(col == 0 ? 0 : 10, 4, 0, 4); e.VerticalAlignment = VerticalAlignment.Center; Grid.SetRow(e, row); Grid.SetColumn(e, col); grid.Children.Add(e); }
+        var r = 0;
+        if (appointments) { grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); var heads = new[] { "", "Durata", "Prezzo", "Prima della posa", "Posa" }; for (int i = 1; i < 5; i++) Put(T(heads[i], size: 12.5, bold: true, color: Res("Muted")), 0, i); r = 1; }
+        foreach (var s in x.A("servizi"))
+        {
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var on = new CheckBox { IsChecked = s.Bo("spuntato"), Content = T(s.S("nome"), size: 14) }; Put(on, r, 0);
+            TextBox dur = null, price = null, at = null, pause = null;
+            if (s.Bo("appuntamento"))
+            {
+                dur = Small(s.S("durata"), s.S("durataDi")); price = Small(s.S("prezzo"), s.S("prezzoDi")); at = Small(s.S("prima"), s.S("primaDi")); pause = Small(s.S("posa"), s.S("posaDi"));
+                Put(Row(dur, T(" min", size: 13, color: Res("Muted"))), r, 1); Put(Row(price, T(" €", size: 13, color: Res("Muted"))), r, 2); Put(Row(at, T(" min", size: 13, color: Res("Muted"))), r, 3); Put(Row(pause, T(" min", size: 13, color: Res("Muted"))), r, 4);
+            }
+            rows.Add((s.S("id"), on, dur, price, at, pause)); r++;
+        }
+        if (rows.Count == 0) body.Children.Add(Muted("Ancora nessun servizio: si creano in Servizi")); else body.Children.Add(grid);
+        void Away(string label) => body.Children.Add(F.Link(label, () => page.Main.ShowPage(new CatalogFormPage { Kind = "exceptions", Resource = page.Id })).M(0, 8, 0, 0));
+        if (!x.Bo("orari") && !x.Bo("nuovo")) Away("Segna i giorni in cui non si prenota");
+        Sections.Add(body);
+        collect.Add(v =>
+        {
+            v["services"] = new JsonArray(rows.Where(k => k.On.IsChecked == true).Select(k => (JsonNode)k.Id).ToArray());
+            foreach (var k in rows.Where(k => k.Dur != null)) { v["dur_" + k.Id] = k.Dur.Text; v["price_" + k.Id] = k.Price.Text; v["pa_" + k.Id] = k.At.Text; v["pm_" + k.Id] = k.Pause.Text; }
+        });
+        // ----- Giorni e orari di lavoro
+        if (!x.Bo("orari")) return;
+        var split = x.Bo("spezzati"); var own = new CheckBox { IsChecked = x.Bo("propri"), IsEnabled = !split, Content = Col(T("Ha giorni e orari suoi", size: 14), Muted("Spento: lavora negli orari di apertura dell'attività. Le ferie e i giorni liberi si segnano in Chiusure e giorni speciali").Also13()) };
+        var hours = Col(F.Legend("Giorni e orari di lavoro").M(0, 18, 0, 0), own);
+        void Schedules() => page.Main.ShowPage(new CatalogPage { Kind = "schedules" });
+        hours.Children.Add(split ? F.Notice(WaitRows.Para(13.5, "Ha più di due fasce nello stesso giorno o settimane alterne: si cambiano da ", ((string, Action))("Orari di apertura", Schedules)))
+            : WaitRows.Para(14, "La seconda fascia è facoltativa, per esempio per la pausa pranzo. Settimane alterne o più di due fasce si fanno in ", ((string, Action))("Orari di apertura", Schedules), ", scegliendo Solo per la risorsa").M(0, 6, 0, 0));
+        var week = new List<(CheckBox On, TextBox A, TextBox B, TextBox A2, TextBox B2)>(); var list = Col();
+        foreach (var d in x.A("giorni"))
+        {
+            var on = new CheckBox { IsChecked = d.Bo("acceso"), Content = T(d.S("nome"), size: 14), Width = 120, VerticalAlignment = VerticalAlignment.Center };
+            var a = Small(d.S("inizio"), "09:00", 66); var b = Small(d.S("fine"), "18:00", 66); var a2 = Small(d.S("inizio2"), "", 66); var b2 = Small(d.S("fine2"), "", 66);
+            TextBlock Sep(string s) { var t = T(s, size: 14, color: Res("Muted")); t.Margin = new Thickness(6, 0, 6, 0); t.VerticalAlignment = VerticalAlignment.Center; return t; }
+            var line = Row(on, a, Sep("–"), b, Sep("e"), a2, Sep("–"), b2); line.Margin = new Thickness(0, 6, 0, 0); line.IsEnabled = !split; list.Children.Add(line); week.Add((on, a, b, a2, b2));
+        }
+        hours.Children.Add(list); Sections.Add(hours);
+        if (!x.Bo("nuovo")) { var away = F.Link("Segna ferie o un giorno libero", () => page.Main.ShowPage(new CatalogFormPage { Kind = "exceptions", Resource = page.Id })); hours.Children.Add(away.M(0, 10, 0, 0)); }
+        collect.Add(v =>
+        {
+            v["own_hours"] = own.IsChecked == true;
+            for (int n = 0; n < week.Count; n++) { var k = week[n]; v[$"day_{n}"] = k.On.IsChecked == true; v[$"start_{n}"] = k.A.Text; v[$"end_{n}"] = k.B.Text; v[$"start2_{n}"] = k.A2.Text; v[$"end2_{n}"] = k.B2.Text; }
+        });
+    }
+
+    /// <summary>app.js, #custom-fields: the questions of the booking form: label, kind of answer, choices, required,
+    /// shown only when an earlier one has that answer; 12 at most.</summary>
+    void Service(JsonNode x)
+    {
+        mine.Add("fields");
+        var fields = x.A("domande").Select(q => (JsonObject)q.DeepClone()).ToList(); var holder = Col(); var add = new Button { Content = "Aggiungi una domanda", HorizontalAlignment = HorizontalAlignment.Left };
+        void Render()
+        {
+            holder.Children.Clear();
+            for (int i = 0; i < fields.Count; i++)
+            {
+                var f = fields[i]; var n = i;
+                var label = Box(f.S("label")); label.MaxLength = 80; label.TextChanged += (_, _) => f["label"] = label.Text;
+                var type = new ComboBox { ItemsSource = new[] { ("text", "Testo"), ("number", "Numero"), ("checkbox", "Casella sì/no"), ("select", "Scelta da elenco") }.Select(o => new ComboBoxItem { Content = o.Item2, Tag = o.Item1 }).ToList() };
+                type.SelectedItem = type.Items.Cast<ComboBoxItem>().FirstOrDefault(o => (string)o.Tag == (f.S("type") == "" ? "text" : f.S("type"))) ?? type.Items[0];
+                var choices = Box(string.Join("\n", (f["choices"] as JsonArray)?.Select(c => c.ToString()) ?? Array.Empty<string>()), true); choices.MinHeight = 64;
+                var choicesField = F.Field("Scelte, una per riga", choices); choicesField.Visibility = f.S("type") == "select" ? Visibility.Visible : Visibility.Collapsed;
+                choices.TextChanged += (_, _) => f["choices"] = new JsonArray(choices.Text.Split('\n').Select(v => v.Trim()).Where(v => v != "").Select(v => (JsonNode)v).ToArray());
+                type.SelectionChanged += (_, _) => { f["type"] = (string)((ComboBoxItem)type.SelectedItem).Tag; choicesField.Visibility = f.S("type") == "select" ? Visibility.Visible : Visibility.Collapsed; };
+                var required = new CheckBox { IsChecked = f.Bo("required"), Content = T("Risposta obbligatoria", size: 14), Margin = new Thickness(0, 12, 0, 0) }; required.Checked += (_, _) => f["required"] = true; required.Unchecked += (_, _) => f["required"] = false;
+                var when = new ComboBox { ItemsSource = fields.Take(i).Select((p, j) => new ComboBoxItem { Content = p.S("label") != "" ? p.S("label") : $"Domanda {j + 1}", Tag = p.S("key") }).Prepend(new ComboBoxItem { Content = "Sempre", Tag = "" }).ToList() };
+                when.SelectedItem = when.Items.Cast<ComboBoxItem>().FirstOrDefault(o => (string)o.Tag == (f["show_if"]?.S("key") ?? "")) ?? when.Items[0];
+                var isBox = Box(f["show_if"]?.S("value") ?? ""); isBox.MaxLength = 80; isBox.Tag = "Per esempio sì, oppure una delle scelte"; AgendaPage.Hint(isBox);
+                var isField = F.Field("ha come risposta", isBox); isField.Visibility = (string)((ComboBoxItem)when.SelectedItem).Tag != "" ? Visibility.Visible : Visibility.Collapsed;
+                void Cond()
+                {
+                    var key = (string)((ComboBoxItem)when.SelectedItem).Tag;
+                    if (key != "" && isBox.Text.Trim() != "") f["show_if"] = new JsonObject { ["key"] = key, ["value"] = isBox.Text.Trim() }; else f.Remove("show_if");
+                    isField.Visibility = key != "" ? Visibility.Visible : Visibility.Collapsed;
+                }
+                when.SelectionChanged += (_, _) => Cond(); isBox.TextChanged += (_, _) => Cond();
+                var remove = F.Small(B("Rimuovi domanda", () => { var key = f.S("key"); fields.RemoveAt(n); foreach (var o in fields) if (o["show_if"]?.S("key") == key) o.Remove("show_if"); Render(); }, "Ghost")); remove.HorizontalAlignment = HorizontalAlignment.Left;
+                holder.Children.Add(new Border { BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(14, 4, 14, 14), Margin = new Thickness(0, 0, 0, 10),
+                    Child = Col(F.Grid2(F.Field($"Domanda {i + 1}", label), F.Field("Tipo di risposta", type), choicesField, F.Field("Mostrala solo se", when), isField, null), required, remove.M(0, 10, 0, 0)) });
+            }
+            add.IsEnabled = fields.Count < 12;
+        }
+        add.Click += (_, _) => { if (fields.Count >= 12) return; fields.Add(new JsonObject { ["key"] = "campo_" + Guid.NewGuid().ToString("N")[..12], ["label"] = "", ["type"] = "text", ["required"] = false, ["choices"] = new JsonArray() }); Render(); };
+        Render();
+        var p = T("Domande facoltative o obbligatorie che il cliente trova nel modulo, per esempio allergie, occasione o preferenze", size: 14); p.TextWrapping = TextWrapping.Wrap;
+        Sections.Add(Col(T("Richieste aggiuntive alla prenotazione", "H2").M(0, 22, 0, 0), p.M(0, 0, 0, 10), error, holder, add));
+        collect.Add(v => v["fields"] = new JsonArray(fields.Select(f => f.DeepClone()).ToArray()));
+    }
 }
 
 /// <summary>templates/holidays.html. Still to come in this build.</summary>
