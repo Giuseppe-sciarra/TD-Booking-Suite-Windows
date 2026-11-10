@@ -1,7 +1,12 @@
+using System.IO;
 using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using TD.App.Net;
 using TD.App.Ui;
 using static TD.App.Ui.U;
@@ -13,71 +18,53 @@ public abstract class Page : UserControl
 {
     public MainWindow Main { get; set; }
     public JsonNode Business => Main.Business;
-    public bool Can(string perm) => Main.Business.A("permessi").Any(p => p.ToString() == perm);
+    public bool Can(string perm) => Main.Can(perm);
     public abstract Task Load();
 }
 
-/// <summary>The program's window: the business's pages on the left, the account and Esci at the bottom of the bar.</summary>
+/// <summary>The program's window, laid out as templates/base.html: the dark side bar (logo, «Stai lavorando in», the
+/// groups of pages with their icons, Guida, the account and Esci at the bottom), the top bar with the business and
+/// Tema, the notices, the page.</summary>
 public sealed class MainWindow : Window
 {
     public bool Replaced;
     public JsonNode Me { get; }
     public JsonNode Business { get; private set; }
     readonly ContentControl content = new();
-    readonly StackPanel nav = new();
-    readonly TextBlock businessName = T("", size: 15, bold: true);
-    RadioButton current;
-    readonly StackPanel topLine = new() { Orientation = Orientation.Horizontal };
-    static TextBlock SideLink(string text, Action click)
-    {
-        var t = T(text, size: 13.5, color: Res("Pastel")); t.Cursor = System.Windows.Input.Cursors.Hand; t.FontWeight = FontWeights.Medium;
-        t.MouseLeftButtonUp += (_, _) => click(); return t;
-    }
-    readonly Dictionary<string, Func<Page>> pages = new();
+    readonly DockPanel bar = new() { Width = 256 };
+    readonly Border top = new() { Height = 64 };
+    readonly StackPanel notices = new();
+    readonly Dictionary<string, (Func<Page> Make, string Nav)> pages = new();
+    readonly Dictionary<string, RadioButton> entries = new();
+    string currentKey = "";
+    Page currentPage;
 
     public MainWindow(JsonNode me)
     {
         Me = me;
-        Title = "TD Booking Suite"; Width = 1360; Height = 860; MinWidth = 1000; MinHeight = 640; WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        Title = "TD Booking Suite"; Width = 1440; Height = 900; MinWidth = 1000; MinHeight = 640; WindowStartupLocation = WindowStartupLocation.CenterScreen;
         WindowState = WindowState.Maximized;
-        // the dark side bar of the web program: the logo, where you work, the pages in groups, the account at the bottom
-        var bar = new DockPanel { Width = 256, Background = Res("Side") };
-        var badge = new Border
-        {
-            Width = 42, Height = 42, CornerRadius = new CornerRadius(12), VerticalAlignment = VerticalAlignment.Center,
-            Background = new LinearGradientBrush(Color.FromRgb(0x8B, 0x67, 0xB8), Color.FromRgb(0xE0, 0x56, 0x9B), 45),
-            Child = new TextBlock { Text = "TD", Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 15, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, FontFamily = (FontFamily)Application.Current.Resources["FontDisplay"] },
-        };
-        businessName.Foreground = Res("SideInk"); businessName.FontFamily = (FontFamily)Application.Current.Resources["FontDisplay"]; businessName.FontSize = 16; businessName.TextTrimming = TextTrimming.CharacterEllipsis; businessName.TextWrapping = TextWrapping.NoWrap;
-        var head = Row(badge, Col(businessName, T("Edizione Windows", size: 12.5, color: Res("SideMuted"))).M(12, 0, 0, 0)).M(18, 20, 14, 14);
-        DockPanel.SetDock(head, Dock.Top); bar.Children.Add(head);
-        var account = Col(T(me.S("nome"), size: 13.5, bold: true, color: Res("SideInk")).M(0, 0, 0, 1), T(RoleText(), size: 12.5, color: Res("SideMuted")).M(0, 0, 0, 6),
-            Row(SideLink("Account", () => Show("account")), SideLink("Esci", () => Shell.Instance.SignedOut(true)).M(14, 0, 0, 0))).M(26, 12, 14, 18);
-        DockPanel.SetDock(account, Dock.Bottom); bar.Children.Add(account);
-        nav.Margin = new Thickness(12, 0, 12, 0);
-        bar.Children.Add(new ScrollViewer { Content = nav, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden });
-        // the top bar: the business and the role, as the crumb of the web pages
-        var top = new Border { Height = 56, Background = Res("Surface"), BorderBrush = Res("Line"), BorderThickness = new Thickness(0, 0, 0, 1), Child = topLine };
-        topLine.Margin = new Thickness(28, 0, 28, 0); topLine.VerticalAlignment = VerticalAlignment.Center;
+        Palette.Load();
         var right = new DockPanel();
-        DockPanel.SetDock(top, Dock.Top); right.Children.Add(top); right.Children.Add(content);
+        DockPanel.SetDock(top, Dock.Top); DockPanel.SetDock(notices, Dock.Top);
+        right.Children.Add(top); right.Children.Add(notices); right.Children.Add(content);
         var root = new DockPanel();
         DockPanel.SetDock(bar, Dock.Left);
         root.Children.Add(bar); root.Children.Add(right);
         Content = root;
+        SetResourceReference(BackgroundProperty, "Bg");
+        Palette.Changed += Repaint;
+        Closed += (_, _) => Palette.Changed -= Repaint;
         Loaded += async (_, _) => await Guard(Enter);
     }
 
-    string RoleText()
-    {
-        var list = Me.A("attivita").ToList();
-        return list.Count == 1 ? list[0].S("ruoloNome") : Me.Bo("staff") ? "Amministratore del programma" : "";
-    }
+    public bool Can(string p) => Business != null && Business.A("permessi").Any(x => x.ToString() == p);
+    public Page CurrentPage => currentPage;
 
     async Task Enter()
     {
         var list = Me.A("attivita").ToList();
-        if (list.Count == 0) { BuildProgramOnly(); return; }
+        if (list.Count == 0) { Build(); Show(Me.Bo("staff") ? "licenza" : "account"); return; }
         var slug = list[0].S("slug");
         if (list.Count > 1)
         {
@@ -94,94 +81,216 @@ public sealed class MainWindow : Window
     {
         Api.Current.Business = slug;
         Business = await Api.Current.Call("attivita.io");
-        businessName.Text = Business.S("nome");
-        topLine.Children.Clear();
-        topLine.Children.Add(T(Business.S("nome"), size: 14, bold: true));
-        topLine.Children.Add(new Border { Background = Res("BrandSoft"), CornerRadius = new CornerRadius(999), Padding = new Thickness(9, 2, 9, 2), Margin = new Thickness(10, 0, 0, 0), Child = T(RoleText() == "" ? Permissions(Business.S("ruolo")) : RoleText(), size: 12.5, color: Res("Brand")) });
-        if (ColorConverter.ConvertFromString(Business.S("colore")) is Color c) Application.Current.Resources["BrandColor"] = c;
-        Application.Current.Resources["Brand"] = new SolidColorBrush((Color)Application.Current.Resources["BrandColor"]);
+        Palette.Brand(Business.S("colore"), Business.S("coloreScuro"));
         Build();
-        Show("agenda");
+        Show(Can("booking.read") ? "agenda" : pages.Keys.First());
     }
 
-    static string Permissions(string role) => role switch { "owner" => "Titolare", "manager" => "Amministratore sede", "reception" => "Reception", "operator" => "Operatore", "marketing" => "Marketing", "viewer" => "Consultazione", _ => "Amministratore del programma" };
-    bool Can(string p) => Business.A("permessi").Any(x => x.ToString() == p);
+    /// <summary>After Tema changes: the bars and the page drawn again with the new colours.</summary>
+    void Repaint() { if (Business != null || Me != null) { Build(); if (currentKey != "") Show(currentKey); } }
+
+    // ---------- the side bar and the top bar
+    static FontFamily Head => (FontFamily)Application.Current.Resources["FontDisplay"];
 
     void Build()
     {
-        nav.Children.Clear(); pages.Clear();
+        bar.Children.Clear(); pages.Clear(); entries.Clear();
+        bar.Background = Res("Side");
+        var t = Business; var staff = Me.Bo("staff");
+        var name = t?.S("nome") ?? "TD Booking Suite";
+        // the logo: the business's own when it has one, else the TD mark
+        FrameworkElement mark;
+        if (t != null && t.S("logo") != "")
+        {
+            var img = new BitmapImage(); img.BeginInit(); img.StreamSource = new MemoryStream(Convert.FromBase64String(t.S("logo"))); img.CacheOption = BitmapCacheOption.OnLoad; img.EndInit();
+            mark = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(13), Padding = new Thickness(4), Width = t.Bo("logoLargo") ? 96 : 42, Height = 42, Child = new Image { Source = img, Stretch = Stretch.Uniform } };
+        }
+        else mark = new Border
+        {
+            Width = 42, Height = 42, CornerRadius = new CornerRadius(13),
+            Background = new LinearGradientBrush(new GradientStopCollection { new(Color.FromRgb(0xE0, 0x56, 0x9B), 0), new(Color.FromRgb(0x8B, 0x67, 0xB8), 0.7) }, new Point(0, 0), new Point(1, 1)),
+            Child = new TextBlock { Text = "TD", Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 15, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, FontFamily = Head },
+        };
+        var title = T(name, size: 16, bold: true, color: Res("SideInk")); title.FontFamily = Head; title.TextTrimming = TextTrimming.CharacterEllipsis; title.MaxHeight = 40;
+        var logo = new DockPanel { Margin = new Thickness(22, 26, 16, 0) };
+        DockPanel.SetDock(mark, Dock.Left); logo.Children.Add(mark);
+        logo.Children.Add(Col(title, T("Edizione Windows", size: 12, color: Res("SideMuted")).M(0, 2, 0, 0)).M(12, 0, 0, 0));
+        ((StackPanel)logo.Children[1]).VerticalAlignment = VerticalAlignment.Center;
+        DockPanel.SetDock(logo, Dock.Top); bar.Children.Add(logo);
+
+        // the bottom: who, role, Account e sicurezza, Esci
+        var bottom = Col(T(Me.S("nome"), size: 13, bold: true, color: Res("SideInk")), T(RoleText(), size: 13, color: Res("SideMuted")).M(0, 0, 0, 8),
+            SideLink("user", "Account e sicurezza", () => Show("account")), SideLink("logout", "Esci", () => Shell.Instance.SignedOut(true)).M(0, 6, 0, 0)).M(28, 18, 16, 22);
+        DockPanel.SetDock(bottom, Dock.Bottom); bar.Children.Add(bottom);
+
+        var nav = new StackPanel { Margin = new Thickness(16, 0, 16, 0) };
+        if (t != null)
+            nav.Children.Add(new Border
+            {
+                BorderBrush = Res("SideLine"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Padding = new Thickness(14, 12, 14, 12), Margin = new Thickness(0, 26, 0, 14),
+                Background = new SolidColorBrush(Color.FromArgb(8, 255, 255, 255)),
+                Child = Col(T("Stai lavorando in", size: 12, color: Res("SideMuted")), T(name, size: 15, bold: true, color: Brushes.White).M(0, 2, 0, 2), T(t.S("ruoloNome"), size: 13, color: Res("Pastel"))),
+            });
         StackPanel group = null;
-        void Section(string title)
+        void Section(string label)
         {
             group = new StackPanel();
-            var label = T(title.ToUpperInvariant(), size: 11, bold: true, color: Res("SideMuted")).M(8, 6, 6, 7);
-            var box = new Border { BorderBrush = Res("SideLine"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Background = new SolidColorBrush(Color.FromArgb(8, 255, 255, 255)), Padding = new Thickness(6, 4, 6, 6), Margin = new Thickness(0, 0, 0, 12),
-                Child = Col(label, new Border { Height = 1, Background = Res("SideLine"), Margin = new Thickness(2, 0, 2, 5) }, group) };
-            nav.Children.Add(box);
+            var l = T(label.ToUpperInvariant(), size: 11, bold: true, color: Res("SideMuted")); l.FontWeight = FontWeights.Bold;
+            Typography.SetCapitals(l, FontCapitals.Normal);
+            nav.Children.Add(new Border
+            {
+                BorderBrush = Res("SideLine"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Background = new SolidColorBrush(Color.FromArgb(8, 255, 255, 255)),
+                Padding = new Thickness(6, 4, 6, 6), Margin = new Thickness(0, 0, 0, 12), Tag = group,
+                Child = Col(new Border { BorderBrush = Res("SideLine"), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(6, 6, 6, 7), Margin = new Thickness(4, 2, 4, 5), Child = l }, group),
+            });
         }
-        void Add(string key, string label, Func<Page> make, bool when = true)
+        void Add(string key, string icon, string label, Func<Page> make, bool when = true, int count = 0)
         {
             if (!when) return;
-            pages[key] = make;
-            var r = new RadioButton { Style = Style("Nav"), Content = label, GroupName = "nav", Tag = key };
-            r.Checked += (_, _) => { if (current != r) Show(key); };
-            group.Children.Add(r);
+            pages[key] = (make, key);
+            var text = new TextBlock { Text = label, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
+            var row = new DockPanel();
+            var ico = Icons.Icon(icon, null).M(0, 0, 10, 0); DockPanel.SetDock(ico, Dock.Left); row.Children.Add(ico);
+            if (count > 0)
+            {
+                var badge = new Border { Background = Res("Pink"), CornerRadius = new CornerRadius(999), MinWidth = 20, Height = 20, Padding = new Thickness(6, 0, 6, 0), Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+                    Child = new TextBlock { Text = count.ToString(), Foreground = Brushes.White, FontSize = 11, FontWeight = FontWeights.Bold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+                DockPanel.SetDock(badge, Dock.Right); row.Children.Add(badge);
+            }
+            row.Children.Add(text);
+            var r = new RadioButton { Style = Style("Nav"), Content = row, GroupName = "nav", Tag = key };
+            r.Click += (_, _) => Show(key);
+            entries[key] = r; group.Children.Add(r);
         }
-        Section("Ogni giorno");
-        Add("agenda", "Agenda e prenotazioni", () => new AgendaPage(), Can("booking.read"));
-        Add("prenotazioni", "Elenco prenotazioni", () => new BookingsPage(), Can("booking.read"));
-        Add("clienti", "Clienti", () => new Placeholder("Clienti"), Can("contacts.read"));
-        Add("preventivi", "Preventivi", () => new Placeholder("Preventivi"), Can("sale.write"));
-        if (Business.Bo("cassa") && Can("sale.write"))
+        if (t != null)
         {
-            Section("Cassa");
-            Add("cassa", "Cassa", () => new Placeholder("Cassa"));
-            Add("standby", "Stand-by", () => new Placeholder("Stand-by"));
-            Add("giftcard", "Gift card", () => new Placeholder("Gift card"));
+            var type = t.S("tipo");
+            Section("Ogni giorno");
+            Add("dashboard", "grid", "Dashboard", () => new Placeholder("Dashboard"), Can("booking.read"));
+            Add("agenda", "day", "Agenda e prenotazioni", () => new AgendaPage(), Can("booking.read"));
+            Add("clienti", "users", "Clienti", () => new Placeholder("Clienti"), Can("contacts.read"));
+            Add("cassa", "tag", "Cassa", () => new Placeholder("Cassa"), Can("sale.write"));
+            Add("standby", "clock", "Stand-by", () => new Placeholder("Stand-by"), Can("sale.write"), t.I("standby"));
+            Add("giftcard", "gift", "Gift card", () => new Placeholder("Gift card"), Can("sale.write"));
+            Add("preventivi", "briefcase", "Preventivi", () => new Placeholder("Preventivi"), Can("booking.write") && Can("pii.read"));
+            Add("tavoli", "grid", "Sale e tavoli", () => new Placeholder("Sale e tavoli"), Can("booking.read") && type == "ristorante");
+            Add("alloggi", "home", "Alloggi", () => new Placeholder("Alloggi"), Can("booking.read") && t.Bo("soggiorni"));
+            Section("Comunicazioni");
+            Add("richiami", "bell", "Richiami", () => new Placeholder("Richiami"), Can("contacts.read"));
+            Add("whatsapp", "chat", "Promemoria WhatsApp", () => new Placeholder("Promemoria WhatsApp"), Can("booking.read") && Can("pii.read"));
+            Add("marketing", "megaphone", "Marketing", () => new Placeholder("Marketing"), Can("campaign.manage") && (t.Bo("marketing") || t.Bo("esporta")));
+            Add("promemoria", "bell", "Configurazione promemoria", () => new Placeholder("Configurazione promemoria"), Can("users.manage"));
+            Add("api", "plug", "API e webhook", () => new Placeholder("API e webhook"), Can("users.manage") && t.Bo("api") && !staff);
+            Section("La tua attività");
+            Add("attesa", "hourglass", "Lista d'attesa", () => new Placeholder("Lista d'attesa"), Can("booking.read"));
+            Add("report", "list", "Report", () => new Placeholder("Report"), Can("booking.read"));
+            Add("configura", "shop", "Configura l'attività", () => new Placeholder("Configura l'attività"), Can("catalog.write"));
+            Add("registratore", "sliders", "Registratore di cassa", () => new Placeholder("Registratore di cassa"), Can("catalog.write") && t.Bo("cassaTitolare") && t.S("ruolo") == "owner" && !staff);
+            Section("Controlli");
+            Add("registro", "list", "Registro attività", () => new Placeholder("Registro attività"), Can("audit.read"));
+            Add("accesso", "key", "Accesso dell'amministratore", () => new Placeholder("Accesso dell'amministratore"), Can("users.manage"));
+            if (staff)
+            {
+                Section("Gestione tecnica");
+                Add("persone", "badge", "Persone e permessi", () => new Placeholder("Persone e permessi"));
+                Add("impostazioni", "globe", "Impostazioni e sito", () => new Placeholder("Impostazioni e sito"));
+                Add("smtp", "mail", "Invio email", () => new Placeholder("Invio email"));
+                Add("promemoria", "bell", "Configurazione promemoria", () => new Placeholder("Configurazione promemoria"), !Can("users.manage"));
+                Add("testi", "bell", "SMS, WhatsApp e calendari", () => new Placeholder("SMS, WhatsApp e calendari"));
+                Add("api", "plug", "API e webhook", () => new Placeholder("API e webhook"));
+                Add("registratore", "sliders", "Registratore di cassa", () => new Placeholder("Registratore di cassa"));
+            }
         }
-        Section("Comunicazioni");
-        Add("richiami", "Richiami", () => new Placeholder("Richiami"), Can("contacts.read"));
-        Add("whatsapp", "Promemoria WhatsApp", () => new Placeholder("Promemoria WhatsApp"), Can("pii.read"));
-        Add("messaggi", "Configurazione promemoria", () => new Placeholder("Configurazione promemoria"), Can("users.manage"));
-        Section("La tua attività");
-        Add("attesa", "Lista d'attesa", () => new Placeholder("Lista d'attesa"), Can("booking.read"));
-        Add("report", "Report", () => new Placeholder("Report"), Can("export.operational"));
-        Add("catalogo", "Configura l'attività", () => new Placeholder("Configura l'attività"), Can("catalog.write"));
-        Section("Controlli");
-        Add("registro", "Registro attività", () => new Placeholder("Registro attività"), Can("audit.read"));
-        Add("persone", "Persone e permessi", () => new Placeholder("Persone e permessi"), Can("users.manage"));
-        if (Me.Bo("staff"))
+        if (staff)
         {
-            Section("Programma");
-            Add("licenza", "Licenza", () => new Placeholder("Licenza"));
-            Add("postazioni", "Postazioni", () => new Placeholder("Postazioni"), !Me.Bo("standalone"));
-            Add("backup", "Backup", () => new Placeholder("Backup"));
-            Add("rete", Me.Bo("standalone") ? "Online e sito" : "Rete e certificato", () => new Placeholder("Rete"));
-            Add("stato", "Stato del programma", () => new Placeholder("Stato del programma"));
+            Section("Configurazione del programma");
+            Add("programma", "grid", "Dashboard", () => new Placeholder("Configurazione del programma"));
+            Add("attivita", "briefcase", "Clienti", () => new Placeholder("Attività"));
+            Add("generali", "sliders", "Impostazioni generali", () => new Placeholder("Impostazioni generali"));
+            Add("licenza", "key", "Licenza", () => new Placeholder("Licenza"));
+            Add("postazioni", "monitor", "Postazioni", () => new Placeholder("Postazioni"), !Me.Bo("standalone"));
+            Add("backup", "archive", "Backup", () => new Placeholder("Backup"));
+            Add("rete", "globe", Me.Bo("standalone") ? "Online e sito" : "Rete e certificato", () => new Placeholder("Rete e certificato"));
+            Add("stato", "list", "Stato del programma", () => new Placeholder("Stato del programma"));
         }
-        foreach (var box in nav.Children.OfType<Border>().Where(x => x.Child is StackPanel sp && sp.Children.OfType<StackPanel>().Last().Children.Count == 0).ToList()) nav.Children.Remove(box);
-        pages["account"] = () => new Placeholder("Account");
+        foreach (var box in nav.Children.OfType<Border>().Where(x => x.Tag is StackPanel sp && sp.Children.Count == 0).ToList()) nav.Children.Remove(box);
+        // Guida, outside the groups
+        group = new StackPanel { Margin = new Thickness(6, 0, 6, 0) }; nav.Children.Add(group);
+        Add("guida", "help", "Guida", () => new Placeholder("Guida"));
+        pages["account"] = (() => new Placeholder("Account e sicurezza"), "");
+        pages["prenotazioni"] = (() => new BookingsPage(), "agenda");
+        bar.Children.Add(new ScrollViewer { Content = nav, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden });
+
+        // the top bar: the crumb on the left, Tema on the right
+        top.Background = Res("Surface"); top.BorderBrush = Res("Line"); top.BorderThickness = new Thickness(0, 0, 0, 1);
+        var crumb = Row();
+        if (t != null)
+        {
+            if (staff) { crumb.Children.Add(T("Configurazione del programma", size: 14, color: Res("Muted"))); crumb.Children.Add(T("  /  ", size: 14, color: Res("Muted"))); }
+            crumb.Children.Add(T(name, size: 14, bold: true));
+            crumb.Children.Add(Pill(t.S("ruolo") != "" ? RoleName(t.S("ruolo")) : "Gestione tecnica").M(10, 0, 0, 0));
+        }
+        else { crumb.Children.Add(T("Configurazione del programma", size: 14, bold: true)); crumb.Children.Add(Pill("Amministratore").M(10, 0, 0, 0)); }
+        crumb.VerticalAlignment = VerticalAlignment.Center;
+        var theme = new ComboBox { Width = 132, ItemsSource = new[] { ("auto", "Automatico"), ("light", "Chiaro"), ("dark", "Scuro") }.Select(x => new ComboBoxItem { Content = x.Item2, Tag = x.Item1 }).ToList() };
+        theme.SelectedItem = theme.Items.Cast<ComboBoxItem>().First(i => (string)i.Tag == Palette.Mode);
+        theme.SelectionChanged += (_, _) => { var m = (string)((ComboBoxItem)theme.SelectedItem).Tag; if (m != Palette.Mode) Dispatcher.BeginInvoke(() => Palette.Set(m)); };
+        var tools = Row(T("Tema", size: 14, color: Res("Muted")).M(0, 0, 10, 0), theme); tools.VerticalAlignment = VerticalAlignment.Center; ((TextBlock)tools.Children[0]).VerticalAlignment = VerticalAlignment.Center;
+        var line = new DockPanel { Margin = new Thickness(40, 0, 40, 0), LastChildFill = false };
+        DockPanel.SetDock(tools, Dock.Right); line.Children.Add(tools); line.Children.Add(crumb);
+        top.Child = line;
     }
 
-    void BuildProgramOnly()
+    string RoleText()
     {
-        businessName.Text = "Programma";
-        nav.Children.Clear(); pages.Clear();
-        pages["licenza"] = () => new Placeholder("Licenza");
-        Show("licenza");
+        if (Me.Bo("staff")) return "Amministratore del programma";
+        var list = Me.A("attivita").ToList();
+        var mine = list.FirstOrDefault(x => x.S("slug") == Api.Current.Business) ?? list.FirstOrDefault();
+        return mine?.S("ruoloNome") ?? "";
+    }
+    static string RoleName(string role) => role switch { "owner" => "Titolare", "manager" => "Amministratore sede", "reception" => "Reception", "operator" => "Operatore sede", "marketing" => "Marketing", "viewer" => "Consultazione", _ => role };
+
+    public static Border Pill(string text, string kind = "") => new()
+    {
+        Background = Res(kind switch { "ok" => "OkSoft", "warn" => "WarnSoft", "danger" => "DangerSoft", _ => "BrandSoft" }), BorderBrush = Res("Pastel"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(999),
+        Padding = new Thickness(10, 2, 10, 3), VerticalAlignment = VerticalAlignment.Center,
+        Child = T(text, size: 12, bold: true, color: Res(kind switch { "ok" => "Ok", "warn" => "Warn", "danger" => "Danger", _ => "Brand" })),
+    };
+
+    static FrameworkElement SideLink(string icon, string text, Action click)
+    {
+        var row = Row(Icons.Icon(icon, Res("Pastel")).M(0, 0, 8, 0), T(text, size: 13, color: Res("Pastel")));
+        ((TextBlock)row.Children[1]).FontWeight = FontWeights.Medium;
+        row.Cursor = Cursors.Hand; row.Background = Brushes.Transparent;
+        row.MouseLeftButtonUp += (_, _) => click();
+        return row;
     }
 
-    public Page CurrentPage => content.Content as Page;
+    // ---------- pages
     public async void Show(string key)
     {
-        if (!pages.TryGetValue(key, out var make)) return;
-        current = nav.Children.OfType<Border>().SelectMany(x => ((StackPanel)x.Child).Children.OfType<StackPanel>().Last().Children.OfType<RadioButton>()).FirstOrDefault(r => (string)r.Tag == key);
-        if (current != null) current.IsChecked = true;
-        var page = make(); page.Main = this;
-        content.Content = page;
+        if (!pages.TryGetValue(key, out var p)) return;
+        currentKey = key;
+        foreach (var (k, r) in entries) r.IsChecked = k == p.Nav;
+        var page = p.Make(); page.Main = this;
+        Put(page);
         await Guard(page.Load);
     }
-    public void ShowPage(Page page) { page.Main = this; content.Content = page; _ = Guard(page.Load); }
+    /// <summary>A page reached from another (a booking, Nuova prenotazione, a client's card): the menu stays where it was.</summary>
+    public void ShowPage(Page page) { page.Main = this; Put(page); _ = Guard(page.Load); }
+    void Put(Page page) { currentPage = page; content.Content = page; }
+
+    /// <summary>The green or red line on top of the pages, as Django's messages; it goes with OK or by itself.</summary>
+    public void Flash(string text, bool error = false)
+    {
+        var ok = new Button { Content = "OK", Style = Style("Ghost"), Padding = new Thickness(10, 3, 10, 3) };
+        var row = new DockPanel(); DockPanel.SetDock(ok, Dock.Right); row.Children.Add(ok); row.Children.Add(T(text, size: 14.5));
+        var box = new Border { Background = Res(error ? "DangerSoft" : "OkSoft"), BorderBrush = Res(error ? "Danger" : "Ok"), BorderThickness = new Thickness(1.5), CornerRadius = new CornerRadius(10), Padding = new Thickness(16, 10, 10, 10), Margin = new Thickness(40, 14, 40, 0), Child = row };
+        ok.Click += (_, _) => notices.Children.Remove(box);
+        notices.Children.Clear(); notices.Children.Add(box);
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(error ? 12 : 6) };
+        timer.Tick += (_, _) => { timer.Stop(); notices.Children.Remove(box); }; timer.Start();
+    }
 }
 
 /// <summary>A page still to come in this build.</summary>
@@ -189,7 +298,7 @@ public sealed class Placeholder(string title) : Page
 {
     public override Task Load()
     {
-        Content = Col(T(title, "H1"), T("Questa sezione arriva nei prossimi passaggi del nuovo programma.", "MutedText")).M(40, 28, 40, 28);
+        Content = Col(T(title, "H1"), T("Questa sezione arriva nei prossimi passaggi del nuovo programma.", "MutedText")).M(40, 36, 40, 32);
         return Task.CompletedTask;
     }
 }

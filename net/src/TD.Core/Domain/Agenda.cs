@@ -36,6 +36,9 @@ public sealed class AgendaItem
     public string PhaseLabel { get; set; } = "";
     public bool Visit { get; set; }
     public bool Forced { get; set; }
+    public List<string> ForcedWhy { get; set; } = new();
+    public bool ClientOk { get; set; }
+    public string Source { get; set; } = "";
     public string Origin { get; set; } = "";
     public bool Vip { get; set; }
     public bool Blocked { get; set; }
@@ -161,7 +164,7 @@ public sealed class Agenda(Ctx c, Viewer v)
             Who = r.Snap.Str("resource"), Party = r.Party, Alert = (data["allergies"] as JsonArray)?.Select(x => x?.ToString() ?? "").ToList() ?? new(),
             Movable = Bookings.MOVABLE.Contains(r.Status) && service.Kind == "resource" && ra.Date == rb.Date && r.End > c.Now,
             Minutes = (int)(rb - ra).TotalMinutes, Snap = service.Interval is >= 5 and <= 60 ? service.Interval : STEP, Visit = r.Visit != null,
-            Forced = r.Snap.ContainsKey("forced"), Origin = r.Origin, Notes = data.Str("notes"), Price = r.Snap.Str("total"),
+            Forced = r.Snap.ContainsKey("forced"), ForcedWhy = (r.Snap["forced"] as JsonArray)?.Select(x => x?.ToString() ?? "").ToList() ?? new(), ClientOk = Json.Truthy(r.Snap["client_confirmed"]), Source = r.Source ?? "", Origin = r.Origin, Notes = data.Str("notes"), Price = r.Snap.Str("total"),
         };
     }
 
@@ -178,7 +181,7 @@ public sealed class Agenda(Ctx c, Viewer v)
             {
                 Id = x.Id, Resource = x.Resource, ServiceId = x.ServiceId, ContactId = x.ContactId, Name = x.Name, Service = x.Service, Who = x.Who, Start = x.Start, End = x.End,
                 From = x.From, To = x.To, Status = x.Status, Color = x.Color, Party = x.Party, Alert = x.Alert, Movable = x.Movable, Minutes = x.Minutes, Snap = x.Snap, Visit = x.Visit,
-                Forced = x.Forced, Origin = x.Origin, Notes = x.Notes, Price = x.Price, Phase = phase,
+                Forced = x.Forced, ForcedWhy = x.ForcedWhy, ClientOk = x.ClientOk, Source = x.Source, Vip = x.Vip, Blocked = x.Blocked, Tags = x.Tags, NoShow = x.NoShow, Late = x.Late, Origin = x.Origin, Notes = x.Notes, Price = x.Price, Phase = phase,
                 PhaseLabel = phase == "arrivo" ? "Arrivo " + x.From : phase == "partenza" ? "Partenza " + x.To : "In casa",
             }));
         }

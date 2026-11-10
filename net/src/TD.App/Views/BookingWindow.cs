@@ -16,6 +16,7 @@ namespace TD.App.Views;
 public sealed class BookingWindow : Window
 {
     readonly AgendaPage agenda;
+    public bool Walkin;
     JsonNode catalog;
     readonly List<JsonNode> chosen = new();
     readonly Dictionary<string, string> options = new();

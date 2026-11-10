@@ -1,9 +1,7 @@
 name: net (programma in C#)
 # The C# rewrite on its own branch: build on Windows, the tests, and the windows on recorded answers as screenshots.
+# Only by hand (Actions → Run workflow, or gh workflow run net.yml --ref net-rewrite): not at every push.
 on:
-  push:
-    branches: [net-rewrite]
-    paths: ["net/**", ".github/workflows/net.yml"]
   workflow_dispatch:
 jobs:
   build:

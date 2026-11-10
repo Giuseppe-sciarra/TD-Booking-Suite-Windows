@@ -34,7 +34,9 @@ public static class Prenotazioni
         var t = c.Tenant; var (one, many, _) = Presets.UnitsOf(t.BusinessType);
         return new
         {
-            slug = t.Slug, nome = t.Name, tipo = t.BusinessType, colore = Texts.ContrastColor(t.BrandColor), fuso = t.Timezone,
+            slug = t.Slug, nome = t.Name, tipo = t.BusinessType, colore = Texts.ContrastColor(t.BrandColor), coloreScuro = Texts.ContrastColor(t.BrandColor, true), fuso = t.Timezone,
+            soggiorni = t.Stays, marketing = t.MarketingEnabled, esporta = t.ExportEnabled, api = t.ApiEnabled, cassaTitolare = t.TillSelf, staff = c.User.IsStaff,
+            ruoloNome = c.Member != null ? Permissions.RoleLabel(c.Member.Role) : "Amministratore del programma: solo gestione tecnica", logo = t.Logo is { Length: > 0 } ? Convert.ToBase64String(t.Logo) : "", logoLargo = t.Logo is { Length: > 0 } && t.LogoRatio > 1.4,
             ruolo = c.Member?.Role ?? "", permessi = c.Perms.OrderBy(x => x), oggi = c.C.Today, uno = one, molti = many,
             cassa = t.TillOn, servizio = Presets.ServiceWord(t.BusinessType), appuntamenti = new Agenda(c.C, V(c)).Fits(),
             standby = c.C.S.Scalar<long>("SELECT count(*) FROM core_standby"),
