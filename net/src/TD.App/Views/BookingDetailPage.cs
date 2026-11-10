@@ -57,6 +57,7 @@ public sealed class BookingDetailPage(string id) : Page
         // ----- notices
         if (b.S("notaCliente") != "") top.Children.Add(F.Notice(Col(T("✎ Nota sul cliente", size: 13.5, bold: true), T(b.S("notaCliente"), size: 13.5)), "warning"));
         if (d["allergies"] is JsonArray al && al.Count > 0) top.Children.Add(F.Notice(Col(T("! Intolleranze e allergie segnalate", size: 13.5, bold: true), T(string.Join(" · ", al.Select(x => x.ToString())), size: 13.5)), "warning"));
+        if (b.S("google") != "") top.Children.Add(F.Notice(b.S("google") + ": qui la prenotazione non è cambiata. Spostala o annullala tu, se va fatto, o rimetti l'evento com'era su Google", "warning"));
         if (status == "cancelled" && b.S("motivo") != "") top.Children.Add(F.Notice($"Annullata: {b.S("motivo").ToLowerInvariant()}" + (d.S("cancel_note") != "" ? " · " + d.S("cancel_note") : "")));
         if (b.Bo("rifiutata") && status != "cancelled") top.Children.Add(F.Notice("Il cliente ha scritto che non viene, dal promemoria, quando il termine per annullare online era già passato: annullala tu, se va bene, o chiamalo", "warning"));
         if (b["forzata"] is JsonArray fz && fz.Count > 0) top.Children.Add(F.Notice("Forzata al banco: " + string.Join(", ", fz.Select(x => x.ToString())), "warning"));

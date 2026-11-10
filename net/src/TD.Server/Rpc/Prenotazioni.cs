@@ -218,6 +218,7 @@ public static class Prenotazioni
             sede = b.Snap.Str("location"), operatore = b.Snap.Str("resource"), resourceId = b.ResourceId, cabina = b.Snap.Str("secondary"),
             prezzo = b.Snap.Str("price"), totale = b.Snap.Str("total"), sconto = b.Snap.Str("discount"), forzata = b.Snap["forced"]?.DeepClone(),
             motivo = b.Snap.Str("cancel_reason") is var r && r != "" ? Bookings.REASON_LABELS.GetValueOrDefault(r, r) : "",
+            google = GoogleNote(c, b),
             dati = data, campi = b.Snap["field_labels"]?.DeepClone(), contatto = contact == null ? null : new { id = contact.Id, vip = contact.Vip, bloccato = contact.OnlineBlocked },
             visita = rows.Count > 1 ? rows.Select(x => new { id = x.Id, servizio = x.Snap.Str("service"), operatore = x.Snap.Str("resource"), inizio = bk.Iso(x.Start), fine = bk.Iso(x.End), stato = x.Status }) : null,
             modifica = Editing(c, bk, b, rows), codice = b.Id.ToString()[..8], sedeId = b.LocationId,
@@ -241,6 +242,16 @@ public static class Prenotazioni
 
     /// <summary>The client record on the booking's page: what was written for this booking, or the form to write it once
     /// the appointment has started, and the three times before with their photos.</summary>
+    /// <summary>gcal.changed, as the booking's page says it: the event of this booking moved or deleted in Google.</summary>
+    static string GoogleNote(Call c, Booking b)
+    {
+        var g = b.Snap.Str("google"); if (g == "") return "";
+        if (g == "deleted") return "Cancellata su Google Calendar";
+        var to = g.StartsWith("moved:") && g.Length > 6 && DateTimeOffset.TryParse(g[6..], System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var at) ? c.C.Cal.ToLocal(at.UtcDateTime) : (DateTime?)null;
+        var days = new[] { "Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab" };
+        return "Spostata su Google Calendar" + (to.HasValue ? $" al {days[(int)to.Value.DayOfWeek]} {to.Value.Day}/{to.Value.Month:00} {to.Value:HH:mm}" : "");
+    }
+
     static object Record(Call c, Booking b, Contact contact, JsonObject data)
     {
         if (contact == null || !c.Can("notes.read") || Json.Truthy(data["notes_hidden"])) return null;

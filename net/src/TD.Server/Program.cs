@@ -65,5 +65,6 @@ Auth.Map(app);
 RpcHost.Map(app);
 Public.Map(app);
 TD.Server.Rpc.InvioEmail.Map(app);
+TD.Server.Rpc.Calendari.Map(app);
 app.MapGet("/api/info", (Server s, HttpContext h) => Results.Json(s.Info(h)));
 await app.RunAsync();

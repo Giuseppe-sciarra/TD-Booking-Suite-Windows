@@ -67,6 +67,7 @@ public static partial class Catalogo
         var extra = new
         {
             risorsa = true, nuovo = isNew, appuntamenti = appointments, etichettaServizi = appointments ? "Cosa fa" : "Si prenota per",
+            google = Calendari.Google(c, r, isNew), outlook = Calendari.Outlook(c, r, isNew), nomiNelCalendario = r.FeedNames,
             aiutoServizi = "Si prenota solo per quelli spuntati; all'inizio sono spuntati tutti." + (appointments ? $" Durata e prezzo vuoti vogliono dire quelli del {word}; con una variante valgono quelli della variante." : ""),
             servizi = bookable.Select(s =>
             {

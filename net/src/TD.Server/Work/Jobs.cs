@@ -24,6 +24,8 @@ public static partial class Jobs
             if (W().Evening() > 0) log.LogInformation("Riepiloghi serali accodati.");
         }));
         list.Add(Make("richieste", 30, 60, () => { if (Portale.Notify(s) > 0) log.LogInformation("Richieste di prova inviate all'amministratore."); }));
+        // feeds.refresh, gcal.refresh, mscal.refresh: the operators' outside calendars, each when it is due
+        list.Add(Make("calendari", 50, 300, () => { var n = OutsideCalendar.Refresh(s.Db, s.Crypto, s.PublicOrigin, Outbox.Instance, s.Edition); if (n > 0) log.LogInformation("Calendari degli operatori allineati: {N}.", n); }));
         list.Add(Make("esiti", 40, 300, () => { if (W().Receipts() > 0) log.LogInformation("Esiti degli SMS letti."); }));
         // tdwin_worker: the licence's state online once a day (every hour while offline), the new versions the same
         list.Add(new Job("licenza", TimeSpan.FromSeconds(90), TimeSpan.FromDays(1), async _ =>

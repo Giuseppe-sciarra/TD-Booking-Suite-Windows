@@ -213,8 +213,56 @@ public sealed class CatalogExtras
         error.Text = string.Join(" ", rest); error.Visibility = rest.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>form.html, #google and #outlook: the operator's own calendar, both ways. Collega opens the consent page in
+    /// the browser; coming back to the card shows it connected.</summary>
+    void Calendars(CatalogFormPage page, JsonNode x)
+    {
+        async Task Act(string service, string action, string read = "", string write = "")
+        {
+            var r = await Api.Current.Call("risorsa.calendario", new { id = page.Id, servizio = service, azione = action, read, write });
+            if (r.S("apri") != "") { WaitRows.Web(r.S("apri")); page.Main.Flash("Si è aperta la pagina del permesso nel browser: quando hai finito torna qui e riapri la scheda."); return; }
+            page.Main.Flash(r.S("testo")); await page.Load();
+        }
+        foreach (var (key, title, who, button, where) in new[] { ("google", "Google Calendar", "Google", "Collega Google Calendar", "nel calendario scelto qui sotto"), ("outlook", "Outlook e Microsoft 365", "Outlook", "Collega Outlook", "nel suo calendario") })
+        {
+            if (x[key] is not JsonNode g) continue;
+            var card = Col(T(title, "H2")); bool on = g.Bo("attivo");
+            if (g.S("errore") != "") card.Children.Add(F.Notice(g.S("errore"), "error").M(0, 8, 0, 0));
+            if (on)
+            {
+                var p = new TextBlock { FontSize = 14, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) }; p.Inlines.Add("Collegato");
+                if (g.S("account") != "") { p.Inlines.Add(" a "); p.Inlines.Add(new System.Windows.Documents.Run(g.S("account")) { FontWeight = FontWeights.Bold }); }
+                p.Inlines.Add($": ogni 5 minuti i suoi impegni su {who} diventano orari occupati, senza titoli, e le sue prenotazioni vanno {where} con servizio e orario" + (x.Bo("nomiNelCalendario") ? " e il nome del cliente" : "") + "."
+                    + (g.S("quando") != "" ? $" Ultimo allineamento il {g.S("quando")}." : ""));
+                card.Children.Add(p);
+            }
+            else card.Children.Add(Muted(key == "google" ? "I suoi impegni su Google diventano orari occupati e le sue prenotazioni compaiono nel suo calendario Google, anche sul telefono. Si apre Google per dare il permesso"
+                : "I suoi impegni su Outlook.com o Microsoft 365 diventano orari occupati e le sue prenotazioni compaiono nel suo calendario, anche sul telefono. Si apre Microsoft per dare il permesso").M(0, 8, 0, 0));
+            var actions = Row();
+            if (g.Bo("pronto") && (!on || g.S("errore") != "")) actions.Children.Add(BA(on ? "Collega di nuovo" : button, () => Act(key, "connect")));
+            if (on) actions.Children.Add(BA("Scollega", () => Act(key, "disconnect"), "Ghost").M(actions.Children.Count > 0 ? 8 : 0, 0, 0, 0));
+            card.Children.Add(actions.M(0, 12, 0, 0));
+            var list = g.A("calendari").ToList();
+            if (key == "google" && on && list.Count > 0)
+            {
+                ComboBox Pick(IEnumerable<JsonNode> items, string chosen)
+                {
+                    var box = new ComboBox(); box.Items.Add(new ComboBoxItem { Content = "Il calendario principale", Tag = "primary" });
+                    foreach (var c in items) box.Items.Add(new ComboBoxItem { Content = c.S("nome"), Tag = c.S("id") });
+                    box.SelectedIndex = Math.Max(0, box.Items.Cast<ComboBoxItem>().ToList().FindIndex(i => (string)i.Tag == chosen && i != box.Items[0])); return box;
+                }
+                var read = Pick(list, g.S("leggi")); var write = Pick(list.Where(c => c.Bo("scrivibile")), g.S("scrivi"));
+                card.Children.Add(F.Grid2(F.Field("Impegni letti da", read), F.Field("Prenotazioni scritte in", write)).M(0, 14, 0, 0));
+                card.Children.Add(Row(BA("Salva i calendari", () => Act("google", "calendars", (string)((ComboBoxItem)read.SelectedItem).Tag, (string)((ComboBoxItem)write.SelectedItem).Tag))).M(0, 10, 0, 0));
+                card.Children.Add(Muted("Se su Google qualcuno sposta o cancella una prenotazione scritta da qui, la prenotazione non cambia: la trovate segnalata in agenda").Also13().M(0, 8, 0, 0));
+            }
+            After.Add(F.Card(card));
+        }
+    }
+
     void Resource(CatalogFormPage page, JsonNode x)
     {
+        Calendars(page, x);
         mine.AddRange(new[] { "services", "dur_", "price_", "pa_", "pm_" });
         // ----- Cosa fa
         var appointments = x.Bo("appuntamenti"); var body = Col(F.Legend(x.S("etichettaServizi")).M(0, 18, 0, 0), Muted(x.S("aiutoServizi")), error);
