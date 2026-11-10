@@ -29,9 +29,11 @@ public sealed class AgendaPage : Page
     readonly ComboBox places = new() { MinWidth = 150 }, people = new() { MinWidth = 170 };
     const double PX = 26.0 / 15;  // pixels per minute: a quarter of hour is 26 px, as the web agenda
 
+    public void UseZone(string name) { try { zone = TimeZoneInfo.FindSystemTimeZoneById(name); } catch { } }
+
     public override async Task Load()
     {
-        try { zone = TimeZoneInfo.FindSystemTimeZoneById(Business.S("fuso")); } catch { }
+        UseZone(Business.S("fuso"));
         if (day == default) day = DateOnly.Parse(Business.S("oggi"));
         if (Content == null) Build();
         await Refresh();
@@ -48,9 +50,9 @@ public sealed class AgendaPage : Page
     void Build()
     {
         // .page-heading: eyebrow, h1, p on the left; the actions on the right
-        var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 22), LastChildFill = true };
+        var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 16), LastChildFill = true };
         DockPanel.SetDock(actions, Dock.Right); heading.Children.Add(actions);
-        subtitle.FontSize = 16;
+        subtitle.FontSize = 14;
         heading.Children.Add(Col(eyebrow, title, subtitle));
         // .agenda-bar
         picker = new DatePicker { Width = 150 };
@@ -77,7 +79,7 @@ public sealed class AgendaPage : Page
         DockPanel.SetDock(seg, Dock.Right); bar.Children.Add(seg.M(0, 0, 16, 0));
         foreach (var e in new FrameworkElement[] { dayNav.M(0, 0, 16, 0), pick.M(0, 0, 16, 0), quick }) { e.VerticalAlignment = VerticalAlignment.Center; DockPanel.SetDock(e, Dock.Left); bar.Children.Add(e); }
         var top = Col(heading, bar, above);
-        var root = new DockPanel { Margin = new Thickness(40, 36, 40, 24), MaxWidth = 1320 };
+        var root = new DockPanel { Margin = new Thickness(26, 20, 26, 16), MaxWidth = 1480 };
         DockPanel.SetDock(top, Dock.Top); DockPanel.SetDock(below, Dock.Bottom);
         root.Children.Add(top); root.Children.Add(below); root.Children.Add(body);
         Content = root;
@@ -100,7 +102,7 @@ public sealed class AgendaPage : Page
         };
     }
 
-    static void Hint(TextBox box)
+    public static void Hint(TextBox box)
     {
         // the placeholder of the web's inputs
         var hint = new TextBlock { Text = (string)box.Tag, IsHitTestVisible = false, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, FontSize = 14 };
@@ -122,7 +124,7 @@ public sealed class AgendaPage : Page
         public void Init() => AddVisualChild(t);
     }
 
-    Button Small(string text, Func<Task> click) { var b = BA(text, click); b.Padding = new Thickness(12, 5, 12, 5); b.FontSize = 13; b.MinWidth = 40; return b; }
+    Button Small(string text, Func<Task> click) { var b = BA(text, click); b.Padding = new Thickness(11, 5, 11, 5); b.FontSize = 13; b.MinWidth = 40; return b; }
 
     void Shortcuts()
     {
@@ -452,7 +454,7 @@ public sealed class AgendaPage : Page
         {
             e.Handled = true; var p = e.GetPosition(col); card.ReleaseMouseCapture();
             var moved = Math.Abs(p.Y - start.Y) > 4 || Math.Abs(p.X - start.X) > 8;
-            if (!moved || !(dragging || resizing)) { await Guard(() => BookingDetailWindow.Open(this, id)); return; }
+            if (!moved || !(dragging || resizing)) { Main.ShowPage(new BookingDetailPage(id)); await Task.CompletedTask; return; }
             var newTop = Canvas.GetTop(card) - 1; var minute = first + (int)Math.Round(newTop / PX);
             var startAt = resizing ? a : d.AddMinutes(minute);
             // dropped on another operator's column
@@ -508,7 +510,7 @@ public sealed class AgendaPage : Page
             },
         };
         var id = x.S("id");
-        row.MouseLeftButtonUp += async (_, _) => await Guard(() => BookingDetailWindow.Open(this, id));
+        row.MouseLeftButtonUp += async (_, _) => Main.ShowPage(new BookingDetailPage(id));
         return row;
     }
 
@@ -577,7 +579,7 @@ public sealed class AgendaPage : Page
                 void Place() { var w = col.ActualWidth > 0 ? col.ActualWidth : 120; var lw = (w - 4) / lns; card.Width = Math.Max(20, lw - 2); Canvas.SetLeft(card, 2 + ln * lw); }
                 col.SizeChanged += (_, _) => Place(); Place();
                 Canvas.SetTop(card, top + 1);
-                var id = x.S("id"); card.MouseLeftButtonUp += async (_, _) => await Guard(() => BookingDetailWindow.Open(this, id));
+                var id = x.S("id"); card.MouseLeftButtonUp += async (_, _) => Main.ShowPage(new BookingDetailPage(id));
                 col.Children.Add(card);
             }
             var frame = new Border { Child = col, BorderBrush = Res("Line"), BorderThickness = new Thickness(1, 0, 0, 0) };
@@ -623,9 +625,6 @@ public sealed class AgendaPage : Page
 
     static Border Notice(string text) => new() { Background = Res("BrandSoft"), BorderBrush = Res("Brand"), BorderThickness = new Thickness(4, 0, 0, 0), CornerRadius = new CornerRadius(10), Padding = new Thickness(16, 12, 16, 12), Margin = new Thickness(0, 0, 0, 14), Child = T(text, size: 14) };
 
-    void NewBooking(string resource, DateTime? at, bool walkin = false)
-    {
-        var w = new BookingWindow(this, resource, at ?? day.ToDateTime(new TimeOnly(9, 0)), at != null) { Walkin = walkin };
-        if (w.ShowDialog() == true) _ = Guard(Refresh);
-    }
+    void NewBooking(string resource, DateTime? at, bool walkin = false) =>
+        Main.ShowPage(new BookingPage { Walkin = walkin, PrefillResource = resource ?? "", PrefillDate = (at?.Date ?? day.ToDateTime(TimeOnly.MinValue)).ToString("yyyy-MM-dd"), PrefillTime = at?.ToString("HH:mm") ?? "" });
 }

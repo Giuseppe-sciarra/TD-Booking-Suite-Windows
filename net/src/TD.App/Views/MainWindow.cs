@@ -31,8 +31,8 @@ public sealed class MainWindow : Window
     public JsonNode Me { get; }
     public JsonNode Business { get; private set; }
     readonly ContentControl content = new();
-    readonly DockPanel bar = new() { Width = 256 };
-    readonly Border top = new() { Height = 64 };
+    readonly DockPanel bar = new() { Width = 228 };
+    readonly Border top = new() { Height = 50 };
     readonly StackPanel notices = new();
     readonly Dictionary<string, (Func<Page> Make, string Nav)> pages = new();
     readonly Dictionary<string, RadioButton> entries = new();
@@ -111,8 +111,8 @@ public sealed class MainWindow : Window
             Background = new LinearGradientBrush(new GradientStopCollection { new(Color.FromRgb(0xE0, 0x56, 0x9B), 0), new(Color.FromRgb(0x8B, 0x67, 0xB8), 0.7) }, new Point(0, 0), new Point(1, 1)),
             Child = new TextBlock { Text = "TD", Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 15, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, FontFamily = Head },
         };
-        var title = T(name, size: 16, bold: true, color: Res("SideInk")); title.FontFamily = Head; title.TextTrimming = TextTrimming.CharacterEllipsis; title.MaxHeight = 40;
-        var logo = new DockPanel { Margin = new Thickness(22, 26, 16, 0) };
+        var title = T(name, size: 15, bold: true, color: Res("SideInk")); title.FontFamily = Head; title.TextTrimming = TextTrimming.CharacterEllipsis; title.MaxHeight = 40;
+        var logo = new DockPanel { Margin = new Thickness(18, 16, 12, 0) };
         DockPanel.SetDock(mark, Dock.Left); logo.Children.Add(mark);
         logo.Children.Add(Col(title, T("Edizione Windows", size: 12, color: Res("SideMuted")).M(0, 2, 0, 0)).M(12, 0, 0, 0));
         ((StackPanel)logo.Children[1]).VerticalAlignment = VerticalAlignment.Center;
@@ -120,16 +120,16 @@ public sealed class MainWindow : Window
 
         // the bottom: who, role, Account e sicurezza, Esci
         var bottom = Col(T(Me.S("nome"), size: 13, bold: true, color: Res("SideInk")), T(RoleText(), size: 13, color: Res("SideMuted")).M(0, 0, 0, 8),
-            SideLink("user", "Account e sicurezza", () => Show("account")), SideLink("logout", "Esci", () => Shell.Instance.SignedOut(true)).M(0, 6, 0, 0)).M(28, 18, 16, 22);
+            SideLink("user", "Account e sicurezza", () => Show("account")), SideLink("logout", "Esci", () => Shell.Instance.SignedOut(true)).M(0, 6, 0, 0)).M(22, 14, 12, 14);
         DockPanel.SetDock(bottom, Dock.Bottom); bar.Children.Add(bottom);
 
-        var nav = new StackPanel { Margin = new Thickness(16, 0, 16, 0) };
+        var nav = new StackPanel { Margin = new Thickness(12, 0, 12, 0) };
         if (t != null)
             nav.Children.Add(new Border
             {
-                BorderBrush = Res("SideLine"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Padding = new Thickness(14, 12, 14, 12), Margin = new Thickness(0, 26, 0, 14),
+                BorderBrush = Res("SideLine"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Padding = new Thickness(12, 9, 12, 9), Margin = new Thickness(0, 14, 0, 10),
                 Background = new SolidColorBrush(Color.FromArgb(8, 255, 255, 255)),
-                Child = Col(T("Stai lavorando in", size: 12, color: Res("SideMuted")), T(name, size: 15, bold: true, color: Brushes.White).M(0, 2, 0, 2), T(t.S("ruoloNome"), size: 13, color: Res("Pastel"))),
+                Child = Col(T("Stai lavorando in", size: 11.5, color: Res("SideMuted")), T(name, size: 14, bold: true, color: Brushes.White).M(0, 2, 0, 2), T(t.S("ruoloNome"), size: 13, color: Res("Pastel"))),
             });
         StackPanel group = null;
         void Section(string label)
@@ -232,11 +232,11 @@ public sealed class MainWindow : Window
         }
         else { crumb.Children.Add(T("Configurazione del programma", size: 14, bold: true)); crumb.Children.Add(Pill("Amministratore").M(10, 0, 0, 0)); }
         crumb.VerticalAlignment = VerticalAlignment.Center;
-        var theme = new ComboBox { Width = 132, ItemsSource = new[] { ("auto", "Automatico"), ("light", "Chiaro"), ("dark", "Scuro") }.Select(x => new ComboBoxItem { Content = x.Item2, Tag = x.Item1 }).ToList() };
+        var theme = new ComboBox { Width = 124, MinHeight = 32, Height = 32, ItemsSource = new[] { ("auto", "Automatico"), ("light", "Chiaro"), ("dark", "Scuro") }.Select(x => new ComboBoxItem { Content = x.Item2, Tag = x.Item1 }).ToList() };
         theme.SelectedItem = theme.Items.Cast<ComboBoxItem>().First(i => (string)i.Tag == Palette.Mode);
         theme.SelectionChanged += (_, _) => { var m = (string)((ComboBoxItem)theme.SelectedItem).Tag; if (m != Palette.Mode) Dispatcher.BeginInvoke(() => Palette.Set(m)); };
-        var tools = Row(T("Tema", size: 14, color: Res("Muted")).M(0, 0, 10, 0), theme); tools.VerticalAlignment = VerticalAlignment.Center; ((TextBlock)tools.Children[0]).VerticalAlignment = VerticalAlignment.Center;
-        var line = new DockPanel { Margin = new Thickness(40, 0, 40, 0), LastChildFill = false };
+        var tools = Row(T("Tema", size: 13.5, color: Res("Muted")).M(0, 0, 10, 0), theme); tools.VerticalAlignment = VerticalAlignment.Center; ((TextBlock)tools.Children[0]).VerticalAlignment = VerticalAlignment.Center;
+        var line = new DockPanel { Margin = new Thickness(26, 0, 26, 0), LastChildFill = false };
         DockPanel.SetDock(tools, Dock.Right); line.Children.Add(tools); line.Children.Add(crumb);
         top.Child = line;
     }
@@ -285,7 +285,7 @@ public sealed class MainWindow : Window
     {
         var ok = new Button { Content = "OK", Style = Style("Ghost"), Padding = new Thickness(10, 3, 10, 3) };
         var row = new DockPanel(); DockPanel.SetDock(ok, Dock.Right); row.Children.Add(ok); row.Children.Add(T(text, size: 14.5));
-        var box = new Border { Background = Res(error ? "DangerSoft" : "OkSoft"), BorderBrush = Res(error ? "Danger" : "Ok"), BorderThickness = new Thickness(1.5), CornerRadius = new CornerRadius(10), Padding = new Thickness(16, 10, 10, 10), Margin = new Thickness(40, 14, 40, 0), Child = row };
+        var box = new Border { Background = Res(error ? "DangerSoft" : "OkSoft"), BorderBrush = Res(error ? "Danger" : "Ok"), BorderThickness = new Thickness(1.5), CornerRadius = new CornerRadius(10), Padding = new Thickness(16, 10, 10, 10), Margin = new Thickness(26, 12, 26, 0), Child = row };
         ok.Click += (_, _) => notices.Children.Remove(box);
         notices.Children.Clear(); notices.Children.Add(box);
         var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(error ? 12 : 6) };
@@ -298,7 +298,7 @@ public sealed class Placeholder(string title) : Page
 {
     public override Task Load()
     {
-        Content = Col(T(title, "H1"), T("Questa sezione arriva nei prossimi passaggi del nuovo programma.", "MutedText")).M(40, 36, 40, 32);
+        Content = Col(T(title, "H1"), T("Questa sezione arriva nei prossimi passaggi del nuovo programma.", "MutedText")).M(26, 20, 26, 16);
         return Task.CompletedTask;
     }
 }

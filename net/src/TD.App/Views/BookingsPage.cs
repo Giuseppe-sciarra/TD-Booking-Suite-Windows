@@ -53,7 +53,7 @@ public sealed class BookingsPage : Page
                     T(x.S("service") + (x.S("who") != "" ? " · " + x.S("who") : ""), "MutedText").M(0, 0, 12, 0), T(STATUS.GetValueOrDefault(x.S("status"), ""), "MutedText")),
             };
             var id = x.S("id");
-            row.MouseLeftButtonUp += async (_, _) => { await Guard(() => BookingDetailWindow.Open(helper, id)); await Guard(Refresh); };
+            row.MouseLeftButtonUp += (_, _) => Main.ShowPage(new BookingDetailPage(id));
             rows.Children.Add(row);
         }
         if (r.Bo("troppe")) rows.Children.Add(T("Ne mostro 1000: restringi il periodo.", "MutedText").M(16));

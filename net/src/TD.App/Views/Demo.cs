@@ -34,9 +34,10 @@ public static class Demo
             ("01-agenda-giorno", () => { }),
             ("02-agenda-settimana", () => _ = Ag().SetView("settimana")),
             ("03-agenda-mese", () => _ = Ag().SetView("mese")),
-            ("04-nuova-prenotazione", () => { _ = Ag().SetView("giorno"); extra = new BookingWindow(Ag(), null, DateTime.Today.AddHours(10), false); extra.Show(); }),
-            ("05-prenotazione", () => { extra?.Close(); var id = Api.Fake("prenotazione.dettaglio", null).S("id"); var w = new BookingDetailWindow(Ag(), id); extra = w; _ = w.Reload(); w.Show(); }),
-            ("06-prenotazioni", () => { extra?.Close(); extra = null; main.Show("prenotazioni"); }),
+            ("04-nuova-prenotazione", () => { main.ShowPage(new BookingPage()); }),
+            ("05-prenotazione", () => { var id = Api.Fake("prenotazione.dettaglio", null).S("id"); main.ShowPage(new BookingDetailPage(id)); }),
+            ("06-prenotazioni", () => main.Show("prenotazioni")),
+            ("07-scuro", () => { Palette.Set("dark"); main.Show("agenda"); }),
         };
         var i = 0;
         var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };

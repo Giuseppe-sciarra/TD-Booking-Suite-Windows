@@ -90,14 +90,14 @@ public static class Prenotazioni
             servizi = services.Select(s => new
             {
                 id = s.Id, nome = s.Name, tipo = s.Kind, durata = s.Duration, sede = c.C.Row<Location>(s.LocationId).Name, sedeId = s.LocationId, maxPersone = s.MaxParty,
-                etichetta = s.ResourceLabel, campi = JsonNode.Parse(s.Fields), prezzo = s.Price.HasValue ? Prices.Euro(s.Price) : "",
+                etichetta = s.ResourceLabel, descrizione = s.Description, turnover = s.Turnover, campi = JsonNode.Parse(s.Fields), prezzo = s.Price.HasValue ? Prices.Euro(s.Price) : "",
                 varianti = options[s.Id].OrderBy(o => o.Name).Select(o => new { id = o.Id, nome = o.Name, durata = o.Duration, prezzo = o.Price.HasValue ? Prices.Euro(o.Price) : "" }),
                 sale = s.Kind is "capacity" or "shift" ? areas[s.LocationId].Select(a => new { id = a.Id, nome = a.Name }) : null,
                 operatori = resources.Where(r => r.LocationId == s.LocationId && links[s.Id].Any(l => l.ResourceId == r.Id) && (mine == null || mine.Contains(r.Id.ToString())))
                     .Select(r => new
                     {
-                        id = r.Id, nome = r.Name, posti = r.Capacity,
-                        assente = r.AwayUntil.HasValue && DateOnly.FromDateTime(r.AwayUntil.Value) >= today ? new { dal = r.AwayFrom, al = r.AwayUntil, sostituto = r.AwayById } : null,
+                        id = r.Id, nome = r.Name, posti = r.Capacity, descrizione = r.Description,
+                        assente = r.AwayUntil.HasValue && DateOnly.FromDateTime(r.AwayUntil.Value) >= today ? new { dal = r.AwayFrom, al = r.AwayUntil, sostituto = r.AwayById, sostitutoNome = r.AwayById.HasValue ? c.C.Row<Resource>(r.AwayById.Value)?.Name : "" } : null,
                     }),
             }),
         };
@@ -185,6 +185,16 @@ public static class Prenotazioni
             motivo = b.Snap.Str("cancel_reason") is var r && r != "" ? Bookings.REASON_LABELS.GetValueOrDefault(r, r) : "",
             dati = data, campi = b.Snap["field_labels"]?.DeepClone(), contatto = contact == null ? null : new { id = contact.Id, vip = contact.Vip, bloccato = contact.OnlineBlocked },
             visita = rows.Count > 1 ? rows.Select(x => new { id = x.Id, servizio = x.Snap.Str("service"), operatore = x.Snap.Str("resource"), inizio = bk.Iso(x.Start), fine = bk.Iso(x.End), stato = x.Status }) : null,
+            modifica = Editing(c, bk, b, rows), codice = b.Id.ToString()[..8], sedeId = b.LocationId,
+            notaCliente = contact != null && c.Can("notes.read") ? new Clients(c.C).Data(contact).Str("staff_notes") : "",
+            rifiutata = Json.Truthy(b.Snap["declined"]), clienteOk = Json.Truthy(b.Snap["client_confirmed"]), turnover = service.Turnover, maxPersone = service.MaxParty,
+            posa = b.GapStart.HasValue ? $"{c.C.Cal.ToLocal(b.GapStart.Value):HH:mm}–{c.C.Cal.ToLocal(b.GapEnd.Value):HH:mm}" : "", sala = c.C.Row<Area>(b.AreaId)?.Name ?? "",
+            sostituto = b.Snap.Str("substitute"), originale = b.Snap.Str("original"), videochiamata = service.RemoteUrl ?? "", unita = Presets.UnitsOf(c.Tenant.BusinessType).One,
+            oggiOk = c.C.Cal.DayOf(b.Start) <= c.C.Today, inCorso = service.Kind is "resource" or "capacity", testDaFare = TestDue(c, b, service, contact),
+            ripetibile = service.Kind is "resource" or "capacity" && b.ContactId.HasValue && Bookings.OPEN.Contains(b.Status), iscritti = service.Kind is "capacity" or "event",
+            prossimeSerie = b.Series.HasValue ? c.C.S.Scalar<long>("SELECT count(*) FROM core_booking WHERE series=@s AND start>@st AND status = ANY(@o)", new { s = b.Series, st = b.Start, o = Bookings.OPEN }) : 0,
+            operatoriSerie = b.Series.HasValue && service.Kind == "resource" ? bk.Linked(service).Select(r => (object)new { id = r.Id, nome = r.Name }).ToArray() : Array.Empty<object>(),
+            marchi = contact == null || !c.Can("contacts.read") ? null : Marks(c, contact),
             serie = b.Series, tavoli = new Tables(c.C, bk).Names(b), annulla = bk.CanUndo(b), passaggi = moves,
             spostabile = Bookings.MOVABLE.Contains(b.Status), passato = b.Start <= c.C.Now,
             whatsapp = c.Can("pii.read") ? ClientMails.WhatsApp(c.C, bk.Data(b).Str("phone"), b) : "",
@@ -193,12 +203,90 @@ public static class Prenotazioni
         };
     }
 
-    [Rpc("prenotazione.stato", Perm = "booking.write")]
+    static object Marks(Call c, Contact ct)
+    {
+        int ns = 0, late = 0;
+        foreach (var (status, start, snap) in c.C.S.Query<(string, DateTime, string)>("SELECT status, start, snapshot::text FROM core_booking WHERE contact_id=@c AND status IN ('no_show','cancelled')", new { c = ct.Id }))
+            if (status == "no_show") ns++; else if (Agenda.Late(status, start, Json.Obj(snap))) late++;
+        return new { vip = ct.Vip, bloccato = ct.OnlineBlocked, assenze = ns, tardive = late, etichette = string.IsNullOrEmpty(ct.TagIndex) ? new List<string>() : Json.Strings(new Clients(c.C).Data(ct)["tags"]?.ToJsonString() ?? "[]") };
+    }
+
+    /// <summary>portal.test_due: the service wants a test done within so many days.</summary>
+    static string TestDue(Call c, Booking b, Service service, Contact contact)
+    {
+        var days = service.TestDays;
+        if (days == 0 || contact == null || !Bookings.OPEN.Contains(b.Status)) return "";
+        var done = new Clients(c.C).Data(contact).Str("test_date");
+        if (done == "") return "nella scheda del cliente non c'è un test";
+        var d = DateOnly.ParseExact(done, "yyyy-MM-dd");
+        return d.AddDays(days) < c.C.Cal.DayOf(b.Start) ? $"l'ultimo test è del {d:dd/MM/yyyy}, più di {days} giorni prima" : "";
+    }
+
+    /// <summary>public.visiting: a booking of a visit moves with the visit: its first service, with whom, the services after it.</summary>
+    static object Editing(Call c, Bookings bk, Booking b, List<Booking> rows)
+    {
+        var mv = rows.Where(x => Bookings.MOVABLE.Contains(x.Status)).ToList();
+        if (mv.Count < 2) return new { service = b.ServiceId.ToString(), option = b.OptionId?.ToString() ?? "", resource = b.ResourceId?.ToString() ?? "", party = b.Party, extra = Array.Empty<object>() };
+        return new
+        {
+            service = mv[0].ServiceId.ToString(), option = mv[0].OptionId?.ToString() ?? "", resource = Json.Truthy(mv[0].Snap["any_resource"]) ? "" : mv[0].ResourceId?.ToString() ?? "", party = b.Party,
+            extra = mv.Skip(1).Select(x => (object)new { id = x.ServiceId.ToString(), name = x.Snap.Str("service") is var n && n != "" ? n : c.C.Row<Service>(x.ServiceId).Name }).ToArray(),
+        };
+    }
+
+    [Rpc("prenotazione.stato", Perm = "booking.cancel")]
     public static object Status(Call c)
     {
         var b = Visible(c, c.NeedId("id")); var bk = new Bookings(c.C);
-        var nb = bk.ChangeStatus(b, c.Str("stato"), c.Str("motivo"), c.Str("nota"), c.Bool("annulla"));
+        var to = c.Str("stato"); var reason = c.Str("motivo");
+        if (to == "reject") { to = "cancelled"; reason = "rejected"; }
+        var nb = bk.ChangeStatus(b, to, reason, c.Str("nota"), c.Bool("annulla"));
+        // "anche le prossime date della serie": the others quietly, the client got the email of this one
+        if (to == "cancelled" && !c.Bool("annulla") && b.Series.HasValue && c.Bool("serie"))
+            foreach (var other in c.C.S.Query<Booking>("SELECT * FROM core_booking WHERE series=@s AND start>@st AND status = ANY(@o)", new { s = b.Series, st = b.Start, o = Bookings.OPEN }).ToList())
+                bk.ChangeStatus(other, "cancelled", reason, quiet: true);
         return new { ok = true, stato = nb.Status };
+    }
+
+    [Rpc("prenotazione.note", Perm = "booking.write")]
+    public static object Notes(Call c)
+    {
+        c.Require("notes.read");
+        var b = Visible(c, c.NeedId("id")); var bk = new Bookings(c.C);
+        var pii = bk.Data(b); var text = c.Str("note"); pii["internal_notes"] = text.Length > 4000 ? text[..4000] : text;
+        b.Pii = c.C.Encrypt(pii, "booking:" + b.Id); b.Updated = c.C.Now; c.C.S.Update(b, "pii", "updated");
+        c.C.Audit("booking.notes", b.Id);
+        return new { ok = true };
+    }
+
+    [Rpc("prenotazione.partecipanti", Perm = "booking.write")]
+    public static object Participants(Call c)
+    {
+        c.Require("pii.read");
+        var b = Visible(c, c.NeedId("id")); var bk = new Bookings(c.C);
+        var names = c.Str("nomi").Split('\n').Select(x => string.Join(" ", x.Split((char[])null, StringSplitOptions.RemoveEmptyEntries))).Where(x => x != "").Select(x => x.Length > 100 ? x[..100] : x).ToList();
+        if (names.Count > Math.Max(b.Party, 1) || names.Any(n => n.Any(ch => ch < 32))) throw new BookingException($"Al massimo {b.Party} nomi, uno per riga.");
+        var pii = bk.Data(b); pii["participants"] = new JsonArray(names.Select(x => (JsonNode)x).ToArray());
+        b.Pii = c.C.Encrypt(pii, "booking:" + b.Id); b.Updated = c.C.Now; c.C.S.Update(b, "pii", "updated");
+        c.C.Audit("booking.participants", b.Id, new { count = names.Count });
+        return new { ok = true };
+    }
+
+    /// <summary>Sposta la serie: this date or this and the next ones, first the plan, then the move.</summary>
+    [Rpc("prenotazione.spostaSerie", Perm = "booking.write")]
+    public static object ShiftSeries(Call c)
+    {
+        var b = Visible(c, c.NeedId("id")); var bk = new Bookings(c.C);
+        var parsed = Times.ParseAware(c.Str("start"), out var naive);
+        var at = parsed == null ? null : naive ? c.C.Cal.Local(DateOnly.FromDateTime(parsed.Value), parsed.Value.TimeOfDay) : parsed;
+        if (at == null || !Bookings.MOVABLE.Contains(b.Status)) throw new BookingException("Scegli il nuovo giorno e l'ora.");
+        var service = c.C.Row<Service>(b.ServiceId);
+        var r = bk.Details(service, null, Json.Truthy(c["resource"]) ? c["resource"] : null).Item2 ?? c.C.Row<Resource>(b.ResourceId);
+        var err = Permissions.CheckNewBooking(c.Member, service.LocationId, r?.Id);
+        if (err != null) throw new UnauthorizedAccessException(err);
+        var following = c.Bool("successive");
+        if (c.Bool("sposta")) return new { fatte = bk.SeriesMove(b, at.Value, r, following) };
+        return new { date = bk.SeriesMovePlan(b, at.Value, r, following).Select(x => new { da = bk.Iso(x.B.Start), a = bk.Iso(x.At), perche = x.Why }) };
     }
 
     [Rpc("prenotazione.sposta", Perm = "booking.write")]
@@ -226,7 +314,13 @@ public static class Prenotazioni
     [Rpc("clienti.cerca", Perm = "contacts.read")]
     public static object Search(Call c)
     {
-        var shown = c.Can("pii.read");
+        if (c.Id("id") is Guid cid)
+        {
+            var ct = c.C.S.One<Contact>("SELECT * FROM core_contact WHERE id=@id AND email_index NOT LIKE 'erased:%'", new { id = cid });
+            if (ct == null || !c.Can("pii.read")) return Array.Empty<object>();
+            var d0 = new Clients(c.C).Data(ct);
+            return new[] { new { id = ct.Id, nome = d0.Str("first_name"), cognome = d0.Str("last_name"), email = d0.Str("email"), telefono = d0.Str("phone"), vip = ct.Vip, bloccato = ct.OnlineBlocked } };
+        }
         return new Clients(c.C).Search(c.Str("q"), Math.Clamp(c.Int("quanti", 10), 1, 50)).Select(f =>
         {
             var d = Permissions.Shown(c.Perms, f.Data);
