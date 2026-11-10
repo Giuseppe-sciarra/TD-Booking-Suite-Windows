@@ -9,7 +9,7 @@ public static class Blocchi
 {
     static readonly string[] REASONS = { "break", "training", "meeting", "other" };
 
-    static List<Resource> Blockable(Call c)
+    internal static List<Resource> Blockable(Call c)
     {
         var rows = c.C.S.Query<Resource>("SELECT r.* FROM core_resource r JOIN core_location l ON l.id=r.location_id WHERE r.active AND l.active ORDER BY r.secondary, r.name").ToList();
         var m = c.Member; if (m == null) return rows;

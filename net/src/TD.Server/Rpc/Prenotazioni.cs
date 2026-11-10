@@ -47,6 +47,39 @@ public static class Prenotazioni
     // ---------- agenda
     [Rpc("agenda.giorno", Perm = "booking.read")]
     public static object Day(Call c) => new Agenda(c.C, V(c)).Day(c.Day("data"), c.Id("sede"), c.Id("operatore"), c.Bool("annullate"));
+    /// <summary>agenda.sheet: the day on paper, for everyone or one operator, room or court: time, client and service as the
+    /// agenda shows them to this role, people, and the phone and the notes only to who may read them.</summary>
+    [Rpc("agenda.foglio", Perm = "booking.read")]
+    public static object Sheet(Call c)
+    {
+        var x = c.C; var t = c.Tenant; var ag = new Agenda(x, V(c)); var bk = new Bookings(x); var tables = new Tables(x, bk); var it = System.Globalization.CultureInfo.GetCultureInfo("it-IT");
+        var day = c.Day("data", x.Today); var start = x.Cal.Local(day, TimeSpan.Zero)!.Value; var end = x.Cal.Local(day.AddDays(1), TimeSpan.Zero)!.Value;
+        var (places, first) = ag.Place(false, c.Id("sede")); var location = c.Id("sede") is Guid ? first : null; if (location != null && location.Id != c.Id("sede")) location = null;
+        var ops = Blocchi.Blockable(c); var chosen = ops.FirstOrDefault(o => o.Id == c.Id("operatore"));
+        var rows = ag.Visible("b.start<@e AND b.\"end\">@s" + (location != null ? " AND b.location_id=@l" : "") + (chosen != null ? " AND b.resource_id=@r" : ""), new { s = start, e = end, l = location?.Id, r = chosen?.Id }, Agenda.SHOWN);
+        var groups = new SortedDictionary<string, List<object>>(StringComparer.Ordinal); var people = false; var none = new Dictionary<Guid, int>();
+        foreach (var r in rows)
+        {
+            var data = Permissions.Shown(c.Perms, bk.Data(r)); var table = tables.Names(r);
+            foreach (var (_, i) in ag.DaysOf(r, none, day, day))
+            {
+                var key = r.Snap.Str("resource") != "" ? r.Snap.Str("resource") : i.Service; if (!groups.TryGetValue(key, out var list)) groups[key] = list = new();
+                people |= i.Party > 1;
+                list.Add(new
+                {
+                    ora = i.Phase != "" ? i.PhaseLabel : $"{i.From}–{i.To}", stato = i.Status, nome = i.Name, confermata = i.ClientOk,
+                    servizio = i.Service, opzione = r.Snap.Str("option"), tavolo = table, persone = i.Party, telefono = data.Str("phone"), allergie = string.Join(", ", i.Alert), note = data.Str("notes"), interna = data.Str("internal_notes"),
+                });
+            }
+        }
+        var title = day.ToString("dddd d MMMM yyyy", it); var now = x.Cal.ToLocal(x.Now);
+        return new
+        {
+            giorno = day.ToString("yyyy-MM-dd"), titolo = char.ToUpper(title[0]) + title[1..], attivita = t.Name, sede = location?.Name ?? "", sedeId = location?.Id, operatore = chosen?.Name ?? "", operatoreId = chosen?.Id, conteggio = rows.Count,
+            stampato = $"{now:dd/MM/yyyy} alle {now:HH:mm}", sedi = places.Select(p => new { id = p.Id, nome = p.Name }), operatori = ops.Select(o => new { id = o.Id, nome = o.Name }), uno = Presets.UnitsOf(t.BusinessType).One,
+            persone = people, vedeTelefono = c.Can("pii.read"), vedeNote = c.Can("notes.read"), gruppi = groups.Select(g => new { nome = g.Key, righe = g.Value }),
+        };
+    }
     [Rpc("agenda.settimana", Perm = "booking.read")]
     public static object Week(Call c) => new Agenda(c.C, V(c)).Week(c.Day("data"), c.Id("sede"), c.Id("operatore"), c.Bool("annullate"));
     [Rpc("agenda.mese", Perm = "booking.read")]

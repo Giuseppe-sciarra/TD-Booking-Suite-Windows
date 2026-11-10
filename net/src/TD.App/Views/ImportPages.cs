@@ -196,3 +196,78 @@ public sealed class ImportBookingsPage : Page
         Content = F.Page(1180, page);
     }
 }
+
+/// <summary>agenda_print.html: Foglio del giorno: the day on paper, for everyone or one operator; Stampa saves it as a PDF.</summary>
+public sealed class DaySheetPage : Page
+{
+    public DateOnly Day; public string Place = "", Op = "";
+    public override async Task Load() => Draw(await Api.Current.Call("agenda.foglio", new { data = Day.ToString("yyyy-MM-dd"), sede = Place, operatore = Op }));
+
+    static string State(string s) => s == "confirmed" ? "" : s == "pending" ? "Da confermare" : StatusName(s);
+    static (string[] Head, double[] Widths) Columns(JsonNode d)
+    {
+        var head = new List<string> { "Ora", "Cliente", "Servizio" }; var widths = new List<double> { 1.1, 1.8, 1.8 };
+        if (d.Bo("persone")) { head.Add("Persone"); widths.Add(0.7); }
+        if (d.Bo("vedeTelefono")) { head.Add("Telefono"); widths.Add(1.3); }
+        if (d.Bo("vedeNote")) { head.Add("Note"); widths.Add(2.4); }
+        return (head.ToArray(), widths.ToArray());
+    }
+    static string Eyebrow(JsonNode d) => $"{d.S("attivita")} · Foglio del giorno" + (d.S("sede") != "" ? " · " + d.S("sede") : "") + (d.S("operatore") != "" ? " · " + d.S("operatore") : "");
+    static string Count(JsonNode d) => (d.I("conteggio") > 0 ? $"{d.I("conteggio")} prenotazion{(d.I("conteggio") == 1 ? "e" : "i")}" : "Nessuna prenotazione") + " · stampato il " + d.S("stampato");
+
+    void Print(JsonNode d)
+    {
+        var doc = Printing.Doc(); var (head, widths) = Columns(d);
+        doc.Blocks.Add(Printing.P(Eyebrow(d), 9, true, Printing.Grey, 2)); doc.Blocks.Add(Printing.P(d.S("titolo"), 18, true, null, 2)); doc.Blocks.Add(Printing.P(Count(d), 10, false, Printing.Grey, 12));
+        foreach (var g in d.A("gruppi"))
+        {
+            var rows = g.A("righe").ToList();
+            doc.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run($"{g.S("nome")}  {rows.Count}")) { FontSize = 13, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 0), BorderBrush = System.Windows.Media.Brushes.Black, BorderThickness = new Thickness(0, 0, 0, 1.5), Padding = new Thickness(0, 0, 0, 3), KeepWithNext = true });
+            doc.Blocks.Add(Printing.Table(widths, head, rows.Select(x =>
+            {
+                var cells = new List<string> { x.S("ora") + (State(x.S("stato")) != "" ? "\n" + State(x.S("stato")) : ""), x.S("nome") + (x.Bo("confermata") ? "\nConfermata dal cliente" : ""), x.S("servizio") + (x.S("opzione") != "" ? "\n" + x.S("opzione") : "") + (x.S("tavolo") != "" ? "\nTavolo " + x.S("tavolo") : "") };
+                if (d.Bo("persone")) cells.Add(x.S("persone"));
+                if (d.Bo("vedeTelefono")) cells.Add(x.S("telefono") != "" ? x.S("telefono") : "—");
+                if (d.Bo("vedeNote")) cells.Add(string.Join("\n", new[] { x.S("allergie"), x.S("note"), x.S("interna") != "" ? "Nota interna: " + x.S("interna") : "" }.Where(v => v != "")));
+                return cells.ToArray();
+            }), d.Bo("persone") ? new[] { 3 } : null));
+        }
+        if (!d.A("gruppi").Any()) doc.Blocks.Add(Printing.P("Nessuna prenotazione in questo giorno"));
+        Printing.SavePdf(doc, $"Foglio del giorno {d.S("giorno")}" + (d.S("operatore") != "" ? " " + d.S("operatore") : ""));
+    }
+
+    void Draw(JsonNode d)
+    {
+        Day = DateOnly.ParseExact(d.S("giorno"), "yyyy-MM-dd"); Place = d.S("sedeId"); Op = d.S("operatoreId");
+        var page = Col(F.Heading(Eyebrow(d), d.S("titolo"), Count(d), B("Torna all'agenda", () => Main.ShowPage(new AgendaPage { StartDay = Day, StartPlace = Place, StartOp = Op })), B("Stampa", () => Print(d), "Primary")));
+        var date = new DatePicker { SelectedDate = Day.ToDateTime(TimeOnly.MinValue), Width = 160 };
+        date.SelectedDateChanged += (_, _) => { if (date.SelectedDate is DateTime v && DateOnly.FromDateTime(v) != Day) { Day = DateOnly.FromDateTime(v); _ = Guard(Load); } };
+        var bar = Row(date); bar.Margin = new Thickness(0, 0, 0, 16);
+        ComboBox Pick(List<(string Id, string Name)> items, string current, string all, Action<string> set)
+        {
+            items.Insert(0, ("", all)); var box = new ComboBox { ItemsSource = items.Select(x => x.Name).ToList(), SelectedIndex = Math.Max(0, items.FindIndex(x => x.Id == current)), MinWidth = 170, Margin = new Thickness(10, 0, 0, 0) };
+            box.SelectionChanged += (_, _) => { set(items[Math.Max(0, box.SelectedIndex)].Id); _ = Guard(Load); }; return box;
+        }
+        var places = d.A("sedi").Select(p => (p.S("id"), p.S("nome"))).ToList(); var ops = d.A("operatori").Select(o => (o.S("id"), o.S("nome"))).ToList();
+        if (places.Count > 1) bar.Children.Add(Pick(places, Place, "Tutte le sedi", v => Place = v));
+        if (ops.Count > 0) { var box = Pick(ops, Op, "Tutti", v => Op = v); box.ToolTip = d.S("uno"); bar.Children.Add(box); }
+        page.Children.Add(bar);
+        var (head, widths) = Columns(d); var any = false;
+        foreach (var g in d.A("gruppi"))
+        {
+            any = true; var rows = g.A("righe").ToList();
+            var table = Agency.Table(head, widths, rows.Select(x =>
+            {
+                FrameworkElement Two(string strong, params string[] small) { var c = Col(T(strong, size: 14, bold: true)); foreach (var s in small.Where(v => v != "")) c.Children.Add(Prog.Muted(s, 12.5)); return c; }
+                var cells = new List<FrameworkElement> { Two(x.S("ora"), State(x.S("stato"))), Two(x.S("nome"), x.Bo("confermata") ? "Confermata dal cliente" : ""), Col(Prog.Text(x.S("servizio")), x.S("opzione") != "" ? Prog.Muted(x.S("opzione"), 12.5) : null, x.S("tavolo") != "" ? Prog.Muted("Tavolo " + x.S("tavolo"), 12.5) : null) };
+                if (d.Bo("persone")) cells.Add(T(x.S("persone"), size: 14));
+                if (d.Bo("vedeTelefono")) cells.Add(T(x.S("telefono") != "" ? x.S("telefono") : "—", size: 14));
+                if (d.Bo("vedeNote")) cells.Add(Col(x.S("allergie") != "" ? F.Allergy(x.S("allergie")) : null, x.S("note") != "" ? Prog.Text(x.S("note")) : null, x.S("interna") != "" ? Prog.Muted("Nota interna: " + x.S("interna"), 12.5) : null));
+                return (cells.ToArray(), (Action)null);
+            }).ToList());
+            page.Children.Add(F.Card(Row(T(g.S("nome"), "H2"), Prog.Muted(rows.Count.ToString(), 14).M(8, 0, 0, 0)), table));
+        }
+        if (!any) page.Children.Add(F.Card(F.Empty("◷", "Nessuna prenotazione in questo giorno", "Scegli un altro giorno qui sopra")));
+        Content = F.Page(1180, page);
+    }
+}

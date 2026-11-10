@@ -19,6 +19,10 @@ public sealed class AgendaPage : Page
     public static readonly CultureInfo It = CultureInfo.GetCultureInfo("it-IT");
     string view = "giorno";
     DateOnly day;
+    /// <summary>The day, location and operator to open on (back from the day sheet).</summary>
+    public DateOnly StartDay { init => day = value; }
+    public string StartPlace { init => location = value ?? ""; }
+    public string StartOp { init => op = value ?? ""; }
     string location = "", op = "";
     bool cancelled;
     JsonNode data;
@@ -162,7 +166,7 @@ public sealed class AgendaPage : Page
             if (view == "giorno" && today) actions.Children.Add(B("Senza appuntamento", () => NewBooking(null, null, true)).M(0, 0, 10, 0));
             if (view == "giorno" && data.A("operators").Any()) actions.Children.Add(B("Blocca orario", () => BlockDialog.Open(this, null, day, op == "" ? null : op)).M(0, 0, 10, 0));
         }
-        if (view == "giorno") actions.Children.Add(B("Stampa", () => Say("La stampa del foglio del giorno arriva con i prossimi passaggi.")).M(0, 0, 10, 0));
+        if (view == "giorno") actions.Children.Add(B("Stampa", () => Main.ShowPage(new DaySheetPage { Day = day, Place = location, Op = op })).M(0, 0, 10, 0));
         if (Can("booking.write") && Can("contacts.read") && Can("pii.read") && view == "giorno") actions.Children.Add(B("Importa", () => Main.ShowPage(new ImportBookingsPage())).M(0, 0, 10, 0));
         if (Can("booking.write")) actions.Children.Add(B("Nuova prenotazione", () => NewBooking(null, null), "Primary"));
         quick.Tag = view == "mese" ? "Cerca nel mese" : view == "settimana" ? "Cerca nella settimana" : "Cerca nel giorno";
