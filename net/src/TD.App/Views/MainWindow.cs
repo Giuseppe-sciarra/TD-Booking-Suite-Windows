@@ -86,6 +86,14 @@ public sealed class MainWindow : Window
         Show(Can("booking.read") ? "agenda" : pages.Keys.First());
     }
 
+    /// <summary>After something of the business changed (logo, colour, type, till): its data read again, the menu rebuilt, the page shown.</summary>
+    public async Task Refresh(string key)
+    {
+        Business = await Api.Current.Call("attivita.io");
+        Palette.Brand(Business.S("colore"), Business.S("coloreScuro"));
+        Build(); Show(key);
+    }
+
     /// <summary>After Tema changes: the bars and the page drawn again with the new colours.</summary>
     void Repaint() { if (Business != null || Me != null) { Build(); if (currentKey != "") Show(currentKey); } }
 
@@ -184,7 +192,7 @@ public sealed class MainWindow : Window
             Section("La tua attività");
             Add("attesa", "hourglass", "Lista d'attesa", () => new WaitlistPage(), Can("booking.read"));
             Add("report", "list", "Report", () => new ReportsPage(), Can("booking.read"));
-            Add("configura", "shop", "Configura l'attività", () => new Placeholder("Configura l'attività"), Can("catalog.write"));
+            Add("configura", "shop", "Configura l'attività", () => new SetupPage(), Can("catalog.write"));
             Add("registratore", "sliders", "Registratore di cassa", () => new RegisterPage(), Can("catalog.write") && t.Bo("cassaTitolare") && t.S("ruolo") == "owner" && !staff);
             Section("Controlli");
             Add("registro", "list", "Registro attività", () => new AuditPage(), Can("audit.read"));

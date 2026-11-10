@@ -213,6 +213,23 @@ public sealed partial class Clients
 
 public sealed partial class Clients
 {
+    /// <summary>parse_categories: the categories of client, one a line: "Socio, 14, 3" (name, days ahead, bookings to come at once).</summary>
+    public static JsonArray ParseCategories(string text)
+    {
+        var cats = new JsonArray();
+        foreach (var raw in (text ?? "").Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None))
+        {
+            if (raw.Trim() == "") continue;
+            var parts = raw.Split(',').Select(x => x.Trim()).ToArray(); var name = parts[0].Length > 40 ? parts[0][..40] : parts[0]; int ahead = 0, most = 0;
+            var ok = (parts.Length < 2 || parts[1] == "" || int.TryParse(parts[1], out ahead)) && (parts.Length < 3 || parts[2] == "" || int.TryParse(parts[2], out most));
+            if (!ok || name == "" || parts.Length > 3 || ahead is < 0 or > 730 || most is < 0 or > 100 || name.Any(ch => ch < 32))
+            { var shown = raw.Trim(); throw new BookingException($"Categoria non valida: «{(shown.Length > 40 ? shown[..40] : shown)}». Scrivi nome, giorni, prenotazioni, per esempio Socio, 14, 3."); }
+            if (!cats.Any(x => Crypto.CaseFold(x.Str("name")) == Crypto.CaseFold(name))) cats.Add(new JsonObject { ["name"] = name, ["ahead"] = ahead, ["max"] = most });
+        }
+        if (cats.Count > 20) throw new BookingException("Al massimo 20 categorie.");
+        return cats;
+    }
+
     public sealed record Found(Contact Contact, JsonObject Data);
 
     /// <summary>search(): a whole email or phone by their index, a name by the starts of its words, most recent first;
