@@ -78,6 +78,8 @@ try {
     for ($i = 0; $i -lt 90 -and -not $file; $i++) { Start-Sleep 2; $file = Get-ChildItem (Join-Path $data "backup\tdbs-*.tdbk") -ErrorAction SilentlyContinue | Select-Object -First 1 }
     if (-not $file) { Show-Logs; throw "Il worker non ha fatto il backup" }
     Write-Host "Backup del worker: $($file.Name), $($file.Length) byte"
+    # a new installation waits for the licence or the trial: until then the clients' pages are closed
+    Invoke-Api "/api/rpc/licenza.azione" @{ azione = "prova" } $token | Out-Null
     # the pages the clients open in the browser come from the same service
     $page = Invoke-WebRequest "$base/privacy/" -UseBasicParsing
     if ($page.StatusCode -ne 200 -or $page.Content -notmatch "Privacy") { throw "La pagina Privacy non risponde" }
