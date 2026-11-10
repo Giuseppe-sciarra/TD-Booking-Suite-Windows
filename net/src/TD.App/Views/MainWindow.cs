@@ -33,7 +33,7 @@ public sealed class MainWindow : Window
     readonly ContentControl content = new();
     readonly DockPanel bar = new() { Width = 228 };
     readonly Border top = new() { Height = 50 };
-    readonly StackPanel notices = new();
+    readonly StackPanel notices = new(), nudges = new();
     readonly Dictionary<string, (Func<Page> Make, string Nav)> pages = new();
     readonly Dictionary<string, RadioButton> entries = new();
     string currentKey = "";
@@ -46,8 +46,8 @@ public sealed class MainWindow : Window
         WindowState = WindowState.Maximized;
         Palette.Load();
         var right = new DockPanel();
-        DockPanel.SetDock(top, Dock.Top); DockPanel.SetDock(notices, Dock.Top);
-        right.Children.Add(top); right.Children.Add(notices); right.Children.Add(content);
+        DockPanel.SetDock(top, Dock.Top); DockPanel.SetDock(notices, Dock.Top); DockPanel.SetDock(nudges, Dock.Top);
+        right.Children.Add(top); right.Children.Add(notices); right.Children.Add(nudges); right.Children.Add(content);
         var root = new DockPanel();
         DockPanel.SetDock(bar, Dock.Left);
         root.Children.Add(bar); root.Children.Add(right);
@@ -176,8 +176,8 @@ public sealed class MainWindow : Window
             Add("tavoli", "grid", "Sale e tavoli", () => new Placeholder("Sale e tavoli"), Can("booking.read") && type == "ristorante");
             Add("alloggi", "home", "Alloggi", () => new Placeholder("Alloggi"), Can("booking.read") && t.Bo("soggiorni"));
             Section("Comunicazioni");
-            Add("richiami", "bell", "Richiami", () => new Placeholder("Richiami"), Can("contacts.read"));
-            Add("whatsapp", "chat", "Promemoria WhatsApp", () => new Placeholder("Promemoria WhatsApp"), Can("booking.read") && Can("pii.read"));
+            Add("richiami", "bell", "Richiami", () => new RecallsPage(), Can("contacts.read"));
+            Add("whatsapp", "chat", "Promemoria WhatsApp", () => new WhatsAppPage(), Can("booking.read") && Can("pii.read"));
             Add("marketing", "megaphone", "Marketing", () => new Placeholder("Marketing"), Can("campaign.manage") && (t.Bo("marketing") || t.Bo("esporta")));
             Add("promemoria", "bell", "Configurazione promemoria", () => new Placeholder("Configurazione promemoria"), Can("users.manage"));
             Add("api", "plug", "API e webhook", () => new Placeholder("API e webhook"), Can("users.manage") && t.Bo("api") && !staff);
@@ -278,7 +278,27 @@ public sealed class MainWindow : Window
     }
     /// <summary>A page reached from another (a booking, Nuova prenotazione, a client's card): the menu stays where it was.</summary>
     public void ShowPage(Page page) { page.Main = this; Put(page); _ = Guard(page.Load); }
-    void Put(Page page) { currentPage = page; content.Content = page; }
+    void Put(Page page) { currentPage = page; content.Content = page; Nudge(page); }
+
+    /// <summary>base.html, block notices: «Promemoria WhatsApp: n clienti da avvisare» and «Grazie WhatsApp», on top of every
+    /// page but Promemoria WhatsApp itself.</summary>
+    async void Nudge(Page page)
+    {
+        nudges.Children.Clear();
+        if (page is WhatsAppPage || Business == null) return;
+        JsonNode d; try { d = await Api.Current.Call("avvisi", new { }); } catch { return; }
+        if (currentPage != page) return;
+        nudges.Children.Clear();
+        void Add(int n, string strong, string span, string button)
+        {
+            if (n == 0) return;
+            var go = F.Small(B(button, () => Show("whatsapp"), "Primary")); DockPanel.SetDock(go, Dock.Right);
+            var row = new DockPanel(); row.Children.Add(go); row.Children.Add(Col(T(strong.Replace("{n}", n.ToString()).Replace("{c}", n == 1 ? "cliente" : "clienti"), size: 15, bold: true), T(span, size: 14, color: Res("Muted"))));
+            var box = F.Notice(row); box.Margin = new Thickness(26, 12, 26, 0); box.Padding = new Thickness(18, 14, 18, 14); nudges.Children.Add(box);
+        }
+        Add(d.I("whatsapp"), "Promemoria WhatsApp: {n} {c} da avvisare", "Un clic per cliente apre WhatsApp con il messaggio pronto: poi premi Invio.", "Avvisa");
+        Add(d.I("grazie"), "Grazie WhatsApp: {n} {c} di ieri da ringraziare", "Un clic per cliente apre WhatsApp con il grazie e il link della recensione: poi premi Invio.", "Ringrazia");
+    }
 
     /// <summary>The green or red line on top of the pages, as Django's messages; it goes with OK or by itself.</summary>
     public void Flash(string text, bool error = false, string doLabel = null, Action doIt = null)

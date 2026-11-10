@@ -252,6 +252,35 @@ public static class ClientMails
         return bk.Queue(payload, b.ContactId);
     }
 
+    public static readonly (string Id, string Label)[] WA_WHEN = { ("", "Spenti"), ("d1", "Il giorno di apertura prima (consigliato): il sabato per il martedì, se domenica e lunedì è chiuso"),
+        ("t0", "La mattina stessa: gli appuntamenti di oggi"), ("h24", "Nelle prossime 24 ore"), ("h3", "Nelle prossime 3 ore"), ("h2", "Nelle prossime 2 ore") };
+    /// <summary>Which of the n days from first the business works: opening hours on that weekday, no closure of the whole
+    /// business. Without any opening hours written, every day.</summary>
+    public static List<DateOnly> OpenDays(Ctx c, DateOnly first, int n = 7)
+    {
+        var days = Enumerable.Range(0, n).Select(first.AddDays).ToList();
+        var hours = c.S.Query<(short, DateTime?, DateTime?)>("SELECT weekday, valid_from, valid_until FROM core_schedule WHERE purpose='service'").ToList();
+        if (hours.Count == 0) return days;
+        var shut = c.S.Query<(DateTime, DateTime?)>(@"SELECT date, until FROM core_exceptionday WHERE purpose='service' AND closed AND location_id IS NULL AND service_id IS NULL AND resource_id IS NULL
+            AND date<=@z AND (until>=@a OR until IS NULL AND date>=@a)", new { a = first.ToDateTime(TimeOnly.MinValue), z = days[^1].ToDateTime(TimeOnly.MinValue) }).ToList();
+        DateOnly D(DateTime x) => DateOnly.FromDateTime(x);
+        return days.Where(d => hours.Any(h => h.Item1 == Calendar.Weekday(d) && !(h.Item2.HasValue && D(h.Item2.Value) > d) && !(h.Item3.HasValue && D(h.Item3.Value) < d))
+            && !shut.Any(x => D(x.Item1) <= d && d <= D(x.Item2 ?? x.Item1))).ToList();
+    }
+    /// <summary>The start and end (UTC) of the appointments to remind now, or null when the business does not want them.</summary>
+    public static (DateTime A, DateTime B)? WaWindow(Ctx c, DateTime now)
+    {
+        var w = c.Tenant.WaWhen ?? "";
+        if (w == "" || !WA_WHEN.Any(x => x.Id == w)) return null;
+        DateTime Mid(DateOnly d) => c.Cal.Local(d, TimeSpan.Zero).Value;
+        if (w[0] == 'h') return (now, now.AddHours(int.Parse(w[1..])));
+        var tomorrow = c.Today.AddDays(1);
+        if (w == "t0") return (now, Mid(tomorrow));
+        // d1: tomorrow and the closed days after it, up to the next day the business works (a week at most)
+        var last = OpenDays(c, tomorrow).DefaultIfEmpty(tomorrow).First();
+        return (Mid(tomorrow), Mid(last.AddDays(1)));
+    }
+
     /// <summary>The wa.me link to this phone, empty without a usable number; with a booking, the business's text filled.</summary>
     public static string WhatsApp(Ctx c, string phone, Booking b = null, string text = null)
     {

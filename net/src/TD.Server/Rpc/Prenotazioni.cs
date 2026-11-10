@@ -8,7 +8,7 @@ namespace TD.Server.Rpc;
 /// <summary>Who I am, my businesses, the agenda, the booking form and the booking's actions (portal.py, public.py, agenda.py).</summary>
 public static class Prenotazioni
 {
-    static Viewer V(Call c) => new(c.Member, c.Perms);
+    internal static Viewer V(Call c) => new(c.Member, c.Perms);
     static List<string> Allowed(Call c) => c.Member != null && Permissions.Ids(c.Member.Resources) is { Count: > 0 } r ? r : null;
 
     [Rpc("sessione.io", Tenant = false)]
@@ -160,7 +160,7 @@ public static class Prenotazioni
         return new { id = b.Id, status = b.Status };
     }
 
-    static Booking Visible(Call c, Guid id)
+    internal static Booking Visible(Call c, Guid id)
     {
         var (vis, args) = Permissions.VisibleBookings(c.Member, c.Perms, "b");
         var p = new Dapper.DynamicParameters(args); p.Add("id", id);

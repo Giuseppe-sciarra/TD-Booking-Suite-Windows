@@ -17,7 +17,7 @@ public sealed class WaitlistPage : Page
     /// <summary>?cliente=: the client already chosen (from his card).</summary>
     public string Client = "";
     JsonObject form = new(); string error = ""; AgendaPage z;
-    static void Web(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+    static void Web(string url) => WaitRows.Web(url);
 
     public override async Task Load()
     {
@@ -46,8 +46,8 @@ public sealed class WaitlistPage : Page
                 + (e.S("dalle") != "" || e.S("alle") != "" ? "," + (e.S("dalle") != "" ? " dalle " + e.S("dalle") : "") + (e.S("alle") != "" ? " alle " + e.S("alle") : "") : "")
                 + (e.S("operatore") != "" ? " · con " + e.S("operatore") : "") + (e.I("persone") > 1 ? $" · {e.I("persone")} persone" : "");
             var what = Col(T(e.S("servizio") + (many ? " · " + e.S("sede") : ""), size: 14, bold: true), T(when, size: 13, color: Res("Muted")), T($"{(e.Bo("online") ? "Dalla pagina online" : "Aggiunto al banco")} il {z.Local(e.S("creato")):dd/MM HH:mm}", size: 13, color: Res("Muted")));
-            var acts = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
-            void Add(Button btn) { btn.Margin = new Thickness(6, 0, 0, 0); acts.Children.Add(F.Small(btn)); }
+            var acts = new List<Button>();
+            void Add(Button btn) => acts.Add(btn);
             if (e.S("telefono") != "" && !e.Bo("mascherato")) Add(B("Chiama", () => Web("tel:" + e.S("telefono"))));
             if (e.S("whatsapp") != "") Add(B("WhatsApp", () => Web(e.S("whatsapp"))));
             if (write)
@@ -56,9 +56,7 @@ public sealed class WaitlistPage : Page
                 Add(BA("Fatta", () => Act(new { azione = "done", entry = id }), "Ghost"));
                 var rm = BA("Togli", async () => { if (Ask($"Togliere {e.S("nome")} dalla lista d'attesa?")) await Act(new { azione = "remove", entry = id }); }, "Ghost"); rm.Foreground = Res("Danger"); Add(rm);
             }
-            var g = new Grid(); g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.3, GridUnitType.Star) }); g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) }); g.ColumnDefinitions.Add(new ColumnDefinition()); g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) }); g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            Grid.SetColumn(what, 2); Grid.SetColumn(acts, 4); g.Children.Add(who); g.Children.Add(what); g.Children.Add(acts);
-            list.Children.Add(new Border { Child = g, Padding = new Thickness(0, 14, 0, 14), BorderBrush = Res("Line"), BorderThickness = new Thickness(0, i == 0 ? 0 : 1, 0, 0) });
+            list.Children.Add(WaitRows.Line(i == 0, who, what, acts));
         }
         if (rows.Count == 0) list.Children.Add(F.EmptyState("Nessuno in lista d'attesa", T("Quando un giorno è pieno, la pagina online propone «Avvisami se si libera». Al banco li aggiungi qui", size: 13, color: Res("Muted"))));
         var left = F.Card(F.Section("In attesa", rows.Count), list);
