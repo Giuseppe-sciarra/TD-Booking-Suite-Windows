@@ -20,11 +20,24 @@ public static class Impostazioni
     public static object Page(Call c)
     {
         Staff(c); var x = c.C; var t = c.Tenant; var wps = WpSync.Panel(x);
-        Fld Check(string name, string label, bool value) => new() { Nome = name, Etichetta = label, Tipo = "check", Valore = value, Largo = true };
-        var fields = new List<Fld>
+        var fields = TenantFields(t, c.S.Edition == "cloud", false);
+        return new
         {
-            new() { Nome = "name", Etichetta = "Nome attività", Valore = t.Name, Max = 120 }, new() { Nome = "slug", Etichetta = "Indirizzo breve", Valore = t.Slug, Max = 60, Disattivo = true },
+            nome = t.Name, campi = fields, pubblica = c.S.Config.Online, siti = Origins(t), portale = c.PublicOrigin.TrimEnd('/'), versione = PluginVersion(),
+            inAttesa = t.ConnectHash != "" && t.ConnectUntil > x.Now, wps,
+        };
+    }
+    /// <summary>forms.TenantForm: the fields of Impostazioni e sito and of Nuovo cliente (there the short address can be written).</summary>
+    internal static List<Fld> TenantFields(Tenant t, bool cloud, bool adding)
+    {
+        Fld Check(string name, string label, bool value) => new() { Nome = name, Etichetta = label, Tipo = "check", Valore = value, Largo = true };
+        return new List<Fld>
+        {
+            new() { Nome = "name", Etichetta = "Nome attività", Valore = t.Name, Max = 120 }, new() { Nome = "slug", Etichetta = "Indirizzo breve", Valore = t.Slug, Max = 60, Disattivo = !adding, Aiuto = adding ? "Compare nel link della pagina prenotazioni e nel plugin WordPress" : "" },
             new() { Nome = "timezone", Etichetta = "Fuso orario", Valore = t.Timezone, Max = 64 },
+            // Private has no plan, trial or subscription state
+            cloud ? new() { Nome = "status", Etichetta = "Stato", Tipo = "select", Valore = t.Status, Scelte = new object[] { new { id = "active", nome = "Attivo" }, new { id = "trial", nome = "Prova" }, new { id = "suspended", nome = "Sospeso" } } } : null,
+            cloud ? new() { Nome = "trial_until", Etichetta = "Fine prova", Tipo = "date", Valore = t.TrialUntil?.ToString("yyyy-MM-dd") ?? "" } : null,
             Check("maintenance", "Manutenzione tecnica: sospendi temporaneamente prenotazioni e portale", t.Maintenance),
             Check("marketing_enabled", "Marketing: l'attività invia campagne email ai clienti iscritti", t.MarketingEnabled),
             Check("export_enabled", "Marketing: l'attività scarica il CSV dei clienti iscritti (Brevo, Mailchimp, fogli)", t.ExportEnabled),
@@ -40,12 +53,7 @@ public static class Impostazioni
             Check("receive_schedule", "Limita anche l'orario di invio delle richieste online", t.ReceiveSchedule), Check("api_enabled", "Permetti all'attività di gestire API e webhook", t.ApiEnabled),
             new() { Nome = "logo_file", Etichetta = "Logo PNG trasparente, JPEG o WebP, massimo 1 MB, anche orizzontale", Tipo = "logo", Valore = "" },
             new() { Nome = "embed_origins_text", Etichetta = "Siti autorizzati a mostrare il widget (una origine HTTPS per riga)", Tipo = "area", Valore = string.Join("\n", Origins(t)) },
-        };
-        return new
-        {
-            nome = t.Name, campi = fields, pubblica = c.S.Config.Online, siti = Origins(t), portale = c.PublicOrigin.TrimEnd('/'), versione = PluginVersion(),
-            inAttesa = t.ConnectHash != "" && t.ConnectUntil > x.Now, wps,
-        };
+        }.Where(f => f != null).ToList();
     }
     static List<string> Origins(Tenant t) => (JsonNode.Parse(string.IsNullOrEmpty(t.EmbedOrigins) ? "[]" : t.EmbedOrigins) as JsonArray ?? new JsonArray()).Select(o => o.ToString()).ToList();
 
@@ -53,7 +61,17 @@ public static class Impostazioni
     public static object Save(Call c)
     {
         Staff(c); var x = c.C; var t = c.Tenant; var p = new Posted(c, c.Obj("valori"));
-        var name = p.Text("name", true, 120); var zone = p.Text("timezone", true, 64);
+        var store = ReadTenant(p, c.S.Edition == "cloud");
+        if (p.Errors.Count > 0) throw new FormErrors(p.Errors);
+        store(x.S, t.Id);
+        x.Audit("tenant.settings", t.Id);
+        return new { testo = "Impostazioni aggiornate." };
+    }
+
+    /// <summary>TenantForm's checks; what it returns writes the values on the business's row.</summary>
+    internal static Action<Scope, Guid> ReadTenant(Posted p, bool cloud)
+    {
+        var name = p.Text("name", true, 120); var status = cloud ? p.Text("status", true) : null; var trial = cloud ? p.Date("trial_until") : null; var zone = p.Text("timezone", true, 64);
         if (zone != "" && !TimeZoneInfo.TryFindSystemTimeZoneById(zone, out _)) p.Error("timezone", "Fuso orario non valido.");
         int? daily = p.Int("smtp_daily_limit", true), hourly = p.Int("smtp_hourly_limit", true);
         foreach (var (k, v) in new[] { ("smtp_daily_limit", daily), ("smtp_hourly_limit", hourly) }) if (v is < 1 or > 10000) p.Error(k, "Limite tra 1 e 10.000.");
@@ -67,18 +85,21 @@ public static class Impostazioni
         var origins = p.Raw("embed_origins_text").Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
         if (origins.Length > 10) p.Error("embed_origins_text", "Massimo 10 siti.");
         else if (origins.Any(v => WpSync.ValidOrigin(v) == "" || v.TrimEnd().EndsWith('/'))) p.Error("embed_origins_text", "Usa solo origini HTTPS, senza percorsi o caratteri jolly.");
-        if (p.Errors.Count > 0) throw new FormErrors(p.Errors);
-        x.S.Execute("SELECT 1 FROM core_tenant WHERE id=@t FOR UPDATE", new { t = t.Id });
-        x.S.Execute(@"UPDATE core_tenant SET name=@name, timezone=@zone, maintenance=@m, marketing_enabled=@mk, export_enabled=@ex, client_mails_enabled=@cm, alloggiati_self=@al, till_self=@ti, smtp_daily_limit=@daily, smtp_hourly_limit=@hourly,
+        if (cloud && status != "" && status is not ("active" or "trial" or "suspended")) p.Error("status", "Scegli un'opzione valida.");
+        if (cloud && status == "trial" && trial == null && !p.Errors.ContainsKey("trial_until")) p.Error("trial_until", "Indica la fine della prova.");
+        return (s, id) =>
+        {
+        s.Execute("SELECT 1 FROM core_tenant WHERE id=@t FOR UPDATE", new { t = id });
+        s.Execute(@"UPDATE core_tenant SET name=@name, timezone=@zone, maintenance=@m, marketing_enabled=@mk, export_enabled=@ex, client_mails_enabled=@cm, alloggiati_self=@al, till_self=@ti, smtp_daily_limit=@daily, smtp_hourly_limit=@hourly,
             brand_color=@color, tagline=@tagline, website=@site, privacy_text=@privacy, privacy_text_en=@privacyEn, consent_text=@consent, consent_text_en=@consentEn, retention_days=@keep, receive_schedule=@rs, api_enabled=@api, embed_origins=@eo::jsonb WHERE id=@t",
             new
             {
                 name, zone, m = p.Bool("maintenance"), mk = p.Bool("marketing_enabled"), ex = p.Bool("export_enabled"), cm = p.Bool("client_mails_enabled"), al = p.Bool("alloggiati_self"), ti = p.Bool("till_self"), daily, hourly, color, tagline, site,
-                privacy, privacyEn, consent, consentEn, keep, rs = p.Bool("receive_schedule"), api = p.Bool("api_enabled"), eo = new JsonArray(origins.Select(v => (JsonNode)WpSync.ValidOrigin(v)).ToArray()).ToJsonString(), t = t.Id,
+                privacy, privacyEn, consent, consentEn, keep, rs = p.Bool("receive_schedule"), api = p.Bool("api_enabled"), eo = new JsonArray(origins.Select(v => (JsonNode)WpSync.ValidOrigin(v)).ToArray()).ToJsonString(), t = id,
             });
-        if (logo != null) x.S.Execute("UPDATE core_tenant SET logo=@l, logo_ratio=@r WHERE id=@t", new { l = logo, r = ratio, t = t.Id });
-        x.Audit("tenant.settings", t.Id);
-        return new { testo = "Impostazioni aggiornate." };
+            if (cloud) s.Execute("UPDATE core_tenant SET status=@status, trial_until=@trial WHERE id=@t", new { status, trial = trial?.ToDateTime(TimeOnly.MinValue), t = id });
+        if (logo != null) s.Execute("UPDATE core_tenant SET logo=@l, logo_ratio=@r WHERE id=@t", new { l = logo, r = ratio, t = id });
+        };
     }
 
     /// <summary>merged(): what Sincronizza con il sito did, in words.</summary>

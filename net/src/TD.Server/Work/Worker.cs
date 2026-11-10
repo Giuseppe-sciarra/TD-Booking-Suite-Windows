@@ -47,6 +47,20 @@ public static class Faces
     {
         return OperatingSystem.IsWindows() ? Resize(data) : "";  // GDI+ is the program's own platform; elsewhere (the tests) no photo
     }
+    /// <summary>site.clean_icon: the favicon stored as a 64 px PNG.</summary>
+    public static byte[] Icon(byte[] png) => OperatingSystem.IsWindows() ? Shrink(png) : png;
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    static byte[] Shrink(byte[] data)
+    {
+        try
+        {
+            using var src = System.Drawing.Image.FromStream(new MemoryStream(data));
+            var k = Math.Min(1, 64.0 / Math.Max(src.Width, src.Height));
+            using var small = new System.Drawing.Bitmap(src, Math.Max(1, (int)(src.Width * k)), Math.Max(1, (int)(src.Height * k)));
+            using var ms = new MemoryStream(); small.Save(ms, System.Drawing.Imaging.ImageFormat.Png); return ms.ToArray();
+        }
+        catch (Exception ex) when (ex is ArgumentException or System.Runtime.InteropServices.ExternalException or OutOfMemoryException) { return data; }
+    }
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     static string Resize(byte[] data)
     {

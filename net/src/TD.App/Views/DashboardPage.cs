@@ -312,7 +312,7 @@ public sealed class DashboardPage : Page
         return Col(top, track, small == null ? null : T(small, size: 12, color: Res("Muted")).M(0, 4, 0, 0)).M(0, 0, 0, 14);
     }
     /// <summary>agency.bars + _bars.html: the same numbers of the SVG (slot, 60 % bar, 22 under the base, 18 above).</summary>
-    static FrameworkElement Bars(int[] values, double width, Func<int, string> label, Func<int, bool> show, Func<int, string> tip, Action<int> click)
+    internal static FrameworkElement Bars(int[] values, double width, Func<int, string> label, Func<int, bool> show, Func<int, string> tip, Action<int> click)
     {
         const double height = 170; double top = Math.Max(values.DefaultIfEmpty(0).Max(), 1), slot = width / values.Length, bar = slot * .6, bas = height - 22;
         var c = new Canvas { Width = width, Height = height };

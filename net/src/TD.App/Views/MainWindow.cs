@@ -77,13 +77,13 @@ public sealed class MainWindow : Window
         await Open(slug);
     }
 
-    public async Task Open(string slug)
+    public async Task Open(string slug, string key = null)
     {
         Api.Current.Business = slug;
         Business = await Api.Current.Call("attivita.io");
         Palette.Brand(Business.S("colore"), Business.S("coloreScuro"));
         Build();
-        Show(Can("booking.read") ? "agenda" : pages.Keys.First());
+        Show(key != null && pages.ContainsKey(key) ? key : Can("booking.read") ? "agenda" : pages.Keys.First());
     }
 
     /// <summary>After something of the business changed (logo, colour, type, till): its data read again, the menu rebuilt, the page shown.</summary>
@@ -212,9 +212,9 @@ public sealed class MainWindow : Window
         if (staff)
         {
             Section("Configurazione del programma");
-            Add("programma", "grid", "Dashboard", () => new Placeholder("Configurazione del programma"));
-            Add("attivita", "briefcase", "Clienti", () => new Placeholder("Attività"));
-            Add("generali", "sliders", "Impostazioni generali", () => new Placeholder("Impostazioni generali"));
+            Add("programma", "grid", "Dashboard", () => new ProgramDashboardPage());
+            Add("attivita", "briefcase", "Clienti", () => new ProgramClientsPage());
+            Add("generali", "sliders", "Impostazioni generali", () => new GeneralPage());
             Add("licenza", "key", "Licenza", () => new LicencePage());
             Add("postazioni", "monitor", "Postazioni", () => new WorkstationsPage(), !Me.Bo("standalone"));
             Add("backup", "archive", "Backup", () => new BackupPage());

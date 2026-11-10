@@ -51,6 +51,20 @@ public sealed class Server
     public Web.Rete Rete { get; private set; }
     /// <summary>The address of the links in the emails: the public one from Rete e certificato, otherwise the office one.</summary>
     public string PublicOrigin => Rete.PublicOrigin;
+    (DateTime At, string Value) edition;
+    /// <summary>licensing.apply: "cloud" with a Portale licence, or with more businesses than one (an expired Portale licence keeps them visible), otherwise "private".</summary>
+    public string Edition
+    {
+        get
+        {
+            if (edition.Value != null && DateTime.UtcNow - edition.At < TimeSpan.FromSeconds(60)) return edition.Value;
+            using var g = Db.Global(); var portal = Licensing.Apply().Attivita > 1 || g.Scalar<long>("SELECT count(*) FROM core_tenant") > 1;
+            edition = (DateTime.UtcNow, portal ? "cloud" : "private"); return edition.Value;
+        }
+    }
+    public void EditionChanged() => edition = default;
+    /// <summary>platform.tenant_limit.</summary>
+    public int TenantLimit => Edition == "private" ? 1 : Licensing.Apply().Attivita;
     public bool Standalone => Config.Standalone;
     public bool Online => Config.Online;
 

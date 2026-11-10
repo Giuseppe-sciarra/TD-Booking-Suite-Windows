@@ -36,7 +36,7 @@ public sealed class Call : IDisposable
     public JsonObject Args { get; init; } = new();
     public bool ServerPc => Http.Items["server_pc"] is true;
     Ctx ctx;
-    public Ctx C => ctx ??= new Ctx(S.Db, S.Crypto, Tenant.Id) { Actor = User.Id, PublicOrigin = PublicOrigin, Out = Outbox.Instance };
+    public Ctx C => ctx ??= new Ctx(S.Db, S.Crypto, Tenant.Id) { Actor = User.Id, PublicOrigin = PublicOrigin, Out = Outbox.Instance, Edition = S.Edition };
     public bool HasCtx => ctx != null;
     public string PublicOrigin => S.PublicOrigin;
 
