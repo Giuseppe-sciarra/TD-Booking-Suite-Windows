@@ -12,8 +12,8 @@ namespace TD.Server.Rpc;
 public static class Cassa
 {
     static readonly Dictionary<string, string> KINDS = new() { ["resource"] = "Appuntamento / risorsa", ["capacity"] = "Capienza", ["event"] = "Evento / tour", ["shift"] = "Ristorante / pizzeria a turni", ["day"] = "Soggiorno / noleggio" };
-    static readonly Dictionary<string, string> STATUS = new() { ["queued"] = "In coda", ["sending"] = "In corso", ["done"] = "Emesso", ["failed"] = "Non emesso", ["unknown"] = "Da verificare", ["void"] = "Annullato" };
-    static readonly Dictionary<string, string> SALE_KIND = new() { ["sale"] = "Scontrino", ["void"] = "Annullo", ["probe"] = "Prova collegamento", ["test"] = "Stampa di prova", ["close"] = "Chiusura giornaliera" };
+    internal static readonly Dictionary<string, string> STATUS = new() { ["queued"] = "In coda", ["sending"] = "In corso", ["done"] = "Emesso", ["failed"] = "Non emesso", ["unknown"] = "Da verificare", ["void"] = "Annullato" };
+    internal static readonly Dictionary<string, string> SALE_KIND = new() { ["sale"] = "Scontrino", ["void"] = "Annullo", ["probe"] = "Prova collegamento", ["test"] = "Stampa di prova", ["close"] = "Chiusura giornaliera" };
 
     static (Till Till, List<Location> Where, Location Loc) Place(Call c)
     {

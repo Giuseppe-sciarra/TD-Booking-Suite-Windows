@@ -185,7 +185,7 @@ public sealed class MainWindow : Window
             Add("attesa", "hourglass", "Lista d'attesa", () => new WaitlistPage(), Can("booking.read"));
             Add("report", "list", "Report", () => new ReportsPage(), Can("booking.read"));
             Add("configura", "shop", "Configura l'attività", () => new Placeholder("Configura l'attività"), Can("catalog.write"));
-            Add("registratore", "sliders", "Registratore di cassa", () => new Placeholder("Registratore di cassa"), Can("catalog.write") && t.Bo("cassaTitolare") && t.S("ruolo") == "owner" && !staff);
+            Add("registratore", "sliders", "Registratore di cassa", () => new RegisterPage(), Can("catalog.write") && t.Bo("cassaTitolare") && t.S("ruolo") == "owner" && !staff);
             Section("Controlli");
             Add("registro", "list", "Registro attività", () => new Placeholder("Registro attività"), Can("audit.read"));
             Add("accesso", "key", "Accesso dell'amministratore", () => new Placeholder("Accesso dell'amministratore"), Can("users.manage"));
@@ -198,7 +198,7 @@ public sealed class MainWindow : Window
                 Add("promemoria", "bell", "Configurazione promemoria", () => new Placeholder("Configurazione promemoria"), !Can("users.manage"));
                 Add("testi", "bell", "SMS, WhatsApp e calendari", () => new Placeholder("SMS, WhatsApp e calendari"));
                 Add("api", "plug", "API e webhook", () => new Placeholder("API e webhook"));
-                Add("registratore", "sliders", "Registratore di cassa", () => new Placeholder("Registratore di cassa"));
+                Add("registratore", "sliders", "Registratore di cassa", () => new RegisterPage());
             }
         }
         if (staff)

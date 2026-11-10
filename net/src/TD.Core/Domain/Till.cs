@@ -492,6 +492,51 @@ public static class TillLink
 
     public static Till.Sent Deliver(Till.Job job) => job.Port != null ? SerialSend(job) : HttpSend(job.Url, job.Body);
 
+    // ---------- where the register is
+    const string EPSON_STATUS = "<?xml version=\"1.0\" encoding=\"utf-8\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body><printerCommand><queryPrinterStatus operator=\"1\" statusType=\"1\" /></printerCommand></s:Body></s:Envelope>";
+    /// <summary>The hosts of the /24 of each private IPv4 address of this PC. shortcut: a /24 each, the shop networks seen
+    /// so far; ask for the address by hand on a bigger one</summary>
+    public static List<string> Hosts()
+    {
+        var mine = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces().Where(n => n.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up)
+            .SelectMany(n => n.GetIPProperties().UnicastAddresses).Select(a => a.Address).Where(a => a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork && Till.Private(a) && !IPAddress.IsLoopback(a));
+        return mine.Select(a => { var b = a.GetAddressBytes(); return $"{b[0]}.{b[1]}.{b[2]}."; }).Distinct().OrderBy(x => x, StringComparer.Ordinal).SelectMany(n => Enumerable.Range(1, 254).Select(i => n + i)).ToList();
+    }
+    /// <summary>What answers at host:port: "rch" (its web service answers an empty request with its status, nothing printed
+    /// or cleared), "epson" (the status of fpmate) or null.</summary>
+    public static async Task<string> Identify(string host, int port = 80, double wait = 0.4)
+    {
+        try
+        {
+            using var tcp = new System.Net.Sockets.TcpClient(); using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(wait));
+            await tcp.ConnectAsync(host, port, stop.Token);
+        }
+        catch (Exception) { return null; }
+        async Task<string> Post(string path, string body)
+        {
+            try
+            {
+                using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                using var r = await Http.PostAsync($"http://{host}:{port}{path}", new StringContent(body, Encoding.UTF8, "text/xml"), stop.Token);
+                return await r.Content.ReadAsStringAsync(stop.Token);
+            }
+            catch (Exception) { return ""; }
+        }
+        var answer = await Post("/service.cgi", "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Service></Service>");
+        if (answer.Contains("<Service") && answer.Contains("<errorCode")) return "rch";
+        return (await Post("/cgi-bin/fpmate.cgi?devid=local_printer&timeout=3000", EPSON_STATUS)).Contains("success=\"") ? "epson" : null;
+    }
+    /// <summary>The registers answering on the shop's network, and the COM ports of this PC.</summary>
+    public static (List<(string Device, string Address)> Found, List<string> Ports) Discover(List<string> hosts = null, int port = 80)
+    {
+        hosts ??= Hosts();
+        using var gate = new SemaphoreSlim(64);
+        var kinds = Task.WhenAll(hosts.Select(async h => { await gate.WaitAsync(); try { return await Identify(h, port); } finally { gate.Release(); } })).GetAwaiter().GetResult();
+        var found = hosts.Zip(kinds).Where(x => x.Second != null).Select(x => (x.Second, port == 80 ? x.First : $"{x.First}:{port}")).ToList();
+        return (found, Ports());
+    }
+    public static List<string> Ports() { try { return System.IO.Ports.SerialPort.GetPortNames().OrderBy(x => x, StringComparer.Ordinal).ToList(); } catch (Exception) { return new(); } }
+
     static bool Lan(string url) => Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Scheme == "http" && IPAddress.TryParse(u.Host, out var ip) && Till.Private(ip);
 
     /// <summary>http_send(): unreachable when nothing reached the register; unknown when it got the request and did not
