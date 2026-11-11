@@ -497,7 +497,17 @@ public sealed class CassaPage : Page
     void DrawLow()
     {
         var puoChiudere = d.Bo("puoChiudere"); var canVoid = d.Bo("puoAnnullare"); var counted = d.Bo("contata");
-        if (d.S("mancaChiusura") != "")
+        if (d["chiusuraDaVerificare"] is JsonObject u)
+        {
+            // the closure the register did not answer in time: asked, not demanded again
+            var txt = new TextBlock { FontSize = 13.5, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
+            txt.Inlines.Add(new Run($"La chiusura giornaliera inviata {Local(u.S("inviata")).ToString("dddd d MMMM", It)} è uscita dalla cassa?") { FontWeight = FontWeights.Bold }); txt.Inlines.Add(" La cassa non ha risposto in tempo: guarda se ha stampato la chiusura.");
+            var acts = Row(F.Small(BA("È uscita", () => Do(new JsonObject { ["azione"] = "printed", ["sale"] = u.S("id") }), "Primary")),
+                F.Small(BA("Non è uscita, rifalla", async () => { if (Ask("La cassa non ha stampato la chiusura? La rimandiamo adesso.")) await Do(new JsonObject { ["azione"] = "retry", ["sale"] = u.S("id") }); }, "Ghost")).M(8, 0, 0, 0));
+            var bar = new DockPanel(); DockPanel.SetDock(acts, Dock.Right); bar.Children.Add(acts); bar.Children.Add(txt);
+            top.Content = F.Notice(bar, "warning");
+        }
+        else if (d.S("mancaChiusura") != "")
         {
             var txt = new TextBlock { FontSize = 13.5, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
             txt.Inlines.Add(new Run($"Manca la chiusura giornaliera del {DateOnly.Parse(d.S("mancaChiusura")).ToString("dddd d MMMM", It)}.") { FontWeight = FontWeights.Bold }); txt.Inlines.Add(" Falla adesso, prima del prossimo scontrino: la cassa la vuole prima di emetterne altri.");

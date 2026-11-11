@@ -26,6 +26,8 @@ public sealed partial class Till(Ctx c)
     { ["rch"] = new() { ["cash"] = 1, ["card"] = 4, ["other"] = 2, ["due"] = 2 }, ["epson"] = new() { ["cash"] = 0, ["card"] = 2, ["other"] = 5, ["due"] = 5 } };
     public const string COPY_TEXT = "Il cliente vuole la copia dello scontrino per email.";
     public static readonly TimeSpan STALE = TimeSpan.FromSeconds(120);
+    /// <summary>The register answers a closure when it has printed it and sent the day: slower than a receipt, under STALE.</summary>
+    public const int CLOSE_WAIT = 90;
     static readonly Regex CF = new("^([A-Z0-9]{16}|[0-9]{11})$"), LOTTERY = new("^[A-Z0-9]{8}$");
     public static readonly Regex PORT = new("^(COM[0-9]{1,3}|/dev/tty[A-Za-z0-9]{1,20})$");
     public static readonly int[] BAUDS = { 9600, 19200, 38400, 57600, 115200 };
@@ -164,7 +166,7 @@ public sealed partial class Till(Ctx c)
         return "<?xml version=\"1.0\" encoding=\"utf-8\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body>" + body + "</s:Body></s:Envelope>";
     }
 
-    public sealed record Job(Guid Id, string Attempt, string Url = null, string Body = null, string Port = null, int Baud = 0, string Framing = null, List<string> Commands = null);
+    public sealed record Job(Guid Id, string Attempt, string Url = null, string Body = null, string Port = null, int Baud = 0, string Framing = null, List<string> Commands = null, int Wait = 0);
     public JsonObject Data(Sale s) => c.Decrypt(s.Pii, "sale:" + s.Id);
     public static string Attempt(Sale s) => Times.PyIso(s.Claimed.Value);
     /// <summary>The «Documento n.» as printed at the foot of the receipt: closure-number, four digits each (2039-0013).</summary>
@@ -173,11 +175,11 @@ public sealed partial class Till(Ctx c)
     /// <summary>job(): what the register gets: a POST on the network, or the commands through the COM port.</summary>
     public Job JobOf(Sale sale, Location location)
     {
-        var conf = Conf(location);
-        if (conf.Str("device") == "epson") return new Job(sale.Id, Attempt(sale), Url(conf), Epson(sale, Data(sale), conf));
+        var conf = Conf(location); var wait = sale.Kind == "close" ? CLOSE_WAIT : 0;
+        if (conf.Str("device") == "epson") return new Job(sale.Id, Attempt(sale), Url(conf), Epson(sale, Data(sale), conf), Wait: wait);
         var cmds = Rch(sale, Data(sale), conf);
-        if (conf.Str("connection") == "usb") return new Job(sale.Id, Attempt(sale), Port: conf.Str("port"), Baud: Int(conf["baud"], 9600), Framing: conf.Str("framing"), Commands: cmds);
-        return new Job(sale.Id, Attempt(sale), Url(conf), "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Service>" + string.Concat(cmds.Select(x => $"<cmd>{Esc(x)}</cmd>")) + "</Service>");
+        if (conf.Str("connection") == "usb") return new Job(sale.Id, Attempt(sale), Port: conf.Str("port"), Baud: Int(conf["baud"], 9600), Framing: conf.Str("framing"), Commands: cmds, Wait: wait);
+        return new Job(sale.Id, Attempt(sale), Url(conf), "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Service>" + string.Concat(cmds.Select(x => $"<cmd>{Esc(x)}</cmd>")) + "</Service>", Wait: wait);
     }
 
     /// <summary>read(): what the register answered: done (with number and z when it says them), busy, failed, or unknown when
@@ -261,7 +263,11 @@ public sealed partial class Till(Ctx c)
                 if (was == "unknown" && sale.Claimed.HasValue) sale.Printed = sale.Claimed;
                 (sale.Z, sale.Number) = Counted(sale);
             }
-            if (sale.Kind == "close") Closed(location.Id);
+            if (sale.Kind == "close")
+            {
+                if (was == "unknown" && sale.Claimed.HasValue) sale.Printed = sale.Claimed;  // found printed later: it closed the day it was sent
+                Closed(location.Id);
+            }
         }
         c.S.Update(sale, "status", "error", "number", "z", "serial", "printed");
         var actor = c.Actor; c.Actor = null; c.Audit("sale." + state, sale.Id, new { kind = sale.Kind, number = sale.Number }); c.Actor = actor;
@@ -471,14 +477,19 @@ public sealed partial class Till(Ctx c)
         return new Bookings(c).Queue(new JsonObject { ["to"] = d.Str("email"), ["subject"] = $"Copia del documento commerciale · {c.Tenant.Name}", ["body"] = body, ["html"] = Texts.EmailHtml(c.Tenant, body, new()) }, sale.ContactId);
     }
 
-    /// <summary>missing_close(): the last day with receipts emitted here and no daily closure after them, before today.</summary>
-    public DateOnly? MissingClose(Location loc)
+    /// <summary>unclosed(): when the last receipt was emitted here with no daily closure after it, before today.</summary>
+    DateTime? Unclosed(Location loc)
     {
         var today = c.Cal.Local(c.Today, TimeSpan.Zero)!.Value;
         var last = c.S.One<DateTime?>("SELECT printed FROM core_sale WHERE location_id=@l AND kind='close' AND status='done' AND printed IS NOT NULL ORDER BY printed DESC LIMIT 1", new { l = loc.Id });
-        var s = c.S.One<DateTime?>("SELECT printed FROM core_sale WHERE location_id=@l AND kind='sale' AND status IN ('done','void') AND printed<@t" + (last.HasValue ? " AND printed>@p" : "") + " ORDER BY printed DESC LIMIT 1", new { l = loc.Id, t = today, p = last });
-        return s.HasValue ? c.Cal.DayOf(s.Value) : null;
+        return c.S.One<DateTime?>("SELECT printed FROM core_sale WHERE location_id=@l AND kind='sale' AND status IN ('done','void') AND printed<@t" + (last.HasValue ? " AND printed>@p" : "") + " ORDER BY printed DESC LIMIT 1", new { l = loc.Id, t = today, p = last });
     }
+    /// <summary>missing_close(): the last day with receipts emitted here and no daily closure after them, before today.</summary>
+    public DateOnly? MissingClose(Location loc) => Unclosed(loc) is DateTime s ? c.Cal.DayOf(s) : null;
+    /// <summary>unsure_close(): the closure sent after those receipts and still «Da verificare» (the register did not answer
+    /// in time): the reminder asks whether it came out, instead of asking for another one every day.</summary>
+    public Sale UnsureClose(Location loc) => Unclosed(loc) is DateTime s
+        ? c.S.One<Sale>("SELECT * FROM core_sale WHERE location_id=@l AND kind='close' AND status='unknown' AND created>@s ORDER BY created DESC LIMIT 1", new { l = loc.Id, s }) : null;
     /// <summary>places(): the locations with a register.</summary>
     public List<Location> Places() => c.S.Query<Location>("SELECT * FROM core_location WHERE active ORDER BY name").Where(l => Conf(l).Str("device") != "").ToList();
 }
@@ -488,9 +499,9 @@ public static class TillLink
 {
     const int TIMEOUT = 20;
     // the register is on the shop's network: never through a proxy
-    static readonly HttpClient Http = new(new HttpClientHandler { UseProxy = false }) { Timeout = TimeSpan.FromSeconds(TIMEOUT) };
+    static readonly HttpClient Http = new(new HttpClientHandler { UseProxy = false }) { Timeout = Timeout.InfiniteTimeSpan };  // each send has its own wait
 
-    public static Till.Sent Deliver(Till.Job job) => job.Port != null ? SerialSend(job) : HttpSend(job.Url, job.Body);
+    public static Till.Sent Deliver(Till.Job job) => job.Port != null ? SerialSend(job) : HttpSend(job.Url, job.Body, job.Wait);
 
     // ---------- where the register is
     const string EPSON_STATUS = "<?xml version=\"1.0\" encoding=\"utf-8\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body><printerCommand><queryPrinterStatus operator=\"1\" statusType=\"1\" /></printerCommand></s:Body></s:Envelope>";
@@ -541,19 +552,20 @@ public static class TillLink
 
     /// <summary>http_send(): unreachable when nothing reached the register; unknown when it got the request and did not
     /// answer: it may have printed.</summary>
-    public static Till.Sent HttpSend(string url, string body)
+    public static Till.Sent HttpSend(string url, string body, int wait = 0)
     {
         if (!Lan(url)) return new Till.Sent(Error: "refused", Detail: "Indirizzo della cassa fuori dalla rete del negozio.");
         try
         {
             using var content = new StringContent(body, Encoding.UTF8); content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("text/xml; charset=utf-8");
-            using var res = Http.Send(new HttpRequestMessage(HttpMethod.Post, url) { Content = content });
+            using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(wait > 0 ? wait : TIMEOUT));
+            using var res = Http.Send(new HttpRequestMessage(HttpMethod.Post, url) { Content = content }, stop.Token);
             using var reader = new StreamReader(res.Content.ReadAsStream(), Encoding.UTF8);
             var buf = new char[1 << 20]; var n = reader.ReadBlock(buf, 0, buf.Length);
             return new Till.Sent(Status: (int)res.StatusCode, Body: new string(buf, 0, n));
         }
         catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException) { return new Till.Sent(Error: "unreachable"); }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException) { return new Till.Sent(Error: "unknown"); }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or IOException) { return new Till.Sent(Error: "unknown"); }
     }
 
     /// <summary>frame(): STX, address "01", length on 3 digits, "N", the command, checksum (sum of the bytes from the address
@@ -574,7 +586,7 @@ public static class TillLink
         System.IO.Ports.SerialPort port;
         try
         {
-            port = new System.IO.Ports.SerialPort(job.Port, job.Baud == 0 ? 9600 : job.Baud) { ReadTimeout = 3000, WriteTimeout = 3000, Handshake = framing == "cr" ? System.IO.Ports.Handshake.XOnXOff : System.IO.Ports.Handshake.None };
+            port = new System.IO.Ports.SerialPort(job.Port, job.Baud == 0 ? 9600 : job.Baud) { ReadTimeout = job.Wait > 0 ? job.Wait * 1000 : 3000, WriteTimeout = 3000, Handshake = framing == "cr" ? System.IO.Ports.Handshake.XOnXOff : System.IO.Ports.Handshake.None };
             port.Open();
         }
         catch (Exception) { return new Till.Sent(Error: "unreachable"); }
