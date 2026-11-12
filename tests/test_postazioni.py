@@ -240,3 +240,12 @@ def test_the_shop_owns_its_client_emails():
     """2.20.11: no agency in the Windows program: the switches of the emails to the clients are the shop's."""
     from django.conf import settings
     assert settings.SHOP_MAILS is True
+
+def test_service_logs_say_when():
+    import io,re
+    from tdwin.settings import Stamped
+    out=io.StringIO();log=Stamped(out)
+    log.write("Traceback (most recent call last):\n  File x\n");log.write("Pagina ");log.write("lenta\n")
+    rows=out.getvalue().splitlines()
+    assert len(rows)==3 and all(re.match(r"\d\d/\d\d/\d{4} \d\d:\d\d:\d\d ",r) for r in rows) and rows[2].endswith(" Pagina lenta")
+    assert log.flush() is None  # the rest is the stream's own

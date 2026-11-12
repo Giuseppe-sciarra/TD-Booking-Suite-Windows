@@ -2,8 +2,21 @@
 
 config.json is written by windows/setup-server.ps1 and readable only by the program's services and administrators:
 {"origine": "https://ufficio-pc:8443", "indirizzi": [...], "porta": 8443, "install_id": "...", "pg_bin": "...", "env": {...}}"""
-import json,os
+import json,os,sys,time
 from pathlib import Path
+class Stamped:
+    """2.22.12: the services' logs (WinSW keeps what Python writes as it comes) said what, never when: every line now
+    starts with date and time, the tracebacks too."""
+    def __init__(self,out):self.out=out;self.start=True
+    def write(self,text):
+        for part in text.splitlines(True):
+            if self.start:self.out.write(time.strftime("%d/%m/%Y %H:%M:%S "))
+            self.out.write(part);self.start=part.endswith("\n")
+        return len(text)
+    def __getattr__(self,name):return getattr(self.out,name)
+if not os.environ.get("TDBS_TESTING"):
+    for _name in ("stdout","stderr"):
+        if getattr(sys,_name) is not None and not isinstance(getattr(sys,_name),Stamped):setattr(sys,_name,Stamped(getattr(sys,_name)))
 DATA=Path(os.environ.get("TDBS_DATA") or Path(os.environ.get("ProgramData",r"C:\ProgramData"))/"TD Booking Suite")
 CONFIG=json.loads((DATA/"config.json").read_text("utf-8"))
 for name,value in CONFIG.get("env",{}).items():os.environ.setdefault(name,value)
