@@ -5,8 +5,8 @@ config.json is written by windows/setup-server.ps1 and readable only by the prog
 import json,os,sys,time
 from pathlib import Path
 class Stamped:
-    """2.22.12: the services' logs (WinSW keeps what Python writes as it comes) said what, never when: every line now
-    starts with date and time, the tracebacks too."""
+    """2.22.12: the services' error logs (WinSW keeps what Python writes as it comes) said what, never when: every line
+    now starts with date and time, the tracebacks too."""
     def __init__(self,out):self.out=out;self.start=True
     def write(self,text):
         for part in text.splitlines(True):
@@ -14,9 +14,8 @@ class Stamped:
             self.out.write(part);self.start=part.endswith("\n")
         return len(text)
     def __getattr__(self,name):return getattr(self.out,name)
-if not os.environ.get("TDBS_TESTING"):
-    for _name in ("stdout","stderr"):
-        if getattr(sys,_name) is not None and not isinstance(getattr(sys,_name),Stamped):setattr(sys,_name,Stamped(getattr(sys,_name)))
+# only the two services and only their errors' stream: what the other commands print is read by the setup scripts
+if {"serve_https","tdwin_worker"}&set(sys.argv[1:3]) and sys.stderr is not None and not isinstance(sys.stderr,Stamped):sys.stderr=Stamped(sys.stderr)
 DATA=Path(os.environ.get("TDBS_DATA") or Path(os.environ.get("ProgramData",r"C:\ProgramData"))/"TD Booking Suite")
 CONFIG=json.loads((DATA/"config.json").read_text("utf-8"))
 for name,value in CONFIG.get("env",{}).items():os.environ.setdefault(name,value)
