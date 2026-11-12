@@ -24,6 +24,11 @@ namespace TDBookingSuite
         /// <summary>The address is this PC itself (its name, localhost, a loopback address): the server installed here.</summary>
         public bool ThisPc => Uri.TryCreate(Server, UriKind.Absolute, out var uri)
             && (uri.IsLoopback || uri.Host == "localhost" || string.Equals(uri.Host.Split('.')[0], Environment.MachineName, StringComparison.OrdinalIgnoreCase));
+        /// <summary>2.22.16: this PC or the shop's own network: a name without dots (ufficio-pc) or a private address.
+        /// shortcut: a name with dots counts as the Internet, also a shop's own domain; it only keeps the wait for the proxy</summary>
+        public bool InShop => ThisPc || Uri.TryCreate(Server, UriKind.Absolute, out var uri) && (!uri.Host.Contains(".")
+            || IPAddress.TryParse(uri.Host, out var ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
+                && (ip.GetAddressBytes()[0] == 10 || ip.GetAddressBytes()[0] == 192 && ip.GetAddressBytes()[1] == 168 || ip.GetAddressBytes()[0] == 172 && (ip.GetAddressBytes()[1] & 0xF0) == 16));
         /// <summary>Chosen by hand with Cambia server: on the server PC it wins over the server installed there.</summary>
         public bool Manual;
         /// <summary>False for a file of 2.8, written before Manual existed.</summary>

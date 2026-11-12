@@ -277,7 +277,12 @@ namespace TDBookingSuite
                 Close();
                 return;
             }
-            var environment = await CoreWebView2Environment.CreateAsync(null, Config.WebViewFolder);
+            // 2.22.16: the first page of every opening waited 10 seconds before even connecting (measured: 9.6 s «prima della
+            // connessione», 0.1 s the program): the browser first looked for a proxy on the network (Windows, «Rileva
+            // automaticamente impostazioni»). A server on this PC or in the shop's network is never behind a proxy: none is
+            // looked for. A server on the Internet keeps Windows' settings. The update is downloaded outside the browser.
+            var environment = await CoreWebView2Environment.CreateAsync(null, Config.WebViewFolder,
+                config.InShop ? new CoreWebView2EnvironmentOptions("--no-proxy-server") : null);
             await web.EnsureCoreWebView2Async(environment);
             var core = web.CoreWebView2;
             core.Settings.IsStatusBarEnabled = false;
