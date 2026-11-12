@@ -1,7 +1,7 @@
 """2.20.8: Stato del programma: the slow pages and the stuck window, written by themselves, and the logs in one zip for
 support, without the terminal. The web service writes log/lente.log (its folder is the one it may write); the window
 of the program reports a page it waited for more than 5 seconds (a first time, the antivirus, the window itself)."""
-import io,json,zipfile
+import io,json,re,sys,zipfile
 from datetime import timedelta
 from django.conf import settings
 from django.http import HttpResponse,JsonResponse
@@ -62,5 +62,13 @@ def slow(request):
     if not request.user.is_authenticated:return JsonResponse({},status=403)
     try:data=json.loads(request.body[:2000]);page=str(data.get("p",""))[:200];ms=float(data.get("ms",0))
     except (ValueError,TypeError,AttributeError):return JsonResponse({},status=400)
-    if page.startswith("/") and 0<ms<3_600_000:note("finestra",page,ms/1000)
+    if page.startswith("/") and 0<ms<3_600_000:
+        note("finestra",page,ms/1000)
+        try:
+            # 2.22.15: where the wait was (app.js): numbers and one path of the page, nothing else is kept
+            f=[int(x) for x in data.get("f",[])][:6];slowest=str(data.get("r",""))[:120];rms=int(data.get("rms",0))
+            if len(f)==6 and all(-1<=x<3_600_000 for x in f) and re.fullmatch(r"[\w./-]*",slowest):
+                print(f"Finestra lenta: {page} {ms/1000:.1f} s · prima della connessione {f[0]} ms, connessione {f[1]} ms, risposta del programma {f[2]} ms, "
+                    f"scaricamento {f[3]} ms, pagina {f[4]} ms, resto fino al caricamento {f[5]} ms · file più lento {slowest or '-'} {rms} ms",file=sys.stderr,flush=True)
+        except (ValueError,TypeError):pass
     return JsonResponse({})

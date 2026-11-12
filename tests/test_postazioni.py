@@ -216,7 +216,7 @@ def test_the_web_service_reads_its_modules_and_templates_at_the_start():
     start=time.monotonic();warm()
     assert "core.reports" in sys.modules and "tdwin.backup_views" in sys.modules and time.monotonic()-start<60
 
-def test_program_state_writes_slow_pages_by_itself_and_hands_the_logs(admin,trial,monkeypatch):
+def test_program_state_writes_slow_pages_by_itself_and_hands_the_logs(admin,trial,monkeypatch,capsys):
     # 2.20.8: Stato del programma: slow pages of the program and of the window, without the terminal
     import io,json,zipfile
     from tdwin import middleware,stato
@@ -227,6 +227,12 @@ def test_program_state_writes_slow_pages_by_itself_and_hands_the_logs(admin,tria
     clock=iter([100.0,104.5]);monkeypatch.setattr(middleware.time,"monotonic",lambda:next(clock,104.5))
     staff.get("/platform/licenza/?q=Maria");monkeypatch.undo()
     assert staff.post("/platform/stato/lento/",json.dumps({"p":"/t/x/cassa/","ms":8200}),content_type="application/json").status_code==200
+    # 2.22.15: with where the wait was, a line in the program's log; anything odd in it is dropped, the page still counted
+    capsys.readouterr()
+    assert staff.post("/platform/stato/lento/",json.dumps({"p":"/t/x/","ms":10000,"f":[9000,100,200,10,190,500],"r":"/static/app.css","rms":120}),content_type="application/json").status_code==200
+    assert "Finestra lenta: /t/x/ 10.0 s · prima della connessione 9000 ms" in capsys.readouterr().err
+    assert staff.post("/platform/stato/lento/",json.dumps({"p":"/t/x/","ms":10000,"f":["x"],"r":"<b>","rms":"y"}),content_type="application/json").status_code==200
+    assert "Finestra lenta" not in capsys.readouterr().err
     assert Client().post("/platform/stato/lento/",json.dumps({"p":"/x/","ms":9000}),content_type="application/json").status_code in (302,403)  # not signed in: nothing
     rows=stato.lines()
     assert [(r["where"],r["page"],r["seconds"]) for r in rows]==[("finestra","/t/x/cassa/","8.2"),("programma","GET /platform/licenza/","4.5")]
