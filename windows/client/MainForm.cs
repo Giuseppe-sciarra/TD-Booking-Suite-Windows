@@ -114,6 +114,16 @@ namespace TDBookingSuite
             Load += async (s, e) => { FitScreen(); await Start(); };
             SystemEvents.UserPreferenceChanged += ThemeChanged;
             FormClosed += (s, e) => SystemEvents.UserPreferenceChanged -= ThemeChanged;
+            // 2.22.13: finestra.log says when the window opens and closes: an opening with no closing before it means
+            // it was closed by force (Gestione attività) or the PC went off, and the lines before say what it was doing
+            try
+            {
+                var last = File.Exists(LogFile) ? File.ReadLines(LogFile).LastOrDefault() : null;
+                if (last != null && !last.Contains("finestra chiusa")) Log("la volta prima la finestra non è stata chiusa dal suo tasto: chiusa di forza, o il PC si è spento");
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { }
+            Log("finestra aperta, versione " + typeof(MainForm).Assembly.GetName().Version);
+            FormClosing += (s, e) => Log($"finestra chiusa ({e.CloseReason}) su {web.CoreWebView2?.Source}");
             // 2.21.0: the keys to the page again whenever the window comes back to the front: after a Windows window of the
             // program (a confirmation, a message, the print dialog) or another program, the page kept no keyboard focus
             // and its fields took no more typing until a click outside the program
@@ -302,9 +312,13 @@ namespace TDBookingSuite
                 if (config.SameOrigin(e.Uri)) core.Navigate(e.Uri); else OpenOutside(e.Uri);
             };
             core.DocumentTitleChanged += (s, e) => Text = string.IsNullOrEmpty(core.DocumentTitle) ? "TD Booking Suite" : core.DocumentTitle + " - TD Booking Suite";
-            core.ProcessFailed += (s, e) => { if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited) Close(); else core.Reload(); };
+            core.ProcessFailed += (s, e) =>
+            {
+                Log($"il browser della finestra si è fermato ({e.ProcessFailedKind}) su {core.Source}");
+                if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited) Close(); else core.Reload();
+            };
             core.WebMessageReceived += Message;
-            core.NavigationStarting += (s, e) => { downloading = false; if (config.SameOrigin(e.Uri)) target = e.Uri; };
+            core.NavigationStarting += (s, e) => { downloading = false; if (config.SameOrigin(e.Uri)) { target = e.Uri; Log("apre " + new Uri(e.Uri).AbsolutePath); } };
             core.DownloadStarting += Download;
             core.NavigationCompleted += Completed;
             retry.Tick += (s, e) => { retry.Stop(); web.CoreWebView2?.Navigate(target ?? config.Server + "/"); };

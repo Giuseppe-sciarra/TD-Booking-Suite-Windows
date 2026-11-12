@@ -1,5 +1,5 @@
 """Windows edition, on every request: the first start, the registered workstations and the licence."""
-import re,sys,time
+import re,sys,threading,time
 from urllib.parse import urlencode
 from django.conf import settings
 from django.http import HttpResponse
@@ -60,14 +60,29 @@ def configured():
         if User.objects.filter(is_staff=True).exists():_ready.append(True)
     return bool(_ready)
 
+RUNNING={}  # 2.22.13: the pages being served now: a page that never ends left no line anywhere
+def stuck(after=10,every=5,once=False):
+    """A line in the log for each page still being served after 10 seconds, once: it says what the program was doing
+    when someone closes it by force."""
+    while True:
+        for key,(start,what) in list(RUNNING.items()):
+            if what and time.monotonic()-start>after:
+                RUNNING[key]=(start,"")
+                print(f"Pagina ancora in corso dopo {after} s: {what}",file=sys.stderr,flush=True)
+        if once:return
+        time.sleep(every)
+_watch=[]
 class WindowsMiddleware:
-    def __init__(self,get_response):self.get_response=get_response
+    def __init__(self,get_response):
+        self.get_response=get_response
+        if not _watch and not settings.TESTING:_watch.append(True);threading.Thread(target=stuck,daemon=True).start()
     def __call__(self,request):
         """2.20.5: a page slower than 3 seconds leaves a line in TDBookingWeb.err.log (path only, no query: it can
         hold a client's name), to see what stops the program on a PC we cannot reach."""
-        start=time.monotonic()
+        start=time.monotonic();key=object();RUNNING[key]=(start,f"{request.method} {request.path}")
         try:return self.serve(request)
         finally:
+            RUNNING.pop(key,None)
             took=time.monotonic()-start
             if took>3:
                 print(f"Pagina lenta: {request.method} {request.path} {took:.1f} s",file=sys.stderr,flush=True)

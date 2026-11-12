@@ -249,3 +249,12 @@ def test_service_logs_say_when():
     rows=out.getvalue().splitlines()
     assert len(rows)==3 and all(re.match(r"\d\d/\d\d/\d{4} \d\d:\d\d:\d\d ",r) for r in rows) and rows[2].endswith(" Pagina lenta")
     assert log.flush() is None  # the rest is the stream's own
+
+def test_page_still_running_is_logged_once(capsys):
+    import time
+    from tdwin import middleware
+    key=object();middleware.RUNNING[key]=(time.monotonic()-11,"POST /t/x/cassa/")
+    try:
+        middleware.stuck(once=True);middleware.stuck(once=True)
+        assert capsys.readouterr().err.count("Pagina ancora in corso dopo 10 s: POST /t/x/cassa/")==1
+    finally:middleware.RUNNING.pop(key)
