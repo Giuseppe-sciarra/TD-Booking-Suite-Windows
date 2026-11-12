@@ -90,6 +90,12 @@ namespace TDBookingSuite
         // reloaded, and both are written in finestra.log for the assistance.
         readonly Timer watchdog = new Timer { Interval = 5000 };
         int silent; bool asking;
+        // 2.22.14: a page can answer and still be dead on the screen (it happened while adding services in Cassa: no
+        // click taken, closed by force). Each look asks the page for one frame and reads how many it has drawn: the
+        // same number three times, with the window in front, is a page that no longer redraws. It is written in
+        // finestra.log and reloaded once (the bill in Cassa is kept by the page); still dead after that, written once more.
+        const string FrameProbe = "(function(){var n=window.__tdFrames||0;window.__tdFrames=n;requestAnimationFrame(function(){window.__tdFrames=n+1});return n})()";
+        int frames = -1, still, stalled;
         [DllImport("user32.dll")] static extern bool IsWindowEnabled(IntPtr hWnd);
         [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
         [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -178,11 +184,23 @@ namespace TDBookingSuite
                         SetForegroundWindow(found);
                     }
                 }
-                silent = 0; return;
+                silent = 0; still = 0; return;
             }
-            if (asking || GetForegroundWindow() != Handle) { silent = 0; return; }
-            var answer = core.ExecuteScriptAsync("1");
-            if (await Task.WhenAny(answer, Task.Delay(4000)) == answer) { silent = 0; return; }
+            if (asking || GetForegroundWindow() != Handle || WindowState == FormWindowState.Minimized) { silent = 0; still = 0; return; }
+            var answer = core.ExecuteScriptAsync(FrameProbe);
+            if (await Task.WhenAny(answer, Task.Delay(4000)) == answer)
+            {
+                silent = 0;
+                int now;
+                if (answer.IsFaulted || answer.IsCanceled || !int.TryParse(answer.Result, out now)) { still = 0; return; }
+                if (now > frames) { frames = now; still = 0; stalled = 0; return; }  // it draws
+                if (now < frames) { frames = now; still = 0; return; }               // another page: its count starts again
+                if (++still < 3 || stalled > 1 || IsDisposed) return;
+                still = 0;
+                if (stalled++ == 0) { Log($"pagina ferma, non si ridisegna da 15 secondi: ricaricata ({core.Source})"); core.Reload(); }
+                else Log($"pagina ancora ferma dopo la ricarica ({core.Source})");
+                return;
+            }
             if (++silent < 3) return;
             silent = 0;
             Log($"pagina senza risposta per 15 secondi, ricaricata: {core.Source}");
