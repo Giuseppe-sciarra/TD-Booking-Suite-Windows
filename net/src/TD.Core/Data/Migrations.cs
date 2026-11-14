@@ -23,10 +23,39 @@ public static class Migrations
         ("002_verified", "ALTER TABLE td_net_session ADD COLUMN IF NOT EXISTS verified timestamptz NOT NULL DEFAULT now();"),
     };
 
-    public static string Baseline()
+    public static string Baseline() => Resource("baseline.sql");
+
+    static string Resource(string name)
     {
-        using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("TD.Core.Sql.baseline.sql")!;
+        using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("TD.Core.Sql." + name)!;
         return new StreamReader(s).ReadToEnd();
+    }
+
+    /// <summary>3.0.3: an older 2.x database gets the Django migrations it lacks, with the SQL each one really runs
+    /// (catchup.sql, from tools/gen_catchup.py), and their django_migrations rows so the Python sees them done.</summary>
+    static List<string> CatchUp(NpgsqlConnection c)
+    {
+        var done = new List<string>();
+        var have = c.Query<string>("SELECT app||' '||name FROM django_migrations").ToHashSet();
+        var want = System.Text.RegularExpressions.Regex.Matches(Baseline(), @"INSERT INTO public\.django_migrations VALUES \(\d+, '(\w+)', '(\w+)'")
+            .Select(m => m.Groups[1].Value + " " + m.Groups[2].Value).Where(n => !have.Contains(n)).ToList();
+        if (want.Count == 0) return done;
+        var sql = Resource("catchup.sql").Split("-- migration: ", StringSplitOptions.RemoveEmptyEntries)
+            .Select(b => b.Split('\n', 2)).ToDictionary(b => b[0].Trim(), b => b[1]);
+        var missing = want.Where(n => !sql.ContainsKey(n)).ToList();
+        if (missing.Count > 0)
+            throw new InvalidOperationException("Il database viene da una versione 2.x troppo vecchia (manca " + string.Join(", ", missing)
+                + "): aggiorna prima il programma 2.x all'ultima versione, poi installa questa.");
+        foreach (var name in sql.Keys.Where(want.Contains))  // in the order Django applied them
+        {
+            using var t = c.BeginTransaction();
+            if (!string.IsNullOrWhiteSpace(sql[name])) c.Execute(sql[name], transaction: t);  // some only change Python choices
+            var (app, mig) = (name.Split(' ')[0], name.Split(' ')[1]);
+            c.Execute("INSERT INTO django_migrations(app, name, applied) VALUES (@app, @mig, now())", new { app, mig }, t);
+            t.Commit();
+            done.Add(name);
+        }
+        return done;
     }
 
     /// <summary>Everything the program needs before it starts: tables, our additions, the rights of the runtime role.</summary>
@@ -44,6 +73,7 @@ public static class Migrations
             t.Commit();
             done.Add("baseline");
         }
+        else done.AddRange(CatchUp(c));
         c.Execute("CREATE TABLE IF NOT EXISTS td_net_migrations (name varchar(100) PRIMARY KEY, applied timestamptz NOT NULL DEFAULT now())");
         var applied = c.Query<string>("SELECT name FROM td_net_migrations").ToHashSet();
         foreach (var (name, sql) in Ours)

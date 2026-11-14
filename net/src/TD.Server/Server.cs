@@ -24,7 +24,7 @@ public sealed record Admin(string Url, string AppPassword)
 /// <summary>What every request shares: configuration, database, keys, licence, workstations, the certificate shown.</summary>
 public sealed class Server
 {
-    public const string Version = "3.0.2";
+    public const string Version = "3.0.3";
     public AppConfig Config { get; }
     public Admin Admin { get; }
     public Db Db { get; }
