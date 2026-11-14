@@ -69,6 +69,9 @@ public sealed class MainWindow : Window
     async Task Enter()
     {
         var list = Me.A("attivita").ToList();
+        // tdwin middleware: without a licence the businesses stay closed (the server answers 402): the administrator
+        // to the guided setup, everyone else to Licenza, as the 2.x program does. Opening the business here left the window grey.
+        if (Me["licenza"].S("kind") == "bloccato") { Build(); Show(Me.Bo("staff") ? "inizia" : "licenza"); return; }
         if (list.Count == 0) { Build(); Show(Me.Bo("staff") ? (SetupDone ? "licenza" : "inizia") : "account"); return; }
         if (StartKey != null && list.Count >= 1) { await Open(list[0].S("slug"), StartKey); return; }
         var slug = list[0].S("slug");
@@ -237,6 +240,7 @@ public sealed class MainWindow : Window
         group = new StackPanel { Margin = new Thickness(6, 0, 6, 0) }; nav.Children.Add(group);
         Add("guida", "help", "Guida", () => new GuidePage());
         pages["account"] = (() => new AccountPage(), "");
+        pages.TryAdd("licenza", (() => new LicencePage(), ""));  // for everyone: with the licence expired it is the page left open
         pages["prenotazioni"] = (() => new BookingsPage(), "agenda");
         bar.Children.Add(new ScrollViewer { Content = nav, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden });
 
