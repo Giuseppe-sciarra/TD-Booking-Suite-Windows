@@ -94,8 +94,15 @@ namespace TDBookingSuite
         // click taken, closed by force). Each look asks the page for one frame and reads how many it has drawn: the
         // same number three times, with the window in front, is a page that no longer redraws. It is written in
         // finestra.log and reloaded once (the bill in Cassa is kept by the page); still dead after that, written once more.
-        const string FrameProbe = "(function(){var n=window.__tdFrames||0;window.__tdFrames=n;requestAnimationFrame(function(){window.__tdFrames=n+1});return n})()";
-        int frames = -1, still, stalled;
+        // 2.22.20: with the page's start time: the Cassa reloading every 3 seconds (a closure going out) gave the same 0
+        // frames on three new pages, read as one stopped page (13/11, 17:04)
+        const string FrameProbe = "(function(){var n=window.__tdFrames||0;window.__tdFrames=n;requestAnimationFrame(function(){window.__tdFrames=n+1});return n+'|'+performance.timeOrigin})()";
+        int frames = -1, still, stalled; string page;
+        // 2.22.20: who takes the front from the window, written once each: the program "blocked" while a window of another
+        // program (an update of Windows, a message) stood in front, and the watchdog looks only with the window in front
+        IntPtr thief;
+        // 2.22.20: the window's own thread, watched from another thread: the watchdog runs on it and sees nothing if it stops
+        readonly System.Diagnostics.Stopwatch alive = System.Diagnostics.Stopwatch.StartNew();
         [DllImport("user32.dll")] static extern bool IsWindowEnabled(IntPtr hWnd);
         [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
         [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -103,6 +110,7 @@ namespace TDBookingSuite
         [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowsProc callback, IntPtr extra);
         delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr extra);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
+        [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
 
         public static Icon AppIcon()
         {
@@ -186,15 +194,29 @@ namespace TDBookingSuite
                 }
                 silent = 0; still = 0; return;
             }
-            if (asking || GetForegroundWindow() != Handle || WindowState == FormWindowState.Minimized) { silent = 0; still = 0; return; }
+            if (asking) { silent = 0; still = 0; return; }
+            var ahead = GetForegroundWindow();
+            if (ahead != Handle && ahead != thief && ahead != IntPtr.Zero)
+            {
+                var title = new StringBuilder(128); GetWindowText(ahead, title, 128);
+                GetWindowThreadProcessId(ahead, out var pid);
+                string name; try { using (var p = Process.GetProcessById((int)pid)) name = p.ProcessName; } catch (ArgumentException) { name = "?"; }
+                Log($"in primo piano un'altra finestra: {title} ({name})");
+            }
+            thief = ahead == Handle ? IntPtr.Zero : ahead;
+            // in the background a page draws no frames: only whether it answers
+            bool look = ahead == Handle && WindowState != FormWindowState.Minimized;
+            if (!look) still = 0;
             var answer = core.ExecuteScriptAsync(FrameProbe);
             if (await Task.WhenAny(answer, Task.Delay(4000)) == answer)
             {
                 silent = 0;
+                if (!look) return;
                 int now;
-                if (answer.IsFaulted || answer.IsCanceled || !int.TryParse(answer.Result, out now)) { still = 0; return; }
+                var parts = answer.IsFaulted || answer.IsCanceled ? null : answer.Result.Trim('"').Split('|');
+                if (parts == null || parts.Length != 2 || !int.TryParse(parts[0], out now)) { still = 0; return; }
+                if (parts[1] != page) { page = parts[1]; frames = now; still = 0; return; }  // another page: its count starts again
                 if (now > frames) { frames = now; still = 0; stalled = 0; return; }  // it draws
-                if (now < frames) { frames = now; still = 0; return; }               // another page: its count starts again
                 if (++still < 3 || stalled > 1 || IsDisposed) return;
                 still = 0;
                 if (stalled++ == 0) { Log($"pagina ferma, non si ridisegna da 15 secondi: ricaricata ({core.Source})"); core.Reload(); }
@@ -205,6 +227,31 @@ namespace TDBookingSuite
             silent = 0;
             Log($"pagina senza risposta per 15 secondi, ricaricata: {core.Source}");
             core.Reload();
+        }
+
+        /// <summary>2.22.20: every 2 seconds the window's thread is asked to answer; more than 10 seconds without, it is
+        /// written, and how long it stood when it answers again. A thread stopped like that is not the page: it is the window.</summary>
+        void Heart()
+        {
+            long since = -1;  // when the thread stopped answering, -1 while it answers
+            while (!IsDisposed)
+            {
+                System.Threading.Thread.Sleep(2000);
+                long now = alive.ElapsedMilliseconds, last = System.Threading.Interlocked.Read(ref beat);
+                if (since < 0 && now - last > 10000) { since = last; Log($"la finestra non risponde da {(now - last) / 1000} secondi (il suo thread è fermo) su {target}"); }
+                else if (since >= 0 && last > since) { Log($"la finestra risponde di nuovo, dopo {(last - since) / 1000} secondi"); since = -1; }
+                try { BeginInvoke((Action)(() => System.Threading.Interlocked.Exchange(ref beat, alive.ElapsedMilliseconds))); }
+                catch (InvalidOperationException) { return; }  // closed meanwhile
+            }
+        }
+        long beat;
+
+        /// <summary>2.22.20: F5 reloads the page (written in finestra.log): with the browser's keys off, a page that took no
+        /// more clicks left only the PC to restart.</summary>
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.F5 && web.CoreWebView2 != null) { Log($"ricaricata con F5: {web.CoreWebView2.Source}"); web.CoreWebView2.Reload(); return true; }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         void WatchFocus(object sender, EventArgs e)
@@ -307,6 +354,8 @@ namespace TDBookingSuite
             focusTimer.Start();
             watchdog.Tick += Watch;
             watchdog.Start();
+            beat = alive.ElapsedMilliseconds;
+            new System.Threading.Thread(Heart) { IsBackground = true, Name = "battito" }.Start();
             // 2.14.0: the server tells a postazione whose window is older than itself to update
             var mine = typeof(MainForm).Assembly.GetName().Version;
             core.Settings.UserAgent += $" TDBookingSuite/{mine.Major}.{mine.Minor}.{mine.Build}";

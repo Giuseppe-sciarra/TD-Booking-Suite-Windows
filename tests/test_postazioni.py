@@ -264,3 +264,14 @@ def test_page_still_running_is_logged_once(capsys):
         middleware.stuck(once=True);middleware.stuck(once=True)
         assert capsys.readouterr().err.count("Pagina ancora in corso dopo 10 s: POST /t/x/cassa/")==1
     finally:middleware.RUNNING.pop(key)
+
+
+def test_window_watches_itself_and_reloads_with_f5():
+    """2.22.20: the page is told apart from the one before (a Cassa reloading was read as stopped), the window's own
+    thread is watched from another one, another program's window in front is written, F5 reloads."""
+    from tests.conftest import ROOT
+    script=(ROOT/"windows"/"client"/"MainForm.cs").read_text("utf-8")
+    assert "return n+'|'+performance.timeOrigin" in script and "parts[1] != page" in script
+    assert "la finestra non risponde da" in script and "IsBackground = true" in script
+    assert "in primo piano un'altra finestra" in script
+    assert "keyData == Keys.F5" in script and "ricaricata con F5" in script

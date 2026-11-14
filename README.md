@@ -97,11 +97,11 @@ Per togliere gli avvisi serve un certificato di firma del codice, che costa qual
 
 ```bat
 rem Un PC solo
-msiexec /i TD-Booking-Suite-2.22.19.msi MODALITA=standalone /qn
+msiexec /i TD-Booking-Suite-2.22.20.msi MODALITA=standalone /qn
 rem Server con postazioni, con porta e indirizzi
-msiexec /i TD-Booking-Suite-2.22.19.msi MODALITA=server PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 ALTRI_INDIRIZZI=192.168.1.10 /qn
+msiexec /i TD-Booking-Suite-2.22.20.msi MODALITA=server PORTA=8443 INDIRIZZO=https://ufficio-pc:8443 ALTRI_INDIRIZZI=192.168.1.10 /qn
 rem Solo postazione
-msiexec /i TD-Booking-Suite-2.22.19.msi ADDLOCAL=Postazione /qn
+msiexec /i TD-Booking-Suite-2.22.20.msi ADDLOCAL=Postazione /qn
 ```
 
 Senza `MODALITA` l'installazione tiene il tipo che il PC aveva: solo la finestra se c'è solo la postazione, altrimenti quello ricordato nel registro. Un server della 2.8, o i dati di un server rimasti dopo averlo disinstallato, o un `INDIRIZZO` dato, fanno Server con postazioni; un PC nuovo parte come Un PC solo. `MODALITA=postazione` da sola non si usa: ferma l'installazione e dice di usare `ADDLOCAL=Postazione`.
@@ -121,6 +121,8 @@ Le postazioni contano per la licenza, il PC server no. Una postazione persa si *
 La finestra usa da sola il server installato sullo stesso PC solo se lo ha installato l'MSI (lo dice il suo valore nel registro, che scrivono solo gli amministratori): su una postazione un utente normale non può farle aprire un server suo.
 
 ![Registra la postazione](docs/screenshots/registra-postazione.png)
+
+**Se una pagina non risponde.** **F5** la ricarica senza chiudere il programma (in Cassa il conto resta). La finestra tiene un diario in `%LOCALAPPDATA%\TD Booking Suite\finestra.log`: quando si apre e si chiude e perché, le pagine aperte, una pagina ferma ricaricata, la finestra che non risponde e per quanto, la finestra di un altro programma che si mette davanti. È il primo file da guardare quando «si è bloccato».
 
 **Copia dell'agenda per quando il server non risponde.** Mentre è collegata, la finestra (sulle postazioni, ma anche sul PC server e con Un PC solo) salva da sola una copia di sola lettura del **foglio del giorno di oggi e di domani** dell'ultima attività aperta: alla prima pagina dell'attività e poi ogni 15 minuti, con solo quello che può vedere chi è collegato. Sta in `%LOCALAPPDATA%\TD Booking Suite\Copia agenda`, cifrata per quell'utente di Windows; quelle di prima di ieri si cancellano. Se il server non risponde, la pagina *Il server non risponde* ha **Apri la copia dell'agenda (sola lettura)**: si apre con la striscia gialla con data e ora della copia, e **Riprova** torna al programma. Sul PC server il pulsante compare dopo i primi due minuti dall'avvio. La copia non tiene aperta la sessione (dopo 30 minuti senza nessuno si esce come sempre) e serve un server 2.14.0 o più nuovo. Se non si decifra (profilo di Windows copiato su un altro PC, file rovinato) si rifà appena il server risponde.
 
@@ -279,7 +281,7 @@ Ogni destinazione ha il pulsante **Prova**, e lo **storico** dice com'è andato 
 
 Per aggiornare, apri l'MSI nuovo sopra quello vecchio: tipo, servizi, porta, database e dati restano. Prima di applicare la versione nuova, l'installer salva una copia del database in `backup\prima-dell-aggiornamento.dump`. Se l'aggiornamento non riesce, Windows rimette la versione di prima e la fa ripartire.
 
-Per **cambiare tipo** apri di nuovo l'MSI (o Impostazioni › App › TD Booking Suite › Modifica), scegli di cambiare l'installazione e il tipo nuovo. Da riga di comando: `msiexec /i TD-Booking-Suite-2.22.19.msi MODALITA=standalone /qn`. I dati restano.
+Per **cambiare tipo** apri di nuovo l'MSI (o Impostazioni › App › TD Booking Suite › Modifica), scegli di cambiare l'installazione e il tipo nuovo. Da riga di comando: `msiexec /i TD-Booking-Suite-2.22.20.msi MODALITA=standalone /qn`. I dati restano.
 
 La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramData\TD Booking Suite`. Per cancellarli davvero, elimina quella cartella.
 
@@ -288,7 +290,7 @@ La disinstallazione toglie programma e servizi ma lascia i dati in `C:\ProgramDa
 - **Usa i dati di prima**, già scelto: il programma riparte da dove era, con le stesse attività, clienti e prenotazioni, e si entra con l'amministratore di allora;
 - **Ricomincia da zero**: un programma vuoto e al primo avvio si crea l'amministratore. I dati di prima non si cancellano: vanno, interi, in `C:\ProgramData\TD Booking Suite (dati del <giorno e ora>)`. Restano licenza, prova, codice installazione, indirizzi, porta e certificato, così la licenza vale ancora e le postazioni aprono il server come prima.
 
-Da riga di comando: `msiexec /i TD-Booking-Suite-2.22.19.msi MODALITA=standalone RICOMINCIA=1 /qn`. Senza `RICOMINCIA` usa i dati di prima. Un aggiornamento non lo chiede: i dati restano sempre.
+Da riga di comando: `msiexec /i TD-Booking-Suite-2.22.20.msi MODALITA=standalone RICOMINCIA=1 /qn`. Senza `RICOMINCIA` usa i dati di prima. Un aggiornamento non lo chiede: i dati restano sempre.
 
 Da zero anche senza disinstallare, da PowerShell come amministratore:
 
