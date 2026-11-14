@@ -98,7 +98,7 @@ public static class Cassa
         return new
         {
             sedi = where.Select(l => new { id = l.Id, nome = l.Name }), sede = loc.Id, sedeNome = loc.Name,
-            mancaChiusura = t.MissingClose(loc), chiusuraDaVerificare = t.UnsureClose(loc) is Sale u ? new { id = u.Id, inviata = bk.Iso(u.Created) } : null, puoChiudere = t.CanClose(conf), puoAnnullare = t.CanVoid(conf), contata = conf.Str("device") == "rch",
+             puoChiudere = t.CanClose(conf), puoAnnullare = t.CanVoid(conf), contata = conf.Str("device") == "rch",
             prenotazione = booking == null ? null : new { id = booking.Id, inizio = bk.Iso(booking.Start), cliente = booking.ContactId, haScontrino = x.S.Scalar<long>("SELECT count(*) FROM core_sale WHERE booking_id=@b", new { b = booking.Id }) > 0 },
             chi = who == null ? null : new { nome = who.Str("first_name"), cognome = who.Str("last_name") },
             scegliCliente = c.Can("contacts.read") && namesOk, cliente = contact != null && namesOk ? contact.Id : (Guid?)null, cf = contact != null && namesOk ? Clients.ReceiptCode(cl.Data(contact)) : "",

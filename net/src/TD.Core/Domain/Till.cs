@@ -477,19 +477,6 @@ public sealed partial class Till(Ctx c)
         return new Bookings(c).Queue(new JsonObject { ["to"] = d.Str("email"), ["subject"] = $"Copia del documento commerciale · {c.Tenant.Name}", ["body"] = body, ["html"] = Texts.EmailHtml(c.Tenant, body, new()) }, sale.ContactId);
     }
 
-    /// <summary>unclosed(): when the last receipt was emitted here with no daily closure after it, before today.</summary>
-    DateTime? Unclosed(Location loc)
-    {
-        var today = c.Cal.Local(c.Today, TimeSpan.Zero)!.Value;
-        var last = c.S.One<DateTime?>("SELECT printed FROM core_sale WHERE location_id=@l AND kind='close' AND status='done' AND printed IS NOT NULL ORDER BY printed DESC LIMIT 1", new { l = loc.Id });
-        return c.S.One<DateTime?>("SELECT printed FROM core_sale WHERE location_id=@l AND kind='sale' AND status IN ('done','void') AND printed<@t" + (last.HasValue ? " AND printed>@p" : "") + " ORDER BY printed DESC LIMIT 1", new { l = loc.Id, t = today, p = last });
-    }
-    /// <summary>missing_close(): the last day with receipts emitted here and no daily closure after them, before today.</summary>
-    public DateOnly? MissingClose(Location loc) => Unclosed(loc) is DateTime s ? c.Cal.DayOf(s) : null;
-    /// <summary>unsure_close(): the closure sent after those receipts and still «Da verificare» (the register did not answer
-    /// in time): the reminder asks whether it came out, instead of asking for another one every day.</summary>
-    public Sale UnsureClose(Location loc) => Unclosed(loc) is DateTime s
-        ? c.S.One<Sale>("SELECT * FROM core_sale WHERE location_id=@l AND kind='close' AND status='unknown' AND created>@s ORDER BY created DESC LIMIT 1", new { l = loc.Id, s }) : null;
     /// <summary>places(): the locations with a register.</summary>
     public List<Location> Places() => c.S.Query<Location>("SELECT * FROM core_location WHERE active ORDER BY name").Where(l => Conf(l).Str("device") != "").ToList();
 }

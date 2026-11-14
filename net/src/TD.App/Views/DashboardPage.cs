@@ -45,14 +45,6 @@ public sealed class DashboardPage : Page
         var page = Col(F.Heading(eyebrow, "Dashboard", $"Prenotazioni, disdette e clienti di {Business.S("nome")} a colpo d'occhio",
             Can("booking.write") && d.Bo("senzaAppuntamento") ? B("Senza appuntamento", () => Main.ShowPage(new BookingPage { Walkin = true })) : null,
             Can("booking.write") ? B("Nuova prenotazione", () => Main.ShowPage(new BookingPage()), "Primary") : null));
-        // ----- a day of receipts without its daily closure
-        foreach (var k in d.A("chiusure"))
-        {
-            var txt = new TextBlock { FontSize = 13.5, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
-            txt.Inlines.Add(new Run($"Manca la chiusura giornaliera del {DateOnly.Parse(k.S("giorno")).ToString("dddd d MMMM", It)}{(d.A("chiusure").Count() > 1 ? $" ({k.S("nome")})" : "")}.") { FontWeight = FontWeights.Bold }); txt.Inlines.Add(" Falla prima del prossimo scontrino.");
-            var go = F.Small(B("Vai alla Cassa", () => Main.Show("cassa"), "Primary")); var bar = new DockPanel(); DockPanel.SetDock(go, Dock.Right); bar.Children.Add(go); bar.Children.Add(txt);
-            page.Children.Add(F.Notice(bar, "warning"));
-        }
         // ----- the last quick action, to take back
         if (d["annulla"] is JsonNode u)
         {

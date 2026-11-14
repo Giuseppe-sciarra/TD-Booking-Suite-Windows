@@ -493,30 +493,11 @@ public sealed class CassaPage : Page
         await Do(args, true);
     }
 
-    // ---------- what follows the register: the closure missing, the Parcheggio, the receipts of today, closure and annulli
+    // ---------- what follows the register: the Parcheggio, the receipts of today, closure and annulli
     void DrawLow()
     {
         var puoChiudere = d.Bo("puoChiudere"); var canVoid = d.Bo("puoAnnullare"); var counted = d.Bo("contata");
-        if (d["chiusuraDaVerificare"] is JsonObject u)
-        {
-            // the closure the register did not answer in time: asked, not demanded again
-            var txt = new TextBlock { FontSize = 13.5, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
-            txt.Inlines.Add(new Run($"La chiusura giornaliera inviata {Local(u.S("inviata")).ToString("dddd d MMMM", It)} è uscita dalla cassa?") { FontWeight = FontWeights.Bold }); txt.Inlines.Add(" La cassa non ha risposto in tempo: guarda se ha stampato la chiusura.");
-            var acts = Row(F.Small(BA("È uscita", () => Do(new JsonObject { ["azione"] = "printed", ["sale"] = u.S("id") }), "Primary")),
-                F.Small(BA("Non è uscita, rifalla", async () => { if (Ask("La cassa non ha stampato la chiusura? La rimandiamo adesso.")) await Do(new JsonObject { ["azione"] = "retry", ["sale"] = u.S("id") }); }, "Ghost")).M(8, 0, 0, 0));
-            var bar = new DockPanel(); DockPanel.SetDock(acts, Dock.Right); bar.Children.Add(acts); bar.Children.Add(txt);
-            top.Content = F.Notice(bar, "warning");
-        }
-        else if (d.S("mancaChiusura") != "")
-        {
-            var txt = new TextBlock { FontSize = 13.5, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
-            txt.Inlines.Add(new Run($"Manca la chiusura giornaliera del {DateOnly.Parse(d.S("mancaChiusura")).ToString("dddd d MMMM", It)}.") { FontWeight = FontWeights.Bold }); txt.Inlines.Add(" Falla adesso, prima del prossimo scontrino: la cassa la vuole prima di emetterne altri.");
-            var acts = Row(puoChiudere ? F.Small(BA("Fai la chiusura", async () => { if (Ask("Fare adesso la chiusura giornaliera? La cassa stampa la chiusura e manda i corrispettivi all'Agenzia delle Entrate.")) await Do(new JsonObject { ["azione"] = "close" }); }, "Primary")) : null,
-                F.Small(BA("L'ho fatta dalla cassa", async () => { if (Ask("Hai già fatto la chiusura dalla cassa? Lo segniamo, così l'avviso sparisce.")) await Do(new JsonObject { ["azione"] = "closed_by_hand" }); }, "Ghost")).M(8, 0, 0, 0));
-            var bar = new DockPanel(); DockPanel.SetDock(acts, Dock.Right); bar.Children.Add(acts); bar.Children.Add(txt);
-            top.Content = F.Notice(bar, "warning");
-        }
-        else top.Content = null;
+        top.Content = null;  // the reminder of the daily closure is gone (2.22.17): it kept asking for closures already done
         low.Children.Clear();
         Border Low(string color, params UIElement[] items) { var c = F.Card(items); c.BorderThickness = new Thickness(1.5, 5, 1.5, 1.5); c.BorderBrush = color == null ? Res("Brand") : Hex(color); c.Margin = new Thickness(0, 0, 0, 22); return c; }
         Border Block(params UIElement[] items) => new() { BorderBrush = Res("Pastel"), BorderThickness = new Thickness(2), CornerRadius = new CornerRadius(12), Padding = new Thickness(16, 14, 16, 14), Background = Res("BrandSoft"), Child = Col(items), VerticalAlignment = VerticalAlignment.Top };
@@ -603,7 +584,8 @@ public sealed class CassaPage : Page
             !canVoid ? Small("Su questa cassa l'annullo si fa dalla cassa: poi premi Annullato dalla cassa, così anche qui risulta annullato.") : null));
         // ----- Chiusura, riepilogo e annulli
         var close = puoChiudere
-            ? Block(H3("Chiusura giornaliera"), Left(BA("Chiusura giornaliera", async () => { if (Ask("Fare adesso la chiusura giornaliera? La cassa stampa la chiusura e manda i corrispettivi di oggi all'Agenzia delle Entrate. Si fa una volta al giorno, a fine giornata.")) await Do(new JsonObject { ["azione"] = "close" }); })),
+            ? Block(H3("Chiusura giornaliera"), Row(BA("Chiusura giornaliera", async () => { if (Ask("Fare adesso la chiusura giornaliera? La cassa stampa la chiusura e manda i corrispettivi di oggi all'Agenzia delle Entrate. Si fa una volta al giorno, a fine giornata.")) await Do(new JsonObject { ["azione"] = "close" }); }),
+                    F.Small(BA("L'ho fatta dalla cassa", async () => { if (Ask("Hai fatto la chiusura giornaliera dai tasti della cassa? Il programma la segna come fatta, non manda niente alla cassa.")) await Do(new JsonObject { ["azione"] = "closed_by_hand" }); }, "Ghost")).M(8, 0, 0, 0)),
                 Small("A fine giornata, dopo l'ultimo scontrino. La cassa stampa la chiusura e trasmette i corrispettivi: conservala come sempre.").M(0, 8, 0, 0))
             : Block(H3("Chiusura giornaliera"), Small("Su questa cassa la chiusura giornaliera si fa dalla cassa: poi premi qui, così il programma sa che è fatta."),
                 Left(F.Small(BA("Chiusura fatta dalla cassa", async () => { if (Ask("Hai fatto la chiusura dalla cassa?")) await Do(new JsonObject { ["azione"] = "closed_by_hand" }); }))));
