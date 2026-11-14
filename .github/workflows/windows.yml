@@ -1,4 +1,4 @@
-name: Windows
+name: Windows (programma 2.x, Python)
 
 on:
   push:
@@ -34,6 +34,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # always the program in Python, whatever branch the run is started from: main, or the tag being released
+          ref: ${{ startsWith(github.ref, 'refs/tags/') && github.ref || 'main' }}
           submodules: true
 
       - uses: actions/setup-python@v5
@@ -111,7 +113,7 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/*.msi dist/*.msi.sha256 dist/*.zip --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$TAG" dist/*.msi dist/*.msi.sha256 dist/*.zip --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            gh release create "$TAG" dist/*.msi dist/*.msi.sha256 dist/*.zip --repo "$GITHUB_REPOSITORY" --target "$(git rev-parse HEAD)" \
               --title "TD Booking Suite per Windows $TAG" \
               --notes "MSI per server e postazioni. Windows lo segnala come app non riconosciuta perché non è firmato: Ulteriori informazioni, poi Esegui comunque."
           fi
@@ -167,6 +169,9 @@ jobs:
       contents: write  # the zip also goes to a draft release of this private repo (td-licenze), outside the Actions storage
     steps:
       - uses: actions/checkout@v4
+        with:
+          # always the program in Python, whatever branch the run is started from: main, or the tag being released
+          ref: ${{ startsWith(github.ref, 'refs/tags/') && github.ref || 'main' }}
 
       - uses: actions/setup-python@v5
         with:

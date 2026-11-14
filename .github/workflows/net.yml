@@ -1,0 +1,113 @@
+name: net (programma in C#)
+# The C# rewrite on its own branch: build on Windows, the tests, the windows on recorded answers as screenshots,
+# then the MSI and its installation test. Nothing is published: the MSI is an artifact of the run.
+# Only by hand (Actions → Run workflow, or gh workflow run net.yml --ref net-rewrite): not at every push.
+on:
+  workflow_dispatch:
+    inputs:
+      rilascio:
+        description: "Pubblica l'MSI: rilascio in questa repo e nella vetrina pubblica, come anteprima accanto alla 2.x"
+        type: boolean
+        default: false
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write  # the release is published from this job
+    outputs:
+      version: ${{ steps.msi.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        # always the program in C#, whatever branch the run is started from
+        with: { ref: net-rewrite, submodules: true }
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: "8.0.x" }
+      - name: Compila
+        run: dotnet build net/TDBooking.sln -c Release
+      - name: Prove
+        run: dotnet test net/tests/TD.Tests -c Release --no-build
+      - name: Finestre (screenshot)
+        shell: pwsh
+        run: |
+          $exe = "net/src/TD.App/bin/Release/net8.0-windows/TDBookingSuite.exe"
+          $p = Start-Process $exe -ArgumentList "--demo", "$PWD/net/tests/demo", "--shot", "$PWD/shots" -PassThru -RedirectStandardError err.txt -RedirectStandardOutput out.txt
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "le finestre non si sono chiuse" }
+          "uscita: $($p.ExitCode)"; Get-Content err.txt, out.txt -ErrorAction SilentlyContinue
+          $log = Join-Path $env:TEMP "TDBookingSuite-errore.txt"
+          if (Test-Path $log) { Get-Content $log; New-Item -ItemType Directory -Force shots | Out-Null; Copy-Item $log shots/ }
+          Get-ChildItem shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: screenshot, path: shots }
+      # the MSI of the C# program and the same test a client's installation goes through (net/installer)
+      - name: Cache dei download
+        uses: actions/cache@v4
+        with:
+          path: build/cache
+          key: downloads-net-${{ hashFiles('net/installer/build.ps1') }}
+      - name: MSI
+        id: msi
+        env:
+          # code signing only with these secrets (windows/firma.ps1); without them the MSI is not signed
+          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARTIFACT_SIGNING_ENDPOINT: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          ARTIFACT_SIGNING_ACCOUNT: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          ARTIFACT_SIGNING_PROFILE: ${{ secrets.ARTIFACT_SIGNING_PROFILE }}
+        run: |
+          pwsh net/installer/build.ps1
+          "version=$(([xml](Get-Content net/Directory.Build.props)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1)" >> $env:GITHUB_OUTPUT
+      - name: Prova di installazione
+        run: pwsh net/installer/smoke-test.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TD-Booking-Suite-3-Windows
+          path: |
+            dist/*.msi
+            dist/*.zip
+            *.log
+          retention-days: 7
+
+      # Published only when asked (Run workflow, "Pubblica l'MSI"), and only after the installation test passed.
+      # Always as a pre-release: the programs already installed look at the latest full release for "Aggiorna ora"
+      # (tdwin/aggiornamenti.py, Rpc/Licenza.cs) and skip pre-releases, so no customer of the 2.x is offered this
+      # one until it is made a full release by hand.
+      - name: SHA-256 dell'MSI
+        if: inputs.rilascio
+        shell: bash
+        run: cd dist && for f in *.msi; do sha256sum "$f" > "$f.sha256"; done && cat *.sha256
+      - name: Rilascio con l'MSI allegato
+        if: inputs.rilascio
+        shell: bash
+        env:
+          TAG: v${{ steps.msi.outputs.version }}-net
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.msi dist/*.msi.sha256 dist/*.zip --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" dist/*.msi dist/*.msi.sha256 dist/*.zip --repo "$GITHUB_REPOSITORY" --target "$(git rev-parse HEAD)" --prerelease \
+              --title "TD Booking Suite per Windows $TAG (programma in C#)" \
+              --notes "Anteprima del programma riscritto in C#. Un solo MSI per Un PC solo, per il server e per le postazioni; installato sopra una 2.x la aggiorna e tiene i dati. Da provare su un PC di prova prima che in negozio. Windows lo segnala come app non riconosciuta se non è firmato: Ulteriori informazioni, poi Esegui comunque."
+          fi
+      # the public showcase gets the MSI only: its README and screenshots stay those of the 2.x until this becomes the release
+      - name: Vetrina pubblica
+        if: inputs.rilascio
+        shell: bash
+        env:
+          TAG: v${{ steps.msi.outputs.version }}-net
+          GH_TOKEN: ${{ secrets.VETRINA_TOKEN }}
+          VETRINA: ${{ vars.VETRINA_REPO || 'Giuseppe-sciarra/TD-Booking-Suite-per-Windows' }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "::error::Manca il secret VETRINA_TOKEN: vetrina non aggiornata"; exit 1; fi
+          if gh release view "$TAG" --repo "$VETRINA" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.msi dist/*.msi.sha256 --repo "$VETRINA" --clobber
+          else
+            gh release create "$TAG" dist/*.msi dist/*.msi.sha256 --repo "$VETRINA" --target main --prerelease \
+              --title "TD Booking Suite per Windows $TAG (anteprima, programma in C#)" \
+              --notes "Anteprima del programma riscritto in C#, accanto alla versione 2.x che resta quella da usare in negozio. Un solo MSI per Un PC solo, per il server e per le postazioni; installato sopra una 2.x la aggiorna e tiene i dati. 7 giorni di prova. Windows lo segnala come app non riconosciuta se non è firmato: Ulteriori informazioni, poi Esegui comunque."
+          fi
