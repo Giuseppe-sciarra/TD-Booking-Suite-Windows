@@ -518,7 +518,7 @@ public sealed class AgendaPage : Page
             },
         };
         var id = x.S("id");
-        row.MouseLeftButtonUp += async (_, _) => Main.ShowPage(new BookingDetailPage(id));
+        row.MouseLeftButtonUp += (_, _) => Main.ShowPage(new BookingDetailPage(id));
         return row;
     }
 
@@ -587,7 +587,7 @@ public sealed class AgendaPage : Page
                 void Place() { var w = col.ActualWidth > 0 ? col.ActualWidth : 120; var lw = (w - 4) / lns; card.Width = Math.Max(20, lw - 2); Canvas.SetLeft(card, 2 + ln * lw); }
                 col.SizeChanged += (_, _) => Place(); Place();
                 Canvas.SetTop(card, top + 1);
-                var id = x.S("id"); card.MouseLeftButtonUp += async (_, _) => Main.ShowPage(new BookingDetailPage(id));
+                var id = x.S("id"); card.MouseLeftButtonUp += (_, _) => Main.ShowPage(new BookingDetailPage(id));
                 col.Children.Add(card);
             }
             var frame = new Border { Child = col, BorderBrush = Res("Line"), BorderThickness = new Thickness(1, 0, 0, 0) };
