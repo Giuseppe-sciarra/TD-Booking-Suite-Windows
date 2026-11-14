@@ -18,7 +18,8 @@ jobs:
       version: ${{ steps.msi.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-        with: { submodules: true }
+        # always the program in C#, whatever branch the run is started from
+        with: { ref: net-rewrite, submodules: true }
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: "8.0.x" }
       - name: Compila
@@ -89,7 +90,7 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/*.msi dist/*.msi.sha256 dist/*.zip --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$TAG" dist/*.msi dist/*.msi.sha256 dist/*.zip --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            gh release create "$TAG" dist/*.msi dist/*.msi.sha256 dist/*.zip --repo "$GITHUB_REPOSITORY" --target "$(git rev-parse HEAD)" --prerelease \
               --title "TD Booking Suite per Windows $TAG (programma in C#)" \
               --notes "Anteprima del programma riscritto in C#. Un solo MSI per Un PC solo, per il server e per le postazioni; installato sopra una 2.x la aggiorna e tiene i dati. Da provare su un PC di prova prima che in negozio. Windows lo segnala come app non riconosciuta se non è firmato: Ulteriori informazioni, poi Esegui comunque."
           fi
