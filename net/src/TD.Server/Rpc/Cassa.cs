@@ -160,11 +160,6 @@ public static class Cassa
                 var p = c.Id("parked_id") is Guid pid ? x.S.One<Parked>("SELECT * FROM core_parked WHERE id=@id AND location_id=@l", new { id = pid, l = loc.Id }) : null; if (p == null) throw new KeyNotFoundException();
                 x.Audit("sale.parked_dropped", p.Id, new { total = Prices.Str(p.Total) }); t.DropParked(p);
                 return new { testo = $"Tolto: {Prices.Euro((decimal?)p.Total)}. Il trattamento resta nella scheda del cliente." };
-            case "closed_by_hand":
-                // the closure done on the register: only noted, so the reminder goes away
-                var cs = new Sale { TenantId = x.Tenant.Id, LocationId = loc.Id, Kind = "close", Status = "done", Printed = x.Now, Error = "Fatta dalla cassa", Key = Bookings.TokenUrlSafe(24), Actor = c.User.Id.ToString(), Created = x.Now };
-                cs.Pii = x.Encrypt(new JsonObject(), "sale:" + cs.Id); x.S.Insert(cs); t.Closed(loc.Id); x.Audit("sale.close_by_hand", loc.Id);
-                return new { testo = "Segnata la chiusura fatta dalla cassa." };
         }
         if (a == "void" && c.Id("sale") == null) return new { testo = t.Void(loc, null, c.Str("doc"), c.Str("day")) };
         var sale = c.Id("sale") is Guid id ? x.S.One<Sale>("SELECT * FROM core_sale WHERE id=@id AND location_id=@l", new { id, l = loc.Id }) : null; if (sale == null) throw new KeyNotFoundException();

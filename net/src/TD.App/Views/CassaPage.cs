@@ -586,8 +586,7 @@ public sealed class CassaPage : Page
         var close = puoChiudere
             ? Block(H3("Chiusura giornaliera"), Left(BA("Chiusura giornaliera", async () => { if (Ask("Fare adesso la chiusura giornaliera? La cassa stampa la chiusura e manda i corrispettivi di oggi all'Agenzia delle Entrate. Si fa una volta al giorno, a fine giornata.")) await Do(new JsonObject { ["azione"] = "close" }); })),
                 Small("A fine giornata, dopo l'ultimo scontrino. La cassa stampa la chiusura e trasmette i corrispettivi: conservala come sempre.").M(0, 8, 0, 0))
-            : Block(H3("Chiusura giornaliera"), Small("Su questa cassa la chiusura giornaliera si fa dalla cassa: poi premi qui, così il programma sa che è fatta."),
-                Left(F.Small(BA("Chiusura fatta dalla cassa", async () => { if (Ask("Hai fatto la chiusura dalla cassa?")) await Do(new JsonObject { ["azione"] = "closed_by_hand" }); }))));
+            : Block(H3("Chiusura giornaliera"), Small("Su questa cassa la chiusura giornaliera si fa dalla cassa."));
         var from = new DatePicker { SelectedDate = DateTime.Parse(d.S("inizioMese")) }; var to = new DatePicker { SelectedDate = DateTime.Parse(d.S("oggi")) };
         async Task Summary(string a, string b)
         {
