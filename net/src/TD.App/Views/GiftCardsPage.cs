@@ -96,7 +96,7 @@ public sealed class GiftCardsPage : Page
             if (c.S("chi") != "") { meta.Inlines.Add(" · intestata a "); if (names) { var cid = c.S("cliente"); var l = new Hyperlink(new Run(c.S("chi"))) { Foreground = Res("Brand"), TextDecorations = null }; l.Click += (_, _) => Main.ShowPage(new ClientPage(cid)); meta.Inlines.Add(l); } else meta.Inlines.Add(c.S("chi")); }
             else meta.Inlines.Add(" · non intestata");
             line.Inlines.Add(meta);
-            var print = F.Small(B("Stampa per il cliente", () => Main.ShowPage(new GiftPrintPage(c, q))));
+            var print = F.Small(B("Stampa per il cliente", () => Main.ShowPage(new GiftPrintPage(c))));
             var top = new DockPanel(); print.VerticalAlignment = VerticalAlignment.Top; DockPanel.SetDock(print, Dock.Right); top.Children.Add(print); top.Children.Add(line);
             var body = Col(top);
             var moves = c.A("movimenti").ToList();
@@ -121,7 +121,7 @@ public sealed class GiftCardsPage : Page
 }
 
 /// <summary>templates/gift_print.html: the card to print or save as PDF and give to the client with the receipt.</summary>
-public sealed class GiftPrintPage(JsonNode card, string q) : Page
+public sealed class GiftPrintPage(JsonNode card) : Page
 {
     static readonly CultureInfo It = AgendaPage.It;
     public override Task Load()

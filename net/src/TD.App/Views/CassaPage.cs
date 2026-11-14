@@ -35,7 +35,7 @@ public sealed class CassaPage : Page
     }
     string sede = ""; JsonNode d; AgendaPage z; bool built;
     readonly List<Line> lines = new(); Line current; string active = "", bookingId = ""; List<string> taken = new(); decimal credit; string key = "";
-    StackPanel rowsBox, low, found, extra; ContentControl top;
+    StackPanel rowsBox, low, found; ContentControl top;
     TextBox client, discount, giftCode, giftUse, cf, lottery, standbyNote, parkNote, giftValue, search; DatePicker giftExpires;
     string contact = ""; CheckBox copy; TextBlock total, giftTotal, parkedTotal, giftInfo; Button history;
     readonly Dictionary<string, RadioButton> pay = new(); readonly Dictionary<string, TextBox> split = new();
@@ -200,7 +200,7 @@ public sealed class CassaPage : Page
         if (d.Bo("scegliCliente"))
         {
             client = Box(""); client.Tag = "Nome, email o telefono"; AgendaPage.Hint(client); client.MaxWidth = 520; client.HorizontalAlignment = HorizontalAlignment.Left; client.MinWidth = 520;
-            found = Col(); extra = null;
+            found = Col();
             history = F.Small(B("Storico", () => { if (contact != "") ClientHistoryPage.Dialog(Main, contact); }));
             var credits = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) }; creditsBox = credits;
             client.TextChanged += (_, _) =>
